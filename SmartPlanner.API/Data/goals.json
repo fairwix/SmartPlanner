@@ -1,0 +1,53 @@
+[
+  {
+    "title": "\u0418\u0437\u0443\u0447\u0438\u0442\u044C ASP.NET Core",
+    "description": "\u041F\u0440\u043E\u0439\u0442\u0438 \u043F\u043E\u043B\u043D\u044B\u0439 \u043A\u0443\u0440\u0441 \u043F\u043E ASP.NET Core Web API",
+    "category": 1,
+    "priority": 1,
+    "dueDate": "2024-12-31T00:00:00Z",
+    "targetValue": 100,
+    "currentValue": 0,
+    "isCompleted": false,
+    "isAiGenerated": false,
+    "rewardAmount": 10,
+    "userId": "723f224e-ab4c-4150-b290-3d53b935ca5b",
+    "user": null,
+    "progressHistory": [],
+    "progressPercentage": 0,
+    "remainingValue": 100,
+    "id": "ce86b11f-aa1c-4fe2-b12e-41c008023fdf",
+    "createdAt": "2025-11-24T14:35:01.123522Z",
+    "updatedAt": "2025-11-24T14:35:01.123522Z"
+  },
+  {
+    "title": "\u0418\u0437\u0443\u0447\u0438\u0442\u044C ASP.NET Core",
+    "description": "\u041F\u0440\u043E\u0439\u0442\u0438 \u043F\u043E\u043B\u043D\u044B\u0439 \u043A\u0443\u0440\u0441 \u043F\u043E ASP.NET Core Web API",
+    "category": 1,
+    "priority": 1,
+    "dueDate": "2024-12-31T00:00:00Z",
+    "targetValue": 100,
+    "currentValue": 0,
+    "isCompleted": false,
+    "isAiGenerated": false,
+    "rewardAmount": 10,
+    "userId": "5ac6a4b7-4724-45de-8697-74567c9fc509",
+    "user": null,
+    "progressHistory": [
+      {
+        "goalId": "6bf8e5ca-7ccb-4de3-8480-48b4a3a04801",
+        "value": 0,
+        "previousValue": 0,
+        "notes": null,
+        "goal": null,
+        "id": "44fd42a5-e953-4900-a606-813fb06911b8",
+        "createdAt": "2025-11-24T14:52:53.722837Z",
+        "updatedAt": "2025-11-24T14:52:53.722457Z"
+      }
+    ],
+    "progressPercentage": 0,
+    "remainingValue": 100,
+    "id": "6bf8e5ca-7ccb-4de3-8480-48b4a3a04801",
+    "createdAt": "2025-11-24T14:50:04.022242Z",
+    "updatedAt": "2025-11-24T14:52:53.722924Z"
+  }
+]
