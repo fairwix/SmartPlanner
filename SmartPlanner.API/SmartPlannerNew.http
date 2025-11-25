@@ -1,0 +1,6 @@
+@SmartPlannerNew_HostAddress = http://localhost:5047
+
+GET {{SmartPlannerNew_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
