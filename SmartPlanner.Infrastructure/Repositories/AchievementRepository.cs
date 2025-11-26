@@ -1,11 +1,13 @@
+using Microsoft.Extensions.Options;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Domain.Entities;
+using SmartPlanner.Infrastructure.Configuration;
 
 namespace SmartPlanner.Infrastructure.Repositories;
 
     public class AchievementRepository : FileStorageRepository<Achievement>, IAchievementRepository
     {
-        public AchievementRepository(string filePath) : base(filePath) { }
+        public AchievementRepository(IOptions<FileStorageOptions> options) : base(options.Value.AchievementsFilePath) { }
 
         public async Task<Achievement?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
             => await base.GetByIdAsync(id, cancellationToken);

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using SmartPlanner.Application.Achievements.Commands;
 using SmartPlanner.Application.Achievements.Dtos;
 using SmartPlanner.Application.Achievements.Queries;
-using SmartPlanner.Application.Common;
+
 
 //работает с достижениями
 namespace SmartPlanner.API.Controllers;
@@ -21,21 +21,21 @@ public class AchievementsController : ControllerBase
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(ApiResponse<List<AchievementDto>>), 200)]
-        public async Task<ActionResult<ApiResponse<List<AchievementDto>>>> GetAchievements(
+        [ProducesResponseType(typeof(List<AchievementDto>), 200)]
+        public async Task<ActionResult<List<AchievementDto>>> GetAchievements(
             [FromQuery] string? type = null,
             CancellationToken cancellationToken = default)
         {
             var query = new GetAchievementsQuery { AchievementType = type };
             var result = await _mediator.Send(query, cancellationToken);
 
-            return Ok(ApiResponse<List<AchievementDto>>.SuccessResult(result, "Achievements retrieved successfully"));
+            return Ok(result);
         }
 
         [HttpGet("{id:guid}")]
-        [ProducesResponseType(typeof(ApiResponse<AchievementDto>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<AchievementDto>), 404)]
-        public async Task<ActionResult<ApiResponse<AchievementDto>>> GetAchievement(
+        [ProducesResponseType(typeof(AchievementDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<AchievementDto>> GetAchievement(
             Guid id,
             CancellationToken cancellationToken = default)
         {
@@ -43,39 +43,39 @@ public class AchievementsController : ControllerBase
             var result = await _mediator.Send(query, cancellationToken);
 
             if (result == null)
-                return NotFound(ApiResponse<AchievementDto>.ErrorResult("Achievement not found"));
+                return NotFound();
 
-            return Ok(ApiResponse<AchievementDto>.SuccessResult(result, "Achievement retrieved successfully"));
+            return Ok(result);
         }
 
         [HttpGet("user/{userId:guid}")]
-        [ProducesResponseType(typeof(ApiResponse<List<UserAchievementDto>>), 200)]
-        public async Task<ActionResult<ApiResponse<List<UserAchievementDto>>>> GetUserAchievements(
+        [ProducesResponseType(typeof(List<UserAchievementDto>), 200)]
+        public async Task<ActionResult<List<UserAchievementDto>>> GetUserAchievements(
             Guid userId,
             CancellationToken cancellationToken = default)
         {
             var query = new GetUserAchievementsQuery { UserId = userId };
             var result = await _mediator.Send(query, cancellationToken);
 
-            return Ok(ApiResponse<List<UserAchievementDto>>.SuccessResult(result, "User achievements retrieved successfully"));
+            return Ok(result);
         }
 
         [HttpPost("user/{userId:guid}/check")]
-        [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
-        public async Task<ActionResult<ApiResponse<bool>>> CheckAndAwardAchievements(
+        [ProducesResponseType(200)]
+        public async Task<ActionResult> CheckAndAwardAchievements(
             Guid userId,
             CancellationToken cancellationToken = default)
         {
             var command = new CheckAndAwardAchievementsCommand { UserId = userId };
             await _mediator.Send(command, cancellationToken);
 
-            return Ok(ApiResponse<bool>.SuccessResult(true, "Achievements checked successfully"));
+            return Ok();
         }
 
         [HttpPost("user/{userId:guid}/award/{achievementId:guid}")]
-        [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<bool>), 400)]
-        public async Task<ActionResult<ApiResponse<bool>>> AwardAchievement(
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        public async Task<ActionResult<bool>> AwardAchievement(
             Guid userId,
             Guid achievementId,
             CancellationToken cancellationToken = default)
@@ -87,7 +87,7 @@ public class AchievementsController : ControllerBase
             };
 
             var result = await _mediator.Send(command, cancellationToken);
-            return Ok(ApiResponse<bool>.SuccessResult(result, "Achievement awarded successfully"));
+            return Ok(result);
         }
     }
 

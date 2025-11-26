@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SmartPlanner.Domain.Entities;
-using SmartPlanner.Application.DTOs.Common;
+
 using SmartPlanner.Application.DTOs.Goal;
 using Microsoft.Extensions.Logging;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
@@ -202,7 +202,7 @@ namespace SmartPlanner.Application.Interfaces.Services;
             }
         }
 
-        public async Task<PagedResponse<Goal>> GetUserGoalsPagedAsync(Guid userId, int pageNumber, int pageSize, string sortBy = "CreatedAt", string sortOrder = "desc", CancellationToken cancellationToken = default)
+        public async Task<List<Goal>> GetUserGoalsPagedAsync(Guid userId, int pageNumber, int pageSize, string sortBy = "CreatedAt", string sortOrder = "desc", CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Получение страницы {PageNumber} целей пользователя {UserId} (размер: {PageSize})",
                 pageNumber, userId, pageSize);
@@ -241,7 +241,7 @@ namespace SmartPlanner.Application.Interfaces.Services;
                 _logger.LogInformation("Возвращено {Count} целей на странице {PageNumber} из {TotalPages}",
                     pagedGoals.Count, pageNumber, (int)Math.Ceiling(totalCount / (double)pageSize));
 
-                return new PagedResponse<Goal>(pagedGoals, pageNumber, pageSize, totalCount);
+                return pagedGoals;
             }
             catch (Exception ex)
             {

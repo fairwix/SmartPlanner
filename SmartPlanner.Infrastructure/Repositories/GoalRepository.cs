@@ -3,15 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Application.Common.Dtos;
 using SmartPlanner.Domain.Entities;
+using SmartPlanner.Infrastructure.Configuration;
 
 namespace SmartPlanner.Infrastructure.Repositories;
 
     public class GoalRepository : FileStorageRepository<Goal>, IGoalRepository
     {
-        public GoalRepository(string filePath) : base(filePath) { }
+        public GoalRepository(IOptions<FileStorageOptions> options) : base(options.Value.GoalsFilePath) { }
 
         // Базовые методы из интерфейса
         public async Task<Goal?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

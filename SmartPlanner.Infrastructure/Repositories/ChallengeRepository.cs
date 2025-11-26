@@ -3,14 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
 using SmartPlanner.Application.Interfaces.Repositories;
 using SmartPlanner.Domain.Entities;
+using SmartPlanner.Infrastructure.Configuration;
 
 namespace SmartPlanner.Infrastructure.Repositories;
 
     public class ChallengeRepository : FileStorageRepository<Challenge>, IChallengeRepository
     {
-        public ChallengeRepository(string filePath) : base(filePath) { }
+        public ChallengeRepository(IOptions<FileStorageOptions> options) : base(options.Value.ChallengesFilePath) { }
 
         // Базовые методы из интерфейса
         public async Task<Challenge?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)

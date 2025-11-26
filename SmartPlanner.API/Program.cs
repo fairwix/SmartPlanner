@@ -3,6 +3,7 @@ using SmartPlanner.Application;
 using SmartPlanner.Infrastructure;
 using SmartPlanner.Infrastructure.Configuration;
 using Microsoft.OpenApi.Models;
+using SmartPlanner.API.Infrastructure.Mapping;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,8 @@ builder.Services
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+// Program.cs (или в месте регистрации сервисов)
+builder.Services.AddAutoMapper(typeof(GoalsBulkProfile)); // или укажи сборку
 
 // Swagger
 builder.Services.AddSwaggerGen(c =>

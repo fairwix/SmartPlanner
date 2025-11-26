@@ -1,7 +1,7 @@
 // SmartPlanner.API/Controllers/GoalsController.cs
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using SmartPlanner.Application.Common;
+
 using SmartPlanner.Application.Goals.Commands;
 using SmartPlanner.Application.Goals.Dtos;
 using SmartPlanner.Application.Goals.Queries;
@@ -20,9 +20,9 @@ namespace SmartPlanner.API.Controllers;
         }
 
         [HttpGet("{id:guid}")]
-        [ProducesResponseType(typeof(ApiResponse<GoalDto>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<GoalDto>), 404)]
-        public async Task<ActionResult<ApiResponse<GoalDto>>> GetGoal(
+        [ProducesResponseType(typeof(GoalDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<GoalDto>> GetGoal(
             Guid id,
             CancellationToken cancellationToken = default)
         {
@@ -30,27 +30,26 @@ namespace SmartPlanner.API.Controllers;
             var result = await _mediator.Send(query, cancellationToken);
 
             if (result == null)
-                return NotFound(ApiResponse<GoalDto>.ErrorResult("Goal not found"));
+                return NotFound();
 
-            return Ok(ApiResponse<GoalDto>.SuccessResult(result, "Goal retrieved successfully"));
+            return Ok(result);
         }
 
         [HttpPost]
-        [ProducesResponseType(typeof(ApiResponse<GoalDto>), 201)]
-        [ProducesResponseType(typeof(ApiResponse<GoalDto>), 400)]
-        public async Task<ActionResult<ApiResponse<GoalDto>>> CreateGoal(
+        [ProducesResponseType(typeof(GoalDto), 201)]
+        [ProducesResponseType(400)]
+        public async Task<ActionResult<GoalDto>> CreateGoal(
             [FromBody] CreateGoalCommand command,
             CancellationToken cancellationToken = default)
         {
             var result = await _mediator.Send(command, cancellationToken);
-            return CreatedAtAction(nameof(GetGoal), new { id = result.Id },
-                ApiResponse<GoalDto>.SuccessResult(result, "Goal created successfully"));
+            return CreatedAtAction(nameof(GetGoal), new { id = result.Id }, result);
         }
 
         [HttpPut("{id:guid}")]
-        [ProducesResponseType(typeof(ApiResponse<GoalDto>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<GoalDto>), 404)]
-        public async Task<ActionResult<ApiResponse<GoalDto>>> UpdateGoal(
+        [ProducesResponseType(typeof(GoalDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<GoalDto>> UpdateGoal(
             Guid id,
             [FromBody] UpdateGoalCommand command,
             CancellationToken cancellationToken = default)
@@ -59,15 +58,15 @@ namespace SmartPlanner.API.Controllers;
             var result = await _mediator.Send(command, cancellationToken);
 
             if (result == null)
-                return NotFound(ApiResponse<GoalDto>.ErrorResult("Goal not found"));
+                return NotFound();
 
-            return Ok(ApiResponse<GoalDto>.SuccessResult(result, "Goal updated successfully"));
+            return Ok(result);
         }
 
         [HttpDelete("{id:guid}")]
-        [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<bool>), 404)]
-        public async Task<ActionResult<ApiResponse<bool>>> DeleteGoal(
+        [ProducesResponseType(200)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult> DeleteGoal(
             Guid id,
             CancellationToken cancellationToken = default)
         {
@@ -75,15 +74,15 @@ namespace SmartPlanner.API.Controllers;
             var result = await _mediator.Send(command, cancellationToken);
 
             if (!result)
-                return NotFound(ApiResponse<bool>.ErrorResult("Goal not found"));
+                return NotFound();
 
-            return Ok(ApiResponse<bool>.SuccessResult(true, "Goal deleted successfully"));
+            return Ok();
         }
 
         [HttpPost("{id:guid}/progress")]
-        [ProducesResponseType(typeof(ApiResponse<GoalDto>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<GoalDto>), 404)]
-        public async Task<ActionResult<ApiResponse<GoalDto>>> UpdateProgress(
+        [ProducesResponseType(typeof(GoalDto), 200)]
+        [ProducesResponseType(404)]
+        public async Task<ActionResult<GoalDto>> UpdateProgress(
             Guid id,
             [FromBody] UpdateGoalProgressCommand command,
             CancellationToken cancellationToken = default)
@@ -92,8 +91,8 @@ namespace SmartPlanner.API.Controllers;
             var result = await _mediator.Send(command, cancellationToken);
 
             if (result == null)
-                return NotFound(ApiResponse<GoalDto>.ErrorResult("Goal not found"));
+                return NotFound();
 
-            return Ok(ApiResponse<GoalDto>.SuccessResult(result, "Progress updated successfully"));
+            return Ok(result);
         }
     }

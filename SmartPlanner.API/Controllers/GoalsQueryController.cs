@@ -1,7 +1,7 @@
 // SmartPlanner.API/Controllers/GoalsQueryController.cs
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using SmartPlanner.Application.Common;
+
 using SmartPlanner.Application.Goals.Dtos;
 using SmartPlanner.Application.Goals.Queries;
 using SmartPlanner.Application.Common.Dtos;
@@ -20,9 +20,9 @@ namespace SmartPlanner.API.Controllers;
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(ApiResponse<PagedResult<GoalDto>>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<PagedResult<GoalDto>>), 400)]
-        public async Task<ActionResult<ApiResponse<PagedResult<GoalDto>>>> GetGoals(
+        [ProducesResponseType(typeof(PagedResult<GoalDto>), 200)]
+        [ProducesResponseType(400)]
+        public async Task<ActionResult<PagedResult<GoalDto>>> GetGoals(
             [FromQuery] Guid userId,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
@@ -35,10 +35,10 @@ namespace SmartPlanner.API.Controllers;
             CancellationToken cancellationToken = default)
         {
             if (page < 1)
-                return BadRequest(ApiResponse<PagedResult<GoalDto>>.ErrorResult("Page number must be greater than 0"));
+                return BadRequest("Page number must be greater than 0");
 
             if (pageSize < 1 || pageSize > 100)
-                return BadRequest(ApiResponse<PagedResult<GoalDto>>.ErrorResult("Page size must be between 1 and 100"));
+                return BadRequest("Page size must be between 1 and 100");
 
             var query = new GetUserGoalsQuery
             {
@@ -55,16 +55,13 @@ namespace SmartPlanner.API.Controllers;
 
             var result = await _mediator.Send(query, cancellationToken);
 
-            var message = $"Retrieved {result.Items.Count} of {result.TotalCount} goals. " +
-                         $"Page {result.PageNumber} of {result.TotalPages}.";
-
-            return Ok(ApiResponse<PagedResult<GoalDto>>.SuccessResult(result, message));
+            return Ok(result);
         }
 
         [HttpGet("advanced")]
-        [ProducesResponseType(typeof(ApiResponse<PagedResult<GoalDto>>), 200)]
-        [ProducesResponseType(typeof(ApiResponse<PagedResult<GoalDto>>), 400)]
-        public async Task<ActionResult<ApiResponse<PagedResult<GoalDto>>>> GetGoalsAdvanced(
+        [ProducesResponseType(typeof(PagedResult<GoalDto>), 200)]
+        [ProducesResponseType(400)]
+        public async Task<ActionResult<PagedResult<GoalDto>>> GetGoalsAdvanced(
             [FromQuery] Guid userId,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
@@ -85,10 +82,10 @@ namespace SmartPlanner.API.Controllers;
             CancellationToken cancellationToken = default)
         {
             if (page < 1)
-                return BadRequest(ApiResponse<PagedResult<GoalDto>>.ErrorResult("Page number must be greater than 0"));
+                return BadRequest("Page number must be greater than 0");
 
             if (pageSize < 1 || pageSize > 100)
-                return BadRequest(ApiResponse<PagedResult<GoalDto>>.ErrorResult("Page size must be between 1 and 100"));
+                return BadRequest("Page size must be between 1 and 100");
 
             var pagination = new AdvancedPaginationRequest
             {
@@ -118,8 +115,6 @@ namespace SmartPlanner.API.Controllers;
 
             var result = await _mediator.Send(query, cancellationToken);
 
-            var message = $"Retrieved {result.Items.Count} of {result.TotalCount} goals with advanced filters.";
-
-            return Ok(ApiResponse<PagedResult<GoalDto>>.SuccessResult(result, message));
+            return Ok(result);
         }
     }

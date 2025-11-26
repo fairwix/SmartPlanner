@@ -1,0 +1,73 @@
+root = true
+
+# Общие правила для всех файлов
+[*]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# Правила для C# файлов
+[*.cs]
+# Использование file-scoped namespaces
+csharp_style_namespace_declarations = file_scoped:warning
+
+# Использование expression-bodied members
+csharp_style_expression_bodied_methods = true:warning
+csharp_style_expression_bodied_constructors = true:warning
+csharp_style_expression_bodied_operators = true:warning
+csharp_style_expression_bodied_properties = true:warning
+csharp_style_expression_bodied_indexers = true:warning
+csharp_style_expression_bodied_accessors = true:warning
+
+# Использование 'var' при явном указании типа избыточен
+csharp_style_var_for_built_in_types = true:warning
+csharp_style_var_when_type_is_apparent = true:warning
+csharp_style_var_elsewhere = true:warning
+
+# Использование скобок
+csharp_prefer_braces = true:warning
+
+# Использование 'this.' и 'Me.'
+csharp_style_qualification_for_field = false:warning
+csharp_style_qualification_for_property = false:warning
+csharp_style_qualification_for_method = false:warning
+csharp_style_qualification_for_event = false:warning
+
+# Порядок модификаторов
+csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async:warning
+
+# Стиль null-проверок
+csharp_style_conditional_delegate_call = true:warning
+
+# Использование using declarations
+csharp_style_using_directive_placement = outside_namespace:error
+
+# Предпочтение pattern matching
+csharp_style_pattern_matching_over_is_with_cast_check = true:warning
+csharp_style_pattern_matching_over_as_with_null_check = true:warning
+
+# Предпочтение объединенного проверки null
+csharp_style_conditional_expression_over_null_coalescing_expression = false:warning
+csharp_style_throw_expression = true:warning
+csharp_style_conditional_expression_over_assignment = true:warning
+
+# Использование локальных функций вместо лямбд
+csharp_style_simple_default_expression = true:warning
+
+# Удаление ненужных выражений
+csharp_remove_unnecessary_cast = true:warning
+csharp_remove_unnecessary_usings = true:warning
+csharp_style_unused_value_expression_statement_preference = discard_variable:warning
+csharp_style_unused_value_assignment_preference = discard_variable:warning
+
+# Предпочтение интерполяции строк вместо String.Format
+csharp_style_prefer_string_interpolation = true:warning
+
+# Сортировка using
+dotnet_sort_system_directives_first = true
+
+# Обработка токенов отмены
+csharp_prefer_cancellation_token = true:warning

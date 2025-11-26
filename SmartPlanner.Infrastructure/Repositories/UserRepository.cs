@@ -1,16 +1,13 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Domain.Entities;
+using SmartPlanner.Infrastructure.Configuration;
 
 namespace SmartPlanner.Infrastructure.Repositories;
 
     public class UserRepository : FileStorageRepository<User>, IUserRepository
     {
-        public UserRepository(string filePath) : base(filePath) { }
+        public UserRepository(IOptions<FileStorageOptions> options) : base(options.Value.UsersFilePath) { }
 
         // Базовые методы из интерфейса
         public async Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
