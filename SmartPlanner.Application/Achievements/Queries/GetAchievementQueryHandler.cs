@@ -3,8 +3,8 @@ using SmartPlanner.Application.Achievements.Dtos;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Application.Interfaces.Repositories;
 
-namespace SmartPlanner.Application.Achievements.Queries
-{
+namespace SmartPlanner.Application.Achievements.Queries;
+
     public class GetAchievementsQueryHandler : IRequestHandler<GetAchievementsQuery, List<AchievementDto>>
     {
         private readonly IAchievementRepository _achievementRepository;
@@ -17,7 +17,7 @@ namespace SmartPlanner.Application.Achievements.Queries
         public async Task<List<AchievementDto>> Handle(GetAchievementsQuery request, CancellationToken cancellationToken)
         {
             var achievements = await _achievementRepository.GetAllAsync(cancellationToken);
-            
+
             // Фильтрация по типу, если указана
             if (!string.IsNullOrEmpty(request.AchievementType))
             {
@@ -26,13 +26,15 @@ namespace SmartPlanner.Application.Achievements.Queries
             }
 
             // Маппинг в DTO
-            return achievements.Select(a => new AchievementDto
-            {
-                Id = a.Id,
-                Name = a.Name,
-                Description = a.Description,
-                // Добавьте остальные поля
-            }).ToList();
+            return achievements.Select(a => new AchievementDto(
+                a.Id,
+                a.CreatedAt,
+                a.UpdatedAt,
+                a.Name,
+                a.Description,
+                a.BadgeImage,
+                a.RewardAmount,
+                a.Type.ToString(),
+                a.Condition)).ToList();
         }
     }
-}

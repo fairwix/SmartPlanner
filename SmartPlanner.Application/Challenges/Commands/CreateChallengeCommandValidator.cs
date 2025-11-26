@@ -1,8 +1,8 @@
 using FluentValidation;
 using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Application.Challenges.Commands
-{
+namespace SmartPlanner.Application.Challenges.Commands;
+
     public class CreateChallengeCommandValidator : AbstractValidator<CreateChallengeCommand>
     {
         public CreateChallengeCommandValidator()
@@ -36,4 +36,3 @@ namespace SmartPlanner.Application.Challenges.Commands
             return Enum.TryParse<ChallengeType>(type, out _);
         }
     }
-}

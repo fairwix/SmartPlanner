@@ -4,8 +4,8 @@ using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Application.Challenges.Dtos;
 using SmartPlanner.Application.Interfaces.Repositories;
 
-namespace SmartPlanner.Application.Challenges.Queries
-{
+namespace SmartPlanner.Application.Challenges.Queries;
+
     public class GetChallengeByIdQueryHandler : IRequestHandler<GetChallengeByIdQuery, ChallengeDto?>
     {
         private readonly IChallengeRepository _challengeRepository;
@@ -20,11 +20,10 @@ namespace SmartPlanner.Application.Challenges.Queries
         }
 
         public async Task<ChallengeDto?> Handle(
-            GetChallengeByIdQuery request, 
+            GetChallengeByIdQuery request,
             CancellationToken cancellationToken)
         {
             var challenge = await _challengeRepository.GetByIdAsync(request.ChallengeId, cancellationToken);
             return challenge != null ? _mapper.Map<ChallengeDto>(challenge) : null;
         }
     }
-}

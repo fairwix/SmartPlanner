@@ -4,8 +4,8 @@ using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Domain.Entities;
 
 
-namespace SmartPlanner.Application.Achievements.Commands
-{
+namespace SmartPlanner.Application.Achievements.Commands;
+
     public class CheckAndAwardAchievementsCommandHandler : IRequestHandler<CheckAndAwardAchievementsCommand>
     {
         private readonly IAchievementRepository _achievementRepository;
@@ -109,4 +109,3 @@ namespace SmartPlanner.Application.Achievements.Commands
             return false; // Placeholder
         }
     }
-}

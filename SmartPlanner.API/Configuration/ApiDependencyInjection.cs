@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 
-namespace SmartPlanner.API.Configuration
-{
+namespace SmartPlanner.API.Configuration;
+
     public static class ApiDependencyInjection
     {
         public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
@@ -20,7 +20,7 @@ namespace SmartPlanner.API.Configuration
                 {
                     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
                 });
-            
+
 
             // 3. CORS
             services.AddCors(options =>
@@ -45,4 +45,3 @@ namespace SmartPlanner.API.Configuration
             return app;
         }
     }
-}

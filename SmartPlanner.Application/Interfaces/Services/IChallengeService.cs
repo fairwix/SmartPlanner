@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using SmartPlanner.Domain.Entities;
-using SmartPlanner.Domain.DTOs.Challenge;
+using SmartPlanner.Application.DTOs.Challenge;
+using SmartPlanner.Application.Common.Interfaces.Repositories;
 
-namespace SmartPlanner.Domain.Interfaces.Services
-{
+namespace SmartPlanner.Application.Interfaces.Services;
+
     public interface IChallengeService
     {
         Task<Challenge> CreateChallengeAsync(CreateChallengeRequest request, CancellationToken cancellationToken = default);
@@ -18,4 +19,4 @@ namespace SmartPlanner.Domain.Interfaces.Services
         Task<Challenge> UpdateChallengeProgressAsync(Guid challengeId, int progress, CancellationToken cancellationToken = default);
         Task<List<Challenge>> GenerateAiChallengesAsync(Guid userId, int count = 3, CancellationToken cancellationToken = default);
     }
-}
+

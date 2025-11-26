@@ -49,5 +49,25 @@
     "id": "6bf8e5ca-7ccb-4de3-8480-48b4a3a04801",
     "createdAt": "2025-11-24T14:50:04.022242Z",
     "updatedAt": "2025-11-24T14:52:53.722924Z"
+  },
+  {
+    "title": "\u0418\u0437\u0443\u0447\u0438\u0442\u044C ASP.NET Core",
+    "description": "\u041F\u0440\u043E\u0439\u0442\u0438 \u043F\u043E\u043B\u043D\u044B\u0439 \u043A\u0443\u0440\u0441 \u043F\u043E ASP.NET Core Web API",
+    "category": 1,
+    "priority": 1,
+    "dueDate": "2024-12-31T00:00:00Z",
+    "targetValue": 100,
+    "currentValue": 0,
+    "isCompleted": false,
+    "isAiGenerated": false,
+    "rewardAmount": 10,
+    "userId": "5ac6a4b7-4724-45de-8697-74567c9fc509",
+    "user": null,
+    "progressHistory": [],
+    "progressPercentage": 0,
+    "remainingValue": 100,
+    "id": "5557130d-1150-4fc6-8a8b-ee04730cb6db",
+    "createdAt": "2025-11-26T05:54:22.238005Z",
+    "updatedAt": "2025-11-26T05:54:22.238005Z"
   }
 ]

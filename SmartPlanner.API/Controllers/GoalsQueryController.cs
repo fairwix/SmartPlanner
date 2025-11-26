@@ -5,9 +5,9 @@ using SmartPlanner.Application.Common;
 using SmartPlanner.Application.Goals.Dtos;
 using SmartPlanner.Application.Goals.Queries;
 using SmartPlanner.Application.Common.Dtos;
+//фильтрация и пагинация целей
+namespace SmartPlanner.API.Controllers;
 
-namespace SmartPlanner.API.Controllers
-{
     [ApiController]
     [Route("api/goals")]
     public class GoalsQueryController : ControllerBase
@@ -40,10 +40,10 @@ namespace SmartPlanner.API.Controllers
             if (pageSize < 1 || pageSize > 100)
                 return BadRequest(ApiResponse<PagedResult<GoalDto>>.ErrorResult("Page size must be between 1 and 100"));
 
-            var query = new GetUserGoalsQuery 
-            { 
-                UserId = userId, 
-                PageNumber = page, 
+            var query = new GetUserGoalsQuery
+            {
+                UserId = userId,
+                PageNumber = page,
                 PageSize = pageSize,
                 Category = category,
                 Priority = priority,
@@ -52,12 +52,12 @@ namespace SmartPlanner.API.Controllers
                 SortBy = sortBy,
                 SortOrder = sortOrder
             };
-            
+
             var result = await _mediator.Send(query, cancellationToken);
-            
+
             var message = $"Retrieved {result.Items.Count} of {result.TotalCount} goals. " +
                          $"Page {result.PageNumber} of {result.TotalPages}.";
-            
+
             return Ok(ApiResponse<PagedResult<GoalDto>>.SuccessResult(result, message));
         }
 
@@ -110,17 +110,16 @@ namespace SmartPlanner.API.Controllers
                 MaxProgress = maxProgress
             };
 
-            var query = new GetUserGoalsAdvancedQuery 
-            { 
-                UserId = userId, 
-                Pagination = pagination 
+            var query = new GetUserGoalsAdvancedQuery
+            {
+                UserId = userId,
+                Pagination = pagination
             };
-            
+
             var result = await _mediator.Send(query, cancellationToken);
-            
+
             var message = $"Retrieved {result.Items.Count} of {result.TotalCount} goals with advanced filters.";
-            
+
             return Ok(ApiResponse<PagedResult<GoalDto>>.SuccessResult(result, message));
         }
     }
-}

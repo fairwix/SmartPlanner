@@ -9,12 +9,12 @@ using SmartPlanner.Infrastructure.FileStorage;
 using SmartPlanner.Infrastructure.Persistence;
 using SmartPlanner.Infrastructure.Repositories;
 
-namespace SmartPlanner.Infrastructure
-{
+namespace SmartPlanner.Infrastructure;
+
     public static class DependencyInjection
     {
         public static IServiceCollection AddInfrastructure(
-            this IServiceCollection services, 
+            this IServiceCollection services,
             IConfiguration configuration)
         {
             // ✅ ПРАВИЛЬНАЯ конфигурация
@@ -26,41 +26,19 @@ namespace SmartPlanner.Infrastructure
             // File Storage - Singleton
             services.AddSingleton<IFileStorageService, FileStorageService>();
 
-            // ✅ ПРАВИЛЬНАЯ регистрация репозиториев с одним параметром string
-            services.AddScoped<IUserRepository>(provider =>
-            {
-                var options = provider.GetRequiredService<IOptions<FileStorageOptions>>().Value;
-                return new UserRepository(options.UsersFilePath); // ✅ Только один параметр
-            });
+            services.AddScoped<IUserRepository, UserRepository>();
 
-            services.AddScoped<IGoalRepository>(provider =>
-            {
-                var options = provider.GetRequiredService<IOptions<FileStorageOptions>>().Value;
-                return new GoalRepository(options.GoalsFilePath); // ✅ Только один параметр
-            });
+            services.AddScoped<IGoalRepository, GoalRepository>();
 
-            services.AddScoped<IAchievementRepository>(provider =>
-            {
-                var options = provider.GetRequiredService<IOptions<FileStorageOptions>>().Value;
-                return new AchievementRepository(options.AchievementsFilePath); // ✅ Только один параметр
-            });
+            services.AddScoped<IAchievementRepository, AchievementRepository>();
 
-            services.AddScoped<IChallengeRepository>(provider =>
-            {
-                var options = provider.GetRequiredService<IOptions<FileStorageOptions>>().Value;
-                return new ChallengeRepository(options.ChallengesFilePath); // ✅ Только один параметр
-            });
+            services.AddScoped<IChallengeRepository, ChallengeRepository>();
 
-            services.AddScoped<IUserAchievementRepository>(provider =>
-            {
-                var options = provider.GetRequiredService<IOptions<FileStorageOptions>>().Value;
-                return new UserAchievementRepository(options.UserAchievementsFilePath); // ✅ Только один параметр
-            });
+            services.AddScoped<IUserAchievementRepository, UserAchievementRepository>();
 
             // UnitOfWork - Scoped
             services.AddScoped<IUnitOfWork, UnitOfWork>();
-            
+
             return services;
         }
     }
-}

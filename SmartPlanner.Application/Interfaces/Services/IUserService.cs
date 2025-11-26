@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using SmartPlanner.Domain.Entities;
-using SmartPlanner.Domain.DTOs.User;
+using SmartPlanner.Application.DTOs.User;
+using SmartPlanner.Application.Common.Interfaces.Repositories;
 
-namespace SmartPlanner.Domain.Interfaces.Services
-{
+namespace SmartPlanner.Application.Interfaces.Services;
+
     public interface IUserService
     {
         Task<User> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken = default);
@@ -23,4 +24,4 @@ namespace SmartPlanner.Domain.Interfaces.Services
         Task<int> GetUserBalanceAsync(Guid userId, CancellationToken cancellationToken = default);
         Task<User> AddRewardToUserAsync(Guid userId, int amount, CancellationToken cancellationToken = default);
     }
-}
+

@@ -1,6 +1,6 @@
 // SmartPlanner.Domain/Exceptions/DomainException.cs
-namespace SmartPlanner.Domain.Exceptions
-{
+namespace SmartPlanner.Domain.Exceptions;
+
     public class DomainException : Exception
     {
         public DomainException(string message) : base(message)
@@ -18,4 +18,3 @@ namespace SmartPlanner.Domain.Exceptions
         {
         }
     }
-}

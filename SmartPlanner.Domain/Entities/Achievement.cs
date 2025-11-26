@@ -1,15 +1,15 @@
 using System.Collections.Generic;
 
-namespace SmartPlanner.Domain.Entities
+namespace SmartPlanner.Domain.Entities;
+
+public class Achievement : BaseEntity
 {
-    public class Achievement : BaseEntity
-    {
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string BadgeImage { get; set; } = string.Empty;
-        public int RewardAmount { get; set; }
-        public AchievementType Type { get; set; }
-        public string Condition { get; set; } = string.Empty;
+        public string Name { get; init; } = string.Empty;
+        public string Description { get; init; } = string.Empty;
+        public string BadgeImage { get; init; } = string.Empty;
+        public int RewardAmount { get; init; }
+        public AchievementType Type { get; init; }
+        public string Condition { get; init; } = string.Empty;
 
         public bool CanBeAwarded(User user)
         {
@@ -49,4 +49,4 @@ namespace SmartPlanner.Domain.Entities
             return false;
         }
     }
-}
+

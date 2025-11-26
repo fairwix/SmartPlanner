@@ -1,5 +1,5 @@
-namespace SmartPlanner.Domain.Entities
-{
+namespace SmartPlanner.Domain.Entities;
+
     public enum GoalCategory
     {
         Sports,
@@ -52,4 +52,4 @@ namespace SmartPlanner.Domain.Entities
         Completed,
         Left
     }
-}
+

@@ -4,8 +4,8 @@ using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Application.Challenges.Dtos;
 using SmartPlanner.Application.Interfaces.Repositories;
 
-namespace SmartPlanner.Application.Challenges.Queries
-{
+namespace SmartPlanner.Application.Challenges.Queries;
+
     public class GetChallengesQueryHandler : IRequestHandler<GetChallengesQuery, List<ChallengeDto>>
     {
         private readonly IChallengeRepository _challengeRepository;
@@ -20,11 +20,11 @@ namespace SmartPlanner.Application.Challenges.Queries
         }
 
         public async Task<List<ChallengeDto>> Handle(
-            GetChallengesQuery request, 
+            GetChallengesQuery request,
             CancellationToken cancellationToken)
         {
             var challenges = await _challengeRepository.GetAllAsync(cancellationToken);
-            
+
             // Применяем фильтры
             var filteredChallenges = challenges.AsEnumerable();
 
@@ -35,24 +35,23 @@ namespace SmartPlanner.Application.Challenges.Queries
 
             if (request.UserId.HasValue)
             {
-                filteredChallenges = filteredChallenges.Where(c => 
-                    c.CreatedBy == request.UserId.Value || 
+                filteredChallenges = filteredChallenges.Where(c =>
+                    c.CreatedBy == request.UserId.Value ||
                     c.Participants.Any(p => p.UserId == request.UserId.Value));
             }
 
             if (!string.IsNullOrEmpty(request.Type))
             {
-                filteredChallenges = filteredChallenges.Where(c => 
+                filteredChallenges = filteredChallenges.Where(c =>
                     c.Type.ToString().Equals(request.Type, StringComparison.OrdinalIgnoreCase));
             }
 
             if (request.IsGroupChallenge.HasValue)
             {
-                filteredChallenges = filteredChallenges.Where(c => 
+                filteredChallenges = filteredChallenges.Where(c =>
                     c.IsGroupChallenge == request.IsGroupChallenge.Value);
             }
 
             return _mapper.Map<List<ChallengeDto>>(filteredChallenges.ToList());
         }
     }
-}

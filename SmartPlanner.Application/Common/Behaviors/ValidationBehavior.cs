@@ -2,8 +2,8 @@
 using FluentValidation;
 using MediatR;
 
-namespace SmartPlanner.Application.Common.Behaviors
-{
+namespace SmartPlanner.Application.Common.Behaviors;
+
     public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
         where TRequest : IRequest<TResponse>
     {
@@ -37,4 +37,3 @@ namespace SmartPlanner.Application.Common.Behaviors
             return await next();
         }
     }
-}

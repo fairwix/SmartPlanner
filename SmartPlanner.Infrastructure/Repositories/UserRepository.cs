@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Infrastructure.Repositories
-{
+namespace SmartPlanner.Infrastructure.Repositories;
+
     public class UserRepository : FileStorageRepository<User>, IUserRepository
     {
         public UserRepository(string filePath) : base(filePath) { }
@@ -32,15 +32,31 @@ namespace SmartPlanner.Infrastructure.Repositories
         public async Task<User?> FindByEmailAsync(string email, CancellationToken cancellationToken = default)
         {
             var users = await base.GetAllAsync(cancellationToken);
-            return users.FirstOrDefault(u => 
+            return users.FirstOrDefault(u =>
                 u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+        {
+            var users = await base.GetAllAsync(cancellationToken);
+            return users.FirstOrDefault(u =>
+                u.Email.Equals(email, StringComparison.OrdinalIgnoreCase))
+                ?? throw new ArgumentException($"User with email {email} not found");
         }
 
         public async Task<User?> FindByUsernameAsync(string username, CancellationToken cancellationToken = default)
         {
             var users = await base.GetAllAsync(cancellationToken);
-            return users.FirstOrDefault(u => 
+            return users.FirstOrDefault(u =>
                 u.Username.Equals(username, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public async Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken = default)
+        {
+            var users = await base.GetAllAsync(cancellationToken);
+            return users.FirstOrDefault(u =>
+                u.Username.Equals(username, StringComparison.OrdinalIgnoreCase))
+                ?? throw new ArgumentException($"User with username {username} not found");
         }
 
         public async Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default)
@@ -59,7 +75,7 @@ namespace SmartPlanner.Infrastructure.Repositories
         {
             var users = await base.GetAllAsync(cancellationToken);
             var user = await GetByIdAsync(userId, cancellationToken);
-            
+
             if (user == null) return new List<User>();
 
             var friendIds = user.Friends
@@ -105,4 +121,3 @@ namespace SmartPlanner.Infrastructure.Repositories
             return true;
         }
     }
-}

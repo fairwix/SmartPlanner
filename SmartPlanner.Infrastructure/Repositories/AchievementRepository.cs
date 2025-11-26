@@ -1,12 +1,12 @@
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Infrastructure.Repositories
-{
+namespace SmartPlanner.Infrastructure.Repositories;
+
     public class AchievementRepository : FileStorageRepository<Achievement>, IAchievementRepository
     {
         public AchievementRepository(string filePath) : base(filePath) { }
-        
+
         public async Task<Achievement?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
             => await base.GetByIdAsync(id, cancellationToken);
 
@@ -35,4 +35,3 @@ namespace SmartPlanner.Infrastructure.Repositories
             return achievements;
         }
     }
-}

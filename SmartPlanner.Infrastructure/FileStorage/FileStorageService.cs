@@ -2,8 +2,8 @@
 using System.Text.Json;
 using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Infrastructure.Services
-{
+namespace SmartPlanner.Infrastructure.Services;
+
     public class FileStorageService
     {
         private readonly SemaphoreSlim _semaphore = new(1, 1);
@@ -11,8 +11,8 @@ namespace SmartPlanner.Infrastructure.Services
 
         public FileStorageService()
         {
-            _jsonOptions = new JsonSerializerOptions 
-            { 
+            _jsonOptions = new JsonSerializerOptions
+            {
                 WriteIndented = true,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             };
@@ -51,4 +51,3 @@ namespace SmartPlanner.Infrastructure.Services
             }
         }
     }
-}

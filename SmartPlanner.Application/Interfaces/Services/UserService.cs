@@ -4,12 +4,12 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SmartPlanner.Domain.Entities;
-using SmartPlanner.Domain.DTOs.User;
+using SmartPlanner.Application.DTOs.User;
 using Microsoft.Extensions.Logging;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 
-namespace SmartPlanner.Domain.Interfaces.Services
-{
+namespace SmartPlanner.Application.Interfaces.Services;
+
     public class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;
@@ -24,19 +24,19 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<User> CreateUserAsync(CreateUserRequest request, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Создание пользователя: {Username}", request.Username);
-            
+
             try
             {
                 if (await _userRepository.ExistsByEmailAsync(request.Email, cancellationToken))
                 {
                     _logger.LogWarning("Попытка создания пользователя с существующим email: {Email}", request.Email);
-                    throw new ArgumentException("Пользователь с таким email уже существует");
+                    throw new ArgumentException(nameof(request.Email), "Пользователь с таким email уже существует");
                 }
 
                 if (await _userRepository.ExistsByUsernameAsync(request.Username, cancellationToken))
                 {
                     _logger.LogWarning("Попытка создания пользователя с существующим именем: {Username}", request.Username);
-                    throw new ArgumentException("Пользователь с таким именем уже существует");
+                    throw new ArgumentException(nameof(request.Username), "Пользователь с таким именем уже существует");
                 }
 
                 var user = new User
@@ -51,9 +51,9 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 };
 
                 _logger.LogDebug("Создание пользователя в репозитории: {@User}", user);
-                
+
                 var result = await _userRepository.CreateAsync(user, cancellationToken);
-                
+
                 _logger.LogInformation("Пользователь успешно создан с ID: {UserId}", result.Id);
                 return result;
             }
@@ -67,16 +67,16 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<User?> GetUserByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Получение пользователя по ID: {UserId}", id);
-            
+
             try
             {
                 var user = await _userRepository.GetByIdAsync(id, cancellationToken);
-                
+
                 if (user == null)
                 {
                     _logger.LogWarning("Пользователь с ID {UserId} не найден", id);
                 }
-                
+
                 return user;
             }
             catch (Exception ex)
@@ -89,16 +89,16 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<User?> GetUserByEmailAsync(string email, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Получение пользователя по email: {Email}", email);
-            
+
             try
             {
                 var user = await _userRepository.FindByEmailAsync(email, cancellationToken);
-                
+
                 if (user == null)
                 {
                     _logger.LogWarning("Пользователь с email {Email} не найден", email);
                 }
-                
+
                 return user;
             }
             catch (Exception ex)
@@ -111,11 +111,11 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<List<User>> SearchUsersAsync(string searchTerm, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Поиск пользователей по запросу: {SearchTerm}", searchTerm);
-            
+
             try
             {
                 var allUsers = await _userRepository.GetAllAsync(cancellationToken);
-                var result = allUsers.Where(u => 
+                var result = allUsers.Where(u =>
                     u.Username.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
                     u.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
                 ).ToList();
@@ -133,24 +133,26 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<User> UpdateUserAsync(Guid id, UpdateUserRequest request, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Обновление пользователя {UserId}", id);
-            
+
             try
             {
                 var user = await _userRepository.GetByIdAsync(id, cancellationToken);
                 if (user == null)
                 {
                     _logger.LogWarning("Пользователь {UserId} не найден для обновления", id);
-                    throw new ArgumentException("Пользователь не найден");
+                    throw new ArgumentException(nameof(user), "Пользователь не найден");
                 }
 
-                user.Username = request.Username ?? user.Username;
-                user.Interests = request.Interests ?? user.Interests;
+                if (request.Interests != null)
+                {
+                    user.Interests = request.Interests;
+                }
                 user.UpdatedAt = DateTime.UtcNow;
 
                 _logger.LogDebug("Обновление пользователя в репозитории: {@User}", user);
-                
+
                 var result = await _userRepository.UpdateAsync(user, cancellationToken) ?? user;
-                
+
                 _logger.LogInformation("Пользователь {UserId} успешно обновлен", id);
                 return result;
             }
@@ -164,11 +166,11 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<bool> DeleteUserAsync(Guid id, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Удаление пользователя {UserId}", id);
-            
+
             try
             {
                 var result = await _userRepository.DeleteAsync(id, cancellationToken);
-                
+
                 if (result)
                 {
                     _logger.LogInformation("Пользователь {UserId} успешно удален", id);
@@ -177,7 +179,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 {
                     _logger.LogWarning("Пользователь {UserId} не найден для удаления", id);
                 }
-                
+
                 return result;
             }
             catch (Exception ex)
@@ -190,7 +192,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<bool> AddUserInterestAsync(Guid userId, string interest, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Добавление интереса '{Interest}' пользователю {UserId}", interest, userId);
-            
+
             try
             {
                 var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
@@ -223,7 +225,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<bool> RemoveUserInterestAsync(Guid userId, string interest, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Удаление интереса '{Interest}' у пользователя {UserId}", interest, userId);
-            
+
             try
             {
                 var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
@@ -234,7 +236,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 }
 
                 var removed = user.Interests.Remove(interest);
-                
+
                 if (removed)
                 {
                     await _userRepository.UpdateAsync(user, cancellationToken);
@@ -244,7 +246,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 {
                     _logger.LogWarning("Интерес '{Interest}' не найден у пользователя {UserId}", interest, userId);
                 }
-                
+
                 return removed;
             }
             catch (Exception ex)
@@ -257,11 +259,11 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<bool> AddFriendAsync(Guid userId, Guid friendId, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Добавление друга {FriendId} пользователю {UserId}", friendId, userId);
-            
+
             try
             {
                 var result = await _userRepository.AddFriendAsync(userId, friendId, cancellationToken);
-                
+
                 if (result)
                 {
                     _logger.LogInformation("Друг {FriendId} успешно добавлен пользователю {UserId}", friendId, userId);
@@ -270,7 +272,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 {
                     _logger.LogWarning("Не удалось добавить друга {FriendId} пользователю {UserId}", friendId, userId);
                 }
-                
+
                 return result;
             }
             catch (Exception ex)
@@ -283,11 +285,11 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<bool> RemoveFriendAsync(Guid userId, Guid friendId, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Удаление друга {FriendId} у пользователя {UserId}", friendId, userId);
-            
+
             try
             {
                 var result = await _userRepository.RemoveFriendAsync(userId, friendId, cancellationToken);
-                
+
                 if (result)
                 {
                     _logger.LogInformation("Друг {FriendId} успешно удален у пользователя {UserId}", friendId, userId);
@@ -296,7 +298,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 {
                     _logger.LogWarning("Не удалось удалить друга {FriendId} у пользователя {UserId}", friendId, userId);
                 }
-                
+
                 return result;
             }
             catch (Exception ex)
@@ -309,7 +311,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<List<User>> GetUserFriendsAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Получение списка друзей пользователя {UserId}", userId);
-            
+
             try
             {
                 var friends = await _userRepository.GetUserFriendsAsync(userId, cancellationToken);
@@ -326,12 +328,12 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<int> GetUserBalanceAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Получение баланса пользователя {UserId}", userId);
-            
+
             try
             {
                 var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
                 var balance = user?.Balance ?? 0;
-                
+
                 _logger.LogDebug("Баланс пользователя {UserId}: {Balance}", userId, balance);
                 return balance;
             }
@@ -345,25 +347,25 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<User> AddRewardToUserAsync(Guid userId, int amount, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Добавление награды {Amount} пользователю {UserId}", amount, userId);
-            
+
             try
             {
                 var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
                 if (user == null)
                 {
                     _logger.LogWarning("Пользователь {UserId} не найден для добавления награды", userId);
-                    throw new ArgumentException("Пользователь не найден");
+                    throw new ArgumentException(nameof(user), "Пользователь не найден");
                 }
 
                 user.AddReward(amount);
-                
+
                 _logger.LogDebug("Обновление пользователя с новой наградой: {@User}", user);
-                
+
                 var result = await _userRepository.UpdateAsync(user, cancellationToken) ?? user;
-                
-                _logger.LogInformation("Награда {Amount} успешно добавлена пользователю {UserId}. Новый баланс: {Balance}", 
+
+                _logger.LogInformation("Награда {Amount} успешно добавлена пользователю {UserId}. Новый баланс: {Balance}",
                     amount, userId, result.Balance);
-                
+
                 return result;
             }
             catch (Exception ex)
@@ -373,4 +375,4 @@ namespace SmartPlanner.Domain.Interfaces.Services
             }
         }
     }
-}
+

@@ -5,8 +5,8 @@ using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Application.Challenges.Dtos;
 using SmartPlanner.Application.Interfaces.Repositories;
 
-namespace SmartPlanner.Application.Challenges.Commands
-{
+namespace SmartPlanner.Application.Challenges.Commands;
+
     public class JoinChallengeCommandHandler : IRequestHandler<JoinChallengeCommand, ChallengeDto>
     {
         private readonly IChallengeRepository _challengeRepository;
@@ -27,10 +27,10 @@ namespace SmartPlanner.Application.Challenges.Commands
         }
 
         public async Task<ChallengeDto> Handle(
-            JoinChallengeCommand request, 
+            JoinChallengeCommand request,
             CancellationToken cancellationToken)
         {
-            _logger.LogInformation("User {UserId} joining challenge {ChallengeId}", 
+            _logger.LogInformation("User {UserId} joining challenge {ChallengeId}",
                 request.UserId, request.ChallengeId);
 
             // Проверяем существование пользователя
@@ -56,10 +56,9 @@ namespace SmartPlanner.Application.Challenges.Commands
                 throw new ArgumentException($"Challenge with ID {request.ChallengeId} not found");
             }
 
-            _logger.LogInformation("User {UserId} successfully joined challenge {ChallengeId}", 
+            _logger.LogInformation("User {UserId} successfully joined challenge {ChallengeId}",
                 request.UserId, request.ChallengeId);
 
             return _mapper.Map<ChallengeDto>(challenge);
         }
     }
-}

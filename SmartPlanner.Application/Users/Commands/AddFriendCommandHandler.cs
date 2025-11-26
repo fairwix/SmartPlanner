@@ -2,8 +2,8 @@
 using MediatR;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 
-namespace SmartPlanner.Application.Users.Commands
-{
+namespace SmartPlanner.Application.Users.Commands;
+
     public class AddFriendCommandHandler : IRequestHandler<AddFriendCommand, bool>
     {
         private readonly IUserRepository _userRepository;
@@ -30,4 +30,3 @@ namespace SmartPlanner.Application.Users.Commands
             return await _userRepository.AddFriendAsync(request.UserId, request.FriendId, cancellationToken);
         }
     }
-}

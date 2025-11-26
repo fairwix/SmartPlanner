@@ -2,25 +2,26 @@
 
 using SmartPlanner.Application.Common.Dtos;
 
-namespace SmartPlanner.Application.Achievements.Dtos
-{
-    public class AchievementDto : BaseDto
-    {
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string BadgeImage { get; set; } = string.Empty;
-        public int RewardAmount { get; set; }
-        public string Type { get; set; } = string.Empty;
-        public string Condition { get; set; } = string.Empty;
-    }
+namespace SmartPlanner.Application.Achievements.Dtos;
 
-    public class UserAchievementDto : BaseDto
-    {
-        public Guid UserId { get; set; }
-        public Guid AchievementId { get; set; }
-        public string AchievementName { get; set; } = string.Empty;
-        public string AchievementDescription { get; set; } = string.Empty;
-        public string BadgeImage { get; set; } = string.Empty;
-        public DateTime AwardedAt { get; set; }
-    }
-}
+    public record AchievementDto(
+        Guid Id,
+        DateTime CreatedAt,
+        DateTime UpdatedAt,
+        string Name,
+        string Description,
+        string BadgeImage,
+        int RewardAmount,
+        string Type,
+        string Condition) : BaseDto(Id, CreatedAt, UpdatedAt);
+
+    public record UserAchievementDto(
+        Guid Id,
+        DateTime CreatedAt,
+        DateTime UpdatedAt,
+        Guid UserId,
+        Guid AchievementId,
+        string AchievementName,
+        string AchievementDescription,
+        string BadgeImage,
+        DateTime AwardedAt) : BaseDto(Id, CreatedAt, UpdatedAt);

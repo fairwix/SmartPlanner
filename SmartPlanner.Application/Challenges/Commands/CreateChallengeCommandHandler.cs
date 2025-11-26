@@ -6,8 +6,8 @@ using SmartPlanner.Application.Challenges.Dtos;
 using SmartPlanner.Application.Interfaces.Repositories;
 using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Application.Challenges.Commands
-{
+namespace SmartPlanner.Application.Challenges.Commands;
+
     public class CreateChallengeCommandHandler : IRequestHandler<CreateChallengeCommand, ChallengeDto>
     {
         private readonly IChallengeRepository _challengeRepository;
@@ -28,17 +28,17 @@ namespace SmartPlanner.Application.Challenges.Commands
         }
 
         public async Task<ChallengeDto> Handle(
-            CreateChallengeCommand request, 
+            CreateChallengeCommand request,
             CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Creating challenge: {Title} for user {UserId}", 
+            _logger.LogInformation("Creating challenge: {Title} for user {UserId}",
                 request.Title, request.CreatedBy);
 
             // Проверяем существование пользователя
             var user = await _userRepository.GetByIdAsync(request.CreatedBy, cancellationToken);
             if (user == null)
             {
-                throw new ArgumentException($"User with ID {request.CreatedBy} not found");
+                throw new ArgumentException(nameof(request.CreatedBy), $"User with ID {request.CreatedBy} not found");
             }
 
             var challenge = new Challenge
@@ -55,10 +55,9 @@ namespace SmartPlanner.Application.Challenges.Commands
             };
 
             var createdChallenge = await _challengeRepository.CreateAsync(challenge, cancellationToken);
-            
+
             _logger.LogInformation("Challenge {ChallengeId} created successfully", createdChallenge.Id);
-            
+
             return _mapper.Map<ChallengeDto>(createdChallenge);
         }
     }
-}

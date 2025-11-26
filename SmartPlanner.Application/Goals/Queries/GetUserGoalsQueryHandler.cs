@@ -5,9 +5,9 @@ using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Application.Goals.Dtos;
 using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Application.Goals.Queries
-{
-    public class GetUserGoalsQueryHandler : 
+namespace SmartPlanner.Application.Goals.Queries;
+
+    public class GetUserGoalsQueryHandler :
         IRequestHandler<GetUserGoalsQuery, PagedResult<GoalDto>>,
         IRequestHandler<GetUserGoalsAdvancedQuery, PagedResult<GoalDto>>
     {
@@ -23,7 +23,7 @@ namespace SmartPlanner.Application.Goals.Queries
         public async Task<PagedResult<GoalDto>> Handle(GetUserGoalsQuery request, CancellationToken cancellationToken)
         {
             var pagination = new PaginationRequest(request.PageNumber, request.PageSize);
-            
+
             var result = await _goalRepository.GetUserGoalsWithPaginationAsync(
                 userId: request.UserId,
                 pagination: pagination,
@@ -34,7 +34,7 @@ namespace SmartPlanner.Application.Goals.Queries
                 cancellationToken: cancellationToken);
 
             var goalDtos = _mapper.Map<List<GoalDto>>(result.Items);
-            
+
             return new PagedResult<GoalDto>(goalDtos, result.TotalCount, result.PageNumber, result.PageSize);
         }
 
@@ -46,8 +46,7 @@ namespace SmartPlanner.Application.Goals.Queries
                 cancellationToken: cancellationToken);
 
             var goalDtos = _mapper.Map<List<GoalDto>>(result.Items);
-            
+
             return new PagedResult<GoalDto>(goalDtos, result.TotalCount, request.Pagination.PageNumber, request.Pagination.PageSize);
         }
     }
-}

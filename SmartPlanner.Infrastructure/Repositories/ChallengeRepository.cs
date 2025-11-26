@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 using SmartPlanner.Application.Interfaces.Repositories;
 using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Infrastructure.Repositories
-{
+namespace SmartPlanner.Infrastructure.Repositories;
+
     public class ChallengeRepository : FileStorageRepository<Challenge>, IChallengeRepository
     {
         public ChallengeRepository(string filePath) : base(filePath) { }
@@ -38,8 +38,8 @@ namespace SmartPlanner.Infrastructure.Repositories
         public async Task<List<Challenge>> GetUserChallengesAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             var challenges = await base.GetAllAsync(cancellationToken);
-            return challenges.Where(c => 
-                c.CreatedBy == userId || 
+            return challenges.Where(c =>
+                c.CreatedBy == userId ||
                 c.Participants.Any(p => p.UserId == userId && p.Status == ParticipantStatus.Joined)
             ).ToList();
         }
@@ -53,14 +53,15 @@ namespace SmartPlanner.Infrastructure.Repositories
         public async Task<bool> AddParticipantToChallengeAsync(Guid challengeId, Guid userId, CancellationToken cancellationToken = default)
         {
             var challenge = await GetByIdAsync(challengeId, cancellationToken);
-            
+
             if (challenge == null || !challenge.CanUserJoin(userId))
                 return false;
             challenge.Participants ??= new List<ChallengeParticipant>();
             if (challenge.Participants.Any(p => p.UserId == userId && p.Status == ParticipantStatus.Joined))
                 return false;
 
-            challenge.Participants.Add(new ChallengeParticipant
+            var participants = challenge.Participants.ToList();
+            participants.Add(new ChallengeParticipant
             {
                 Id = Guid.NewGuid(),
                 ChallengeId = challengeId,
@@ -68,6 +69,7 @@ namespace SmartPlanner.Infrastructure.Repositories
                 Status = ParticipantStatus.Joined,
                 JoinedAt = DateTime.UtcNow
             });
+            challenge.Participants = participants;
 
             await UpdateAsync(challenge, cancellationToken);
             return true;
@@ -76,15 +78,17 @@ namespace SmartPlanner.Infrastructure.Repositories
         public async Task<bool> RemoveParticipantFromChallengeAsync(Guid challengeId, Guid userId, CancellationToken cancellationToken = default)
         {
             var challenge = await GetByIdAsync(challengeId, cancellationToken);
-            
+
             if (challenge == null) return false;
 
-            var participant = challenge.Participants.FirstOrDefault(p => 
+            var participant = challenge.Participants.FirstOrDefault(p =>
                 p.UserId == userId && p.Status == ParticipantStatus.Joined);
-            
+
             if (participant == null) return false;
 
-            challenge.Participants.Remove(participant);
+            var participants = challenge.Participants.ToList();
+            participants.Remove(participant);
+            challenge.Participants = participants;
             await UpdateAsync(challenge, cancellationToken);
             return true;
         }
@@ -98,7 +102,7 @@ namespace SmartPlanner.Infrastructure.Repositories
         public async Task<bool> UpdateChallengeProgressAsync(Guid challengeId, int progress, CancellationToken cancellationToken = default)
         {
             var challenge = await GetByIdAsync(challengeId, cancellationToken);
-            
+
             if (challenge == null) return false;
 
             challenge.CurrentValue = Math.Min(progress, challenge.TargetValue);
@@ -106,4 +110,3 @@ namespace SmartPlanner.Infrastructure.Repositories
             return true;
         }
     }
-}

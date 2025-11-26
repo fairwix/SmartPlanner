@@ -2,29 +2,25 @@
 
 using SmartPlanner.Application.Common.Dtos;
 
-namespace SmartPlanner.Application.Users.Dtos
-{
-    public class UserDto : BaseDto
-    {
-        public string Username { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public List<string> Interests { get; set; } = new();
-        public int Balance { get; set; }
-        public int StreakCount { get; set; }
-        public DateTime LastLogin { get; set; }
-    }
+namespace SmartPlanner.Application.Users.Dtos;
 
-    public class CreateUserDto
-    {
-        public string Username { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public List<string> Interests { get; set; } = new();
-    }
+    public record UserDto(
+        Guid Id,
+        DateTime CreatedAt,
+        DateTime UpdatedAt,
+        string Username,
+        string Email,
+        List<string> Interests,
+        int Balance,
+        int StreakCount,
+        DateTime LastLogin) : BaseDto(Id, CreatedAt, UpdatedAt);
 
-    public class UpdateUserDto
-    {
-        public string? Username { get; set; }
-        public List<string>? Interests { get; set; }
-    }
-}
+    public record CreateUserDto(
+        string Username,
+        string Email,
+        string Password,
+        List<string> Interests);
+
+    public record UpdateUserDto(
+        string? Username,
+        List<string>? Interests);

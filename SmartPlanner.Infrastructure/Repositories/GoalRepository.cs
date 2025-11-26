@@ -7,8 +7,8 @@ using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Application.Common.Dtos;
 using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Infrastructure.Repositories
-{
+namespace SmartPlanner.Infrastructure.Repositories;
+
     public class GoalRepository : FileStorageRepository<Goal>, IGoalRepository
     {
         public GoalRepository(string filePath) : base(filePath) { }
@@ -34,10 +34,10 @@ namespace SmartPlanner.Infrastructure.Repositories
         }
 
         public async Task<PagedResult<Goal>> GetUserGoalsWithPaginationAsync(
-            Guid userId, 
+            Guid userId,
             PaginationRequest pagination,
             string? category = null,
-            string? priority = null, 
+            string? priority = null,
             bool? completed = null,
             string? searchTerm = null,
             CancellationToken cancellationToken = default)
@@ -47,13 +47,13 @@ namespace SmartPlanner.Infrastructure.Repositories
 
             if (!string.IsNullOrEmpty(category))
             {
-                userGoals = userGoals.Where(g => 
+                userGoals = userGoals.Where(g =>
                     g.Category.ToString().Equals(category, StringComparison.OrdinalIgnoreCase));
             }
 
             if (!string.IsNullOrEmpty(priority))
             {
-                userGoals = userGoals.Where(g => 
+                userGoals = userGoals.Where(g =>
                     g.Priority.ToString().Equals(priority, StringComparison.OrdinalIgnoreCase));
             }
 
@@ -64,7 +64,7 @@ namespace SmartPlanner.Infrastructure.Repositories
 
             if (!string.IsNullOrEmpty(searchTerm))
             {
-                userGoals = userGoals.Where(g => 
+                userGoals = userGoals.Where(g =>
                     g.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
                     g.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
             }
@@ -73,7 +73,7 @@ namespace SmartPlanner.Infrastructure.Repositories
 
             var userGoalsList = userGoals.ToList();
             var totalCount = userGoalsList.Count;
-            
+
             var pagedGoals = userGoalsList
                 .Skip(pagination.Skip)
                 .Take(pagination.Take)
@@ -130,8 +130,8 @@ namespace SmartPlanner.Infrastructure.Repositories
         public async Task<bool> IsGoalTitleUniqueForUserAsync(Guid userId, string title, CancellationToken cancellationToken = default)
         {
             var allGoals = await base.GetAllAsync(cancellationToken);
-            return !allGoals.Any(g => 
-                g.UserId == userId && 
+            return !allGoals.Any(g =>
+                g.UserId == userId &&
                 g.Title.Equals(title, StringComparison.OrdinalIgnoreCase));
         }
 
@@ -145,7 +145,7 @@ namespace SmartPlanner.Infrastructure.Repositories
 
             if (!string.IsNullOrEmpty(pagination.Search))
             {
-                userGoals = userGoals.Where(g => 
+                userGoals = userGoals.Where(g =>
                     g.Title.Contains(pagination.Search, StringComparison.OrdinalIgnoreCase) ||
                     g.Description.Contains(pagination.Search, StringComparison.OrdinalIgnoreCase));
             }
@@ -213,7 +213,7 @@ namespace SmartPlanner.Infrastructure.Repositories
 
             var sortedGoals = pagination.SortBy?.ToLower() switch
             {
-                "title" => pagination.SortOrder == "desc" 
+                "title" => pagination.SortOrder == "desc"
                     ? userGoals.OrderByDescending(g => g.Title)
                     : userGoals.OrderBy(g => g.Title),
                 "duedate" => pagination.SortOrder == "desc"
@@ -235,7 +235,7 @@ namespace SmartPlanner.Infrastructure.Repositories
 
             var userGoalsList = sortedGoals.ToList();
             var totalCount = userGoalsList.Count;
-            
+
             var pagedGoals = userGoalsList
                 .Skip(pagination.Skip)
                 .Take(pagination.Take)
@@ -264,10 +264,10 @@ namespace SmartPlanner.Infrastructure.Repositories
         {
             var allGoals = await base.GetAllAsync(cancellationToken);
             var dueDateThreshold = DateTime.UtcNow.AddDays(daysThreshold);
-            
+
             return allGoals
-                .Where(g => g.UserId == userId && 
-                           !g.IsCompleted && 
+                .Where(g => g.UserId == userId &&
+                           !g.IsCompleted &&
                            g.DueDate <= dueDateThreshold &&
                            g.DueDate > DateTime.UtcNow)
                 .ToList();
@@ -283,10 +283,9 @@ namespace SmartPlanner.Infrastructure.Repositories
         {
             var allGoals = await base.GetAllAsync(cancellationToken);
             var userGoals = allGoals.Where(g => g.UserId == userId);
-            
+
             return userGoals
                 .GroupBy(g => g.Category)
                 .ToDictionary(g => g.Key, g => g.Count());
         }
     }
-}

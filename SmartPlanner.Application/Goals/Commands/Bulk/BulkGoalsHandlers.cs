@@ -8,8 +8,8 @@ using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Application.Goals.Dtos;
 using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Application.Goals.Commands
-{
+namespace SmartPlanner.Application.Goals.Commands;
+
     public class BulkCreateGoalsCommandHandler : IRequestHandler<BulkCreateGoalsCommand, BulkOperationResult<GoalDto>>
     {
         private readonly IGoalRepository _goalRepository;
@@ -30,10 +30,10 @@ namespace SmartPlanner.Application.Goals.Commands
         }
 
         public async Task<BulkOperationResult<GoalDto>> Handle(
-            BulkCreateGoalsCommand request, 
+            BulkCreateGoalsCommand request,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("Starting bulk creation of {GoalCount} goals for user {UserId}", 
+            _logger.LogInformation("Starting bulk creation of {GoalCount} goals for user {UserId}",
                 request.Goals.Count, request.UserId);
 
             var results = new BulkOperationResult<GoalDto>
@@ -47,7 +47,7 @@ namespace SmartPlanner.Application.Goals.Commands
             {
                 var errorMessage = $"User with ID {request.UserId} not found";
                 _logger.LogWarning(errorMessage);
-                
+
                 // Все операции провалятся из-за отсутствия пользователя
                 foreach (var goalDto in request.Goals)
                 {
@@ -70,7 +70,7 @@ namespace SmartPlanner.Application.Goals.Commands
                     // Проверяем уникальность названия
                     var isTitleUnique = await _goalRepository.IsGoalTitleUniqueForUserAsync(
                         request.UserId, goalDto.Title, cancellationToken);
-                    
+
                     if (!isTitleUnique)
                     {
                         results.Items.Add(new BulkOperationItem<GoalDto>
@@ -83,29 +83,45 @@ namespace SmartPlanner.Application.Goals.Commands
                         continue;
                     }
 
-                    // Создаем цель
-                    var goal = _mapper.Map<Goal>(goalDto);
-                    goal.UserId = request.UserId;
+                    // Создаем цель используя конструктор для инициализации всех init-свойств
+                    var goal = new Goal
+                    {
+                        Id = Guid.NewGuid(),
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        Title = goalDto.Title,
+                        Description = goalDto.Description ?? string.Empty,
+                        Category = Enum.Parse<GoalCategory>(goalDto.Category),
+                        Priority = Enum.Parse<GoalPriority>(goalDto.Priority),
+                        DueDate = goalDto.DueDate,
+                        TargetValue = goalDto.TargetValue,
+                        CurrentValue = 0,
+                        IsCompleted = false,
+                        IsAiGenerated = goalDto.IsAiGenerated,
+                        RewardAmount = goalDto.RewardAmount,
+                        UserId = request.UserId,
+                        User = user,
+                        ProgressHistory = new List<GoalProgress>()
+                    };
 
                     var createdGoal = await _goalRepository.CreateAsync(goal, cancellationToken);
-                    var goalDtoResult = _mapper.Map<GoalDto>(createdGoal);
 
                     results.Items.Add(new BulkOperationItem<GoalDto>
                     {
-                        Data = goalDtoResult,
+                        Data = _mapper.Map<GoalDto>(createdGoal),
                         Success = true,
                         Message = "Goal created successfully",
                         ItemId = createdGoal.Id
                     });
                     results.SuccessfulCount++;
 
-                    _logger.LogDebug("Successfully created goal {GoalId} with title '{Title}'", 
+                    _logger.LogDebug("Successfully created goal {GoalId} with title '{Title}'",
                         createdGoal.Id, goalDto.Title);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to create goal with title '{Title}'", goalDto.Title);
-                    
+
                     results.Items.Add(new BulkOperationItem<GoalDto>
                     {
                         Success = false,
@@ -116,7 +132,7 @@ namespace SmartPlanner.Application.Goals.Commands
                 }
             }
 
-            _logger.LogInformation("Bulk creation completed: {SuccessfulCount} successful, {FailedCount} failed", 
+            _logger.LogInformation("Bulk creation completed: {SuccessfulCount} successful, {FailedCount} failed",
                 results.SuccessfulCount, results.FailedCount);
 
             return results;
@@ -140,7 +156,7 @@ namespace SmartPlanner.Application.Goals.Commands
         }
 
         public async Task<BulkOperationResult<GoalDto>> Handle(
-            BulkUpdateGoalsCommand request, 
+            BulkUpdateGoalsCommand request,
             CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Starting bulk update of {GoalCount} goals", request.Goals.Count);
@@ -168,33 +184,32 @@ namespace SmartPlanner.Application.Goals.Commands
                         continue;
                     }
 
-                    // Обновляем только указанные поля
-                    if (!string.IsNullOrEmpty(updateItem.UpdateData.Title))
-                        existingGoal.Title = updateItem.UpdateData.Title;
+                    // Создаем новую цель с обновленными значениями
+                    var updatedGoal = new Goal
+                    {
+                        Id = existingGoal.Id,
+                        CreatedAt = existingGoal.CreatedAt,
+                        UpdatedAt = DateTime.UtcNow,
+                        Title = !string.IsNullOrEmpty(updateItem.UpdateData.Title) ? updateItem.UpdateData.Title : existingGoal.Title,
+                        Description = !string.IsNullOrEmpty(updateItem.UpdateData.Description) ? updateItem.UpdateData.Description : existingGoal.Description,
+                        Category = !string.IsNullOrEmpty(updateItem.UpdateData.Category) ? Enum.Parse<GoalCategory>(updateItem.UpdateData.Category) : existingGoal.Category,
+                        Priority = !string.IsNullOrEmpty(updateItem.UpdateData.Priority) ? Enum.Parse<GoalPriority>(updateItem.UpdateData.Priority) : existingGoal.Priority,
+                        DueDate = updateItem.UpdateData.DueDate ?? existingGoal.DueDate,
+                        TargetValue = updateItem.UpdateData.TargetValue ?? existingGoal.TargetValue,
+                        CurrentValue = existingGoal.CurrentValue,
+                        IsCompleted = existingGoal.IsCompleted,
+                        IsAiGenerated = existingGoal.IsAiGenerated,
+                        RewardAmount = existingGoal.RewardAmount,
+                        UserId = existingGoal.UserId,
+                        User = existingGoal.User,
+                        ProgressHistory = existingGoal.ProgressHistory
+                    };
 
-                    if (!string.IsNullOrEmpty(updateItem.UpdateData.Description))
-                        existingGoal.Description = updateItem.UpdateData.Description;
-
-                    if (!string.IsNullOrEmpty(updateItem.UpdateData.Category))
-                        existingGoal.Category = Enum.Parse<GoalCategory>(updateItem.UpdateData.Category);
-
-                    if (!string.IsNullOrEmpty(updateItem.UpdateData.Priority))
-                        existingGoal.Priority = Enum.Parse<GoalPriority>(updateItem.UpdateData.Priority);
-
-                    if (updateItem.UpdateData.DueDate.HasValue)
-                        existingGoal.DueDate = updateItem.UpdateData.DueDate.Value;
-
-                    if (updateItem.UpdateData.TargetValue.HasValue)
-                        existingGoal.TargetValue = updateItem.UpdateData.TargetValue.Value;
-
-                    existingGoal.UpdatedAt = DateTime.UtcNow;
-
-                    var updatedGoal = await _goalRepository.UpdateAsync(existingGoal, cancellationToken);
-                    var goalDto = _mapper.Map<GoalDto>(updatedGoal);
+                    var result = await _goalRepository.UpdateAsync(updatedGoal, cancellationToken);
 
                     results.Items.Add(new BulkOperationItem<GoalDto>
                     {
-                        Data = goalDto,
+                        Data = _mapper.Map<GoalDto>(result),
                         Success = true,
                         Message = "Goal updated successfully",
                         ItemId = updateItem.GoalId
@@ -206,7 +221,7 @@ namespace SmartPlanner.Application.Goals.Commands
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to update goal {GoalId}", updateItem.GoalId);
-                    
+
                     results.Items.Add(new BulkOperationItem<GoalDto>
                     {
                         Success = false,
@@ -218,7 +233,7 @@ namespace SmartPlanner.Application.Goals.Commands
                 }
             }
 
-            _logger.LogInformation("Bulk update completed: {SuccessfulCount} successful, {FailedCount} failed", 
+            _logger.LogInformation("Bulk update completed: {SuccessfulCount} successful, {FailedCount} failed",
                 results.SuccessfulCount, results.FailedCount);
 
             return results;
@@ -239,7 +254,7 @@ namespace SmartPlanner.Application.Goals.Commands
         }
 
         public async Task<BulkDeleteResult> Handle(
-            BulkDeleteGoalsCommand request, 
+            BulkDeleteGoalsCommand request,
             CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Starting bulk deletion of {GoalCount} goals", request.GoalIds.Count);
@@ -254,7 +269,7 @@ namespace SmartPlanner.Application.Goals.Commands
                 try
                 {
                     var success = await _goalRepository.DeleteAsync(goalId, cancellationToken);
-                    
+
                     if (success)
                     {
                         results.Items.Add(new BulkDeleteItem
@@ -282,7 +297,7 @@ namespace SmartPlanner.Application.Goals.Commands
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to delete goal {GoalId}", goalId);
-                    
+
                     results.Items.Add(new BulkDeleteItem
                     {
                         Id = goalId,
@@ -294,10 +309,10 @@ namespace SmartPlanner.Application.Goals.Commands
                 }
             }
 
-            _logger.LogInformation("Bulk deletion completed: {SuccessfulCount} successful, {FailedCount} failed", 
+            _logger.LogInformation("Bulk deletion completed: {SuccessfulCount} successful, {FailedCount} failed",
                 results.SuccessfulCount, results.FailedCount);
 
             return results;
         }
     }
-}
+

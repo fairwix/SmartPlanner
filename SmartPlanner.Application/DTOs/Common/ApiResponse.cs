@@ -1,13 +1,13 @@
 using System.Text.Json.Serialization;
 
-namespace SmartPlanner.Domain.DTOs.Common
-{
+namespace SmartPlanner.Application.DTOs.Common;
+
     public class ApiResponse<T>
     {
         public bool success { get; set; }
         public string Message { get; set; } = string.Empty;
         public T? Data { get; set; }
-        
+
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<string>? Errors { get; set; }
 
@@ -62,4 +62,4 @@ namespace SmartPlanner.Domain.DTOs.Common
             Message = string.Empty;
         }
     }
-}
+

@@ -1,13 +1,13 @@
 // SmartPlanner.Application/Common/Dtos/BulkOperations.cs
-namespace SmartPlanner.Application.Common.Dtos
-{
+namespace SmartPlanner.Application.Common.Dtos;
+
     public class BulkOperationResult<T>
     {
         public List<BulkOperationItem<T>> Items { get; set; } = new();
         public int TotalCount { get; set; }
         public int SuccessfulCount { get; set; }
         public int FailedCount { get; set; }
-        
+
         public bool AllSucceeded => FailedCount == 0;
         public double SuccessRate => TotalCount > 0 ? (double)SuccessfulCount / TotalCount * 100 : 0;
     }
@@ -36,4 +36,3 @@ namespace SmartPlanner.Application.Common.Dtos
         public string Message { get; set; } = string.Empty;
         public string? Error { get; set; }
     }
-}

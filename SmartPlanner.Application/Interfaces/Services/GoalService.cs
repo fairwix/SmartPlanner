@@ -4,13 +4,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SmartPlanner.Domain.Entities;
-using SmartPlanner.Domain.DTOs.Goal;
-using SmartPlanner.Domain.DTOs.Common;
+using SmartPlanner.Application.DTOs.Common;
+using SmartPlanner.Application.DTOs.Goal;
 using Microsoft.Extensions.Logging;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 
-namespace SmartPlanner.Domain.Interfaces.Services
-{
+namespace SmartPlanner.Application.Interfaces.Services;
+
     public class GoalService : IGoalService
     {
         private readonly IGoalRepository _goalRepository;
@@ -27,7 +27,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<Goal> CreateGoalAsync(CreateGoalRequest request, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Создание цели для пользователя {UserId}: {Title}", request.UserId, request.Title);
-            
+
             try
             {
                 // Проверяем существование пользователя
@@ -35,7 +35,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 if (user == null)
                 {
                     _logger.LogWarning("Пользователь {UserId} не найден при создании цели", request.UserId);
-                    throw new ArgumentException($"Пользователь с ID {request.UserId} не найден");
+                    throw new ArgumentException(nameof(request.UserId), $"Пользователь с ID {request.UserId} не найден");
                 }
 
                 var goal = new Goal
@@ -53,19 +53,19 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 if (!goal.IsValid())
                 {
                     _logger.LogWarning("Некорректные данные цели: {@Goal}", goal);
-                    throw new ArgumentException("Некорректные данные цели");
+                    throw new ArgumentException(nameof(goal.IsValid), "Некорректные данные цели");
                 }
 
                 _logger.LogDebug("Создание цели в репозитории: {@Goal}", goal);
-                
+
                 var createdGoal = await _goalRepository.CreateAsync(goal, cancellationToken);
-                
+
                 // Начисляем награду за создание цели
                 user.AddReward(5);
                 await _userRepository.UpdateAsync(user, cancellationToken);
-                
+
                 _logger.LogInformation("Цель успешно создана с ID: {GoalId}. Пользователь получил +5 очков", createdGoal.Id);
-                
+
                 return createdGoal;
             }
             catch (Exception ex)
@@ -78,28 +78,28 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<Goal> UpdateGoalProgressAsync(Guid goalId, int progressValue, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Обновление прогресса цели {GoalId} на {Progress}", goalId, progressValue);
-            
+
             try
             {
                 var goal = await _goalRepository.GetByIdAsync(goalId, cancellationToken);
                 if (goal == null)
                 {
                     _logger.LogWarning("Цель {GoalId} не найдена для обновления прогресса", goalId);
-                    throw new ArgumentException("Цель не найдена");
+                    throw new ArgumentException(nameof(goal), "Цель не найдена");
                 }
 
                 goal.UpdateProgress(progressValue);
-                
-                _logger.LogDebug("Прогресс цели {GoalId} обновлен: {CurrentValue}/{TargetValue}", 
+
+                _logger.LogDebug("Прогресс цели {GoalId} обновлен: {CurrentValue}/{TargetValue}",
                     goalId, goal.CurrentValue, goal.TargetValue);
-                
+
                 var updatedGoal = await _goalRepository.UpdateAsync(goal, cancellationToken) ?? goal;
-                
+
                 if (goal.IsCompleted)
                 {
                     _logger.LogInformation("Цель {GoalId} завершена! Начислено {Reward} очков", goalId, goal.RewardAmount);
                 }
-                
+
                 return updatedGoal;
             }
             catch (Exception ex)
@@ -112,15 +112,15 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<Goal> UpdateGoalAsync(Goal goal, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Обновление цели {GoalId}", goal.Id);
-            
+
             try
             {
                 goal.UpdatedAt = DateTime.UtcNow;
-                
+
                 _logger.LogDebug("Обновление цели в репозитории: {@Goal}", goal);
-                
+
                 var updatedGoal = await _goalRepository.UpdateAsync(goal, cancellationToken) ?? goal;
-                
+
                 _logger.LogInformation("Цель {GoalId} успешно обновлена", goal.Id);
                 return updatedGoal;
             }
@@ -134,11 +134,11 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<bool> DeleteGoalAsync(Guid goalId, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Удаление цели {GoalId}", goalId);
-            
+
             try
             {
                 var result = await _goalRepository.DeleteAsync(goalId, cancellationToken);
-                
+
                 if (result)
                 {
                     _logger.LogInformation("Цель {GoalId} успешно удалена", goalId);
@@ -147,7 +147,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 {
                     _logger.LogWarning("Цель {GoalId} не найдена для удаления", goalId);
                 }
-                
+
                 return result;
             }
             catch (Exception ex)
@@ -160,16 +160,16 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<Goal> GetGoalByIdAsync(Guid goalId, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Получение цели по ID: {GoalId}", goalId);
-            
+
             try
             {
                 var goal = await _goalRepository.GetByIdAsync(goalId, cancellationToken);
-                
+
                 if (goal == null)
                 {
                     _logger.LogWarning("Цель с ID {GoalId} не найдена", goalId);
                 }
-                
+
                 return goal;
             }
             catch (Exception ex)
@@ -182,17 +182,17 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<List<Goal>> GetUserGoalsAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Получение целей пользователя {UserId}", userId);
-            
+
             try
             {
                 var goals = await _goalRepository.GetUserGoalsAsync(userId, cancellationToken);
-                
+
                 var completed = goals.Count(g => g.IsCompleted);
                 var active = goals.Count - completed;
-                
-                _logger.LogInformation("Найдено {Total} целей пользователя {UserId} ({Active} активных, {Completed} завершенных)", 
+
+                _logger.LogInformation("Найдено {Total} целей пользователя {UserId} ({Active} активных, {Completed} завершенных)",
                     goals.Count, userId, active, completed);
-                
+
                 return goals;
             }
             catch (Exception ex)
@@ -204,32 +204,31 @@ namespace SmartPlanner.Domain.Interfaces.Services
 
         public async Task<PagedResponse<Goal>> GetUserGoalsPagedAsync(Guid userId, int pageNumber, int pageSize, string sortBy = "CreatedAt", string sortOrder = "desc", CancellationToken cancellationToken = default)
         {
-            var useGoals = await GetUserGoalsAsync(userId, cancellationToken);
-            _logger.LogInformation("Получение страницы {PageNumber} целей пользователя {UserId} (размер: {PageSize})", 
+            _logger.LogInformation("Получение страницы {PageNumber} целей пользователя {UserId} (размер: {PageSize})",
                 pageNumber, userId, pageSize);
-            
+
             try
             {
                 var userGoals = await GetUserGoalsAsync(userId, cancellationToken);
-                
+
                 _logger.LogDebug("Сортировка целей по {SortBy} в порядке {SortOrder}", sortBy, sortOrder);
-                
+
                 var sortedGoals = sortBy.ToLower() switch
                 {
-                    "title" => sortOrder.ToLower() == "desc" ? 
-                        userGoals.OrderByDescending(g => g.Title) : 
+                    "title" => sortOrder.ToLower() == "desc" ?
+                        userGoals.OrderByDescending(g => g.Title) :
                         userGoals.OrderBy(g => g.Title),
-                    "duedate" => sortOrder.ToLower() == "desc" ? 
-                        userGoals.OrderByDescending(g => g.DueDate) : 
+                    "duedate" => sortOrder.ToLower() == "desc" ?
+                        userGoals.OrderByDescending(g => g.DueDate) :
                         userGoals.OrderBy(g => g.DueDate),
-                    "priority" => sortOrder.ToLower() == "desc" ? 
-                        userGoals.OrderByDescending(g => g.Priority) : 
+                    "priority" => sortOrder.ToLower() == "desc" ?
+                        userGoals.OrderByDescending(g => g.Priority) :
                         userGoals.OrderBy(g => g.Priority),
-                    "progresspercentage" => sortOrder.ToLower() == "desc" ? 
-                        userGoals.OrderByDescending(g => g.ProgressPercentage) : 
+                    "progresspercentage" => sortOrder.ToLower() == "desc" ?
+                        userGoals.OrderByDescending(g => g.ProgressPercentage) :
                         userGoals.OrderBy(g => g.ProgressPercentage),
-                    _ => sortOrder.ToLower() == "desc" ? 
-                        userGoals.OrderByDescending(g => g.CreatedAt) : 
+                    _ => sortOrder.ToLower() == "desc" ?
+                        userGoals.OrderByDescending(g => g.CreatedAt) :
                         userGoals.OrderBy(g => g.CreatedAt)
                 };
 
@@ -239,9 +238,9 @@ namespace SmartPlanner.Domain.Interfaces.Services
                     .Take(pageSize)
                     .ToList();
 
-                _logger.LogInformation("Возвращено {Count} целей на странице {PageNumber} из {TotalPages}", 
+                _logger.LogInformation("Возвращено {Count} целей на странице {PageNumber} из {TotalPages}",
                     pagedGoals.Count, pageNumber, (int)Math.Ceiling(totalCount / (double)pageSize));
-                
+
                 return new PagedResponse<Goal>(pagedGoals, pageNumber, pageSize, totalCount);
             }
             catch (Exception ex)
@@ -251,4 +250,4 @@ namespace SmartPlanner.Domain.Interfaces.Services
             }
         }
     }
-}
+

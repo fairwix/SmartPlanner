@@ -5,9 +5,9 @@ using SmartPlanner.Application.Common;
 using SmartPlanner.Application.Goals.Commands;
 using SmartPlanner.Application.Goals.Dtos;
 using SmartPlanner.Application.Goals.Queries;
+//работа с отдельными целями
+namespace SmartPlanner.API.Controllers;
 
-namespace SmartPlanner.API.Controllers
-{
     [ApiController]
     [Route("api/[controller]")]
     public class GoalsController : ControllerBase
@@ -23,15 +23,15 @@ namespace SmartPlanner.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<GoalDto>), 200)]
         [ProducesResponseType(typeof(ApiResponse<GoalDto>), 404)]
         public async Task<ActionResult<ApiResponse<GoalDto>>> GetGoal(
-            Guid id, 
+            Guid id,
             CancellationToken cancellationToken = default)
         {
             var query = new GetGoalByIdQuery { GoalId = id };
             var result = await _mediator.Send(query, cancellationToken);
-            
+
             if (result == null)
                 return NotFound(ApiResponse<GoalDto>.ErrorResult("Goal not found"));
-                
+
             return Ok(ApiResponse<GoalDto>.SuccessResult(result, "Goal retrieved successfully"));
         }
 
@@ -39,11 +39,11 @@ namespace SmartPlanner.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<GoalDto>), 201)]
         [ProducesResponseType(typeof(ApiResponse<GoalDto>), 400)]
         public async Task<ActionResult<ApiResponse<GoalDto>>> CreateGoal(
-            [FromBody] CreateGoalCommand command, 
+            [FromBody] CreateGoalCommand command,
             CancellationToken cancellationToken = default)
         {
             var result = await _mediator.Send(command, cancellationToken);
-            return CreatedAtAction(nameof(GetGoal), new { id = result.Id }, 
+            return CreatedAtAction(nameof(GetGoal), new { id = result.Id },
                 ApiResponse<GoalDto>.SuccessResult(result, "Goal created successfully"));
         }
 
@@ -51,16 +51,16 @@ namespace SmartPlanner.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<GoalDto>), 200)]
         [ProducesResponseType(typeof(ApiResponse<GoalDto>), 404)]
         public async Task<ActionResult<ApiResponse<GoalDto>>> UpdateGoal(
-            Guid id, 
-            [FromBody] UpdateGoalCommand command, 
+            Guid id,
+            [FromBody] UpdateGoalCommand command,
             CancellationToken cancellationToken = default)
         {
             command.GoalId = id;
             var result = await _mediator.Send(command, cancellationToken);
-            
+
             if (result == null)
                 return NotFound(ApiResponse<GoalDto>.ErrorResult("Goal not found"));
-                
+
             return Ok(ApiResponse<GoalDto>.SuccessResult(result, "Goal updated successfully"));
         }
 
@@ -68,15 +68,15 @@ namespace SmartPlanner.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
         [ProducesResponseType(typeof(ApiResponse<bool>), 404)]
         public async Task<ActionResult<ApiResponse<bool>>> DeleteGoal(
-            Guid id, 
+            Guid id,
             CancellationToken cancellationToken = default)
         {
             var command = new DeleteGoalCommand { GoalId = id };
             var result = await _mediator.Send(command, cancellationToken);
-            
+
             if (!result)
                 return NotFound(ApiResponse<bool>.ErrorResult("Goal not found"));
-                
+
             return Ok(ApiResponse<bool>.SuccessResult(true, "Goal deleted successfully"));
         }
 
@@ -84,17 +84,16 @@ namespace SmartPlanner.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<GoalDto>), 200)]
         [ProducesResponseType(typeof(ApiResponse<GoalDto>), 404)]
         public async Task<ActionResult<ApiResponse<GoalDto>>> UpdateProgress(
-            Guid id, 
-            [FromBody] UpdateGoalProgressCommand command, 
+            Guid id,
+            [FromBody] UpdateGoalProgressCommand command,
             CancellationToken cancellationToken = default)
         {
             command.GoalId = id;
             var result = await _mediator.Send(command, cancellationToken);
-            
+
             if (result == null)
                 return NotFound(ApiResponse<GoalDto>.ErrorResult("Goal not found"));
-                
+
             return Ok(ApiResponse<GoalDto>.SuccessResult(result, "Progress updated successfully"));
         }
     }
-}

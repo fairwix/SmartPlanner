@@ -1,10 +1,11 @@
 using FluentValidation;
 using System.Threading;
+using SmartPlanner.Application.DTOs.User;
+using SmartPlanner.Domain.Entities;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
-using SmartPlanner.Domain.DTOs.User;
 
-namespace SmartPlanner.Domain.Interfaces.Validators.User
-{
+namespace SmartPlanner.Application.Common.Validators.User;
+
     public class CreateUserValidator : AbstractValidator<CreateUserRequest>
     {
         private readonly IUserRepository _userRepository;
@@ -41,4 +42,4 @@ namespace SmartPlanner.Domain.Interfaces.Validators.User
             return !await _userRepository.ExistsByEmailAsync(email, cancellationToken);
         }
     }
-}
+

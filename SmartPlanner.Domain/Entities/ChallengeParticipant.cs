@@ -1,16 +1,16 @@
 using System;
 
-namespace SmartPlanner.Domain.Entities
-{
+namespace SmartPlanner.Domain.Entities;
+
     public class ChallengeParticipant : BaseEntity
     {
-        public Guid ChallengeId { get; set; }
-        public Guid UserId { get; set; }
-        public ParticipantStatus Status { get; set; }
-        public DateTime JoinedAt { get; set; }
-        public int PersonalContribution { get; set; }
-        
-        public virtual Challenge Challenge { get; set; } = null!;
-        public virtual User User { get; set; } = null!;
+        public Guid ChallengeId { get; init; }
+        public Guid UserId { get; init; }
+        public ParticipantStatus Status { get; init; }
+        public DateTime JoinedAt { get; init; }
+        public int PersonalContribution { get; init; }
+
+        public virtual Challenge Challenge { get; init; } = null!;
+        public virtual User User { get; init; } = null!;
     }
-}
+

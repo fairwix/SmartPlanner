@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Infrastructure.Repositories
-{
+namespace SmartPlanner.Infrastructure.Repositories;
+
     public class UserAchievementRepository : FileStorageRepository<UserAchievement>, IUserAchievementRepository
     {
         public UserAchievementRepository(string filePath) : base(filePath) { }
@@ -21,7 +21,7 @@ namespace SmartPlanner.Infrastructure.Repositories
 
         public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
             => await base.DeleteAsync(id, cancellationToken);
-        
+
         public async Task<List<UserAchievement>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             var userAchievements = await base.GetAllAsync(cancellationToken);
@@ -46,4 +46,3 @@ namespace SmartPlanner.Infrastructure.Repositories
             return userAchievements.FirstOrDefault(ua => ua.UserId == userId && ua.AchievementId == achievementId);
         }
     }
-}

@@ -2,8 +2,8 @@
 using FluentValidation;
 using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Application.Goals.Commands
-{
+namespace SmartPlanner.Application.Goals.Commands;
+
     public class CreateGoalCommandValidator : AbstractValidator<CreateGoalCommand>
     {
         public CreateGoalCommandValidator()
@@ -43,4 +43,3 @@ namespace SmartPlanner.Application.Goals.Commands
             return Enum.TryParse<GoalPriority>(priority, out _);
         }
     }
-}

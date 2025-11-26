@@ -9,8 +9,8 @@ using SmartPlanner.Application.Challenges.Dtos;
 using SmartPlanner.Application.Goals.Commands;
 using SmartPlanner.Application.Users.Commands;
 
-namespace SmartPlanner.Application.Common.Mapping
-{
+namespace SmartPlanner.Application.Common.Mapping;
+
     public class MappingProfile : Profile
     {
         public MappingProfile()
@@ -54,4 +54,3 @@ namespace SmartPlanner.Application.Common.Mapping
                 .ForMember(dest => dest.Type, opt => opt.MapFrom(src => Enum.Parse<ChallengeType>(src.Type)));
         }
     }
-}

@@ -4,8 +4,8 @@ using SmartPlanner.Application.Challenges.Dtos;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 
 
-namespace SmartPlanner.Application.AI.Queries
-{
+namespace SmartPlanner.Application.AI.Queries;
+
     public class GeneratePersonalChallengesQueryHandler : IRequestHandler<GeneratePersonalChallengesQuery, List<ChallengeDto>>
     {
         private readonly IUserRepository _userRepository;
@@ -70,23 +70,21 @@ namespace SmartPlanner.Application.AI.Queries
                 )
             };
 
-            return new ChallengeDto
-            {
-                Id = Guid.NewGuid(),
-                Title = title,
-                Description = description,
-                Type = type,
-                StartDate = DateTime.UtcNow,
-                EndDate = DateTime.UtcNow.AddDays(7),
-                IsGroupChallenge = random.Next(0, 2) == 1,
-                TargetValue = target,
-                CurrentValue = 0,
-                GroupProgressPercentage = 0,
-                IsActive = true,
-                CreatedBy = userId,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+            return new ChallengeDto(
+                Guid.NewGuid(),
+                DateTime.UtcNow,
+                DateTime.UtcNow,
+                title,
+                description,
+                type,
+                DateTime.UtcNow,
+                DateTime.UtcNow.AddDays(7),
+                random.Next(0, 2) == 1,
+                target,
+                0,
+                0,
+                true,
+                userId,
+                new List<ChallengeParticipantDto>());
         }
     }
-}

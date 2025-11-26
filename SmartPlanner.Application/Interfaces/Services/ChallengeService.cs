@@ -4,13 +4,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SmartPlanner.Domain.Entities;
-using SmartPlanner.Domain.DTOs.Challenge;
+using SmartPlanner.Application.DTOs.Challenge;
 using Microsoft.Extensions.Logging;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Application.Interfaces.Repositories;
 
-namespace SmartPlanner.Domain.Interfaces.Services
-{
+namespace SmartPlanner.Application.Interfaces.Services;
+
     public class ChallengeService : IChallengeService
     {
         private readonly IChallengeRepository _challengeRepository;
@@ -18,7 +18,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
         private readonly ILogger<ChallengeService> _logger;
 
         public ChallengeService(
-            IChallengeRepository challengeRepository, 
+            IChallengeRepository challengeRepository,
             IUserRepository userRepository,
             ILogger<ChallengeService> logger)
         {
@@ -30,7 +30,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<Challenge> CreateChallengeAsync(CreateChallengeRequest request, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Начало создания челленджа: {Title}", request.Title);
-            
+
             try
             {
                 // Проверяем существование пользователя
@@ -38,7 +38,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 if (user == null)
                 {
                     _logger.LogWarning("Пользователь {UserId} не найден при создании челленджа", request.CreatedBy);
-                    throw new ArgumentException($"Пользователь с ID {request.CreatedBy} не найден");
+                    throw new ArgumentException(nameof(request.CreatedBy), $"Пользователь с ID {request.CreatedBy} не найден");
                 }
 
                 var challenge = new Challenge
@@ -55,9 +55,9 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 };
 
                 _logger.LogDebug("Создание челленджа в репозитории: {@Challenge}", challenge);
-                
+
                 var result = await _challengeRepository.CreateAsync(challenge, cancellationToken);
-                
+
                 _logger.LogInformation("Челлендж успешно создан с ID: {ChallengeId}", result.Id);
                 return result;
             }
@@ -71,11 +71,11 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<Challenge?> GetChallengeByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Получение челленджа по ID: {ChallengeId}", id);
-            
+
             try
             {
                 var challenge = await _challengeRepository.GetByIdAsync(id, cancellationToken);
-                
+
                 if (challenge == null)
                 {
                     _logger.LogWarning("Челлендж с ID {ChallengeId} не найден", id);
@@ -84,7 +84,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 {
                     _logger.LogDebug("Челлендж найден: {ChallengeTitle}", challenge.Title);
                 }
-                
+
                 return challenge;
             }
             catch (Exception ex)
@@ -97,7 +97,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<List<Challenge>> GetActiveChallengesAsync(CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Получение списка активных челленджей");
-            
+
             try
             {
                 var challenges = await _challengeRepository.GetActiveChallengesAsync(cancellationToken);
@@ -114,7 +114,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<List<Challenge>> GetUserChallengesAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Получение челленджей пользователя {UserId}", userId);
-            
+
             try
             {
                 var challenges = await _challengeRepository.GetUserChallengesAsync(userId, cancellationToken);
@@ -131,7 +131,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<bool> JoinChallengeAsync(Guid challengeId, Guid userId, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Пользователь {UserId} присоединяется к челленджу {ChallengeId}", userId, challengeId);
-            
+
             try
             {
                 // Проверяем существование пользователя
@@ -139,7 +139,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 if (user == null)
                 {
                     _logger.LogWarning("Пользователь {UserId} не найден при присоединении к челленджу", userId);
-                    throw new ArgumentException($"Пользователь с ID {userId} не найден");
+                    throw new ArgumentException(nameof(userId), $"Пользователь с ID {userId} не найден");
                 }
 
                 // Проверяем существование челленджа
@@ -153,11 +153,11 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 if (!challenge.IsActive)
                 {
                     _logger.LogWarning("Челлендж {ChallengeId} не активен. Пользователь {UserId} не может присоединиться", challengeId, userId);
-                    throw new ArgumentException("Челлендж не активен");
+                    throw new ArgumentException(nameof(challenge.IsActive), "Челлендж не активен");
                 }
 
                 var result = await _challengeRepository.AddParticipantToChallengeAsync(challengeId, userId, cancellationToken);
-                
+
                 if (result)
                 {
                     _logger.LogInformation("Пользователь {UserId} успешно присоединился к челленджу {ChallengeId}", userId, challengeId);
@@ -166,7 +166,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 {
                     _logger.LogWarning("Не удалось присоединить пользователя {UserId} к челленджу {ChallengeId}", userId, challengeId);
                 }
-                
+
                 return result;
             }
             catch (Exception ex)
@@ -179,11 +179,11 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<bool> LeaveChallengeAsync(Guid challengeId, Guid userId, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Пользователь {UserId} покидает челлендж {ChallengeId}", userId, challengeId);
-            
+
             try
             {
                 var result = await _challengeRepository.RemoveParticipantFromChallengeAsync(challengeId, userId, cancellationToken);
-                
+
                 if (result)
                 {
                     _logger.LogInformation("Пользователь {UserId} успешно покинул челлендж {ChallengeId}", userId, challengeId);
@@ -192,7 +192,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 {
                     _logger.LogWarning("Не удалось удалить пользователя {UserId} из челленджа {ChallengeId}", userId, challengeId);
                 }
-                
+
                 return result;
             }
             catch (Exception ex)
@@ -205,28 +205,28 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<Challenge> UpdateChallengeProgressAsync(Guid challengeId, int progress, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Обновление прогресса челленджа {ChallengeId} на {Progress}", challengeId, progress);
-            
+
             try
             {
                 var challenge = await _challengeRepository.GetByIdAsync(challengeId, cancellationToken);
                 if (challenge == null)
                 {
                     _logger.LogWarning("Челлендж {ChallengeId} не найден для обновления прогресса", challengeId);
-                    throw new ArgumentException("Челлендж не найден");
+                    throw new ArgumentException(nameof(challenge), "Челлендж не найден");
                 }
 
                 if (!challenge.IsActive)
                 {
                     _logger.LogWarning("Челлендж {ChallengeId} не активен, обновление прогресса невозможно", challengeId);
-                    throw new ArgumentException("Челлендж не активен");
+                    throw new ArgumentException(nameof(challenge.IsActive), "Челлендж не активен");
                 }
 
                 challenge.CurrentValue = Math.Min(progress, challenge.TargetValue);
                 var updatedChallenge = await _challengeRepository.UpdateAsync(challenge, cancellationToken) ?? challenge;
-                
-                _logger.LogInformation("Прогресс челленджа {ChallengeId} успешно обновлен на {CurrentValue}/{TargetValue}", 
+
+                _logger.LogInformation("Прогресс челленджа {ChallengeId} успешно обновлен на {CurrentValue}/{TargetValue}",
                     challengeId, updatedChallenge.CurrentValue, updatedChallenge.TargetValue);
-                
+
                 return updatedChallenge;
             }
             catch (Exception ex)
@@ -239,7 +239,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
         public async Task<List<Challenge>> GenerateAiChallengesAsync(Guid userId, int count = 3, CancellationToken cancellationToken = default)
         {
             _logger.LogInformation("Генерация {Count} AI-челленджей для пользователя {UserId}", count, userId);
-            
+
             try
             {
                 var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
@@ -293,7 +293,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 "music" => "Daily Practice Challenge",
                 _ => $"{interest} Master Challenge"
             };
-            
+
             _logger.LogDebug("Сгенерирован заголовок '{Title}' для интереса '{Interest}'", title, interest);
             return title;
         }
@@ -312,7 +312,7 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 "programming" or "coding" => ChallengeType.Learning,
                 _ => ChallengeType.Custom
             };
-            
+
             _logger.LogDebug("Сгенерирован тип '{Type}' для интереса '{Interest}'", type, interest);
             return type;
         }
@@ -327,9 +327,9 @@ namespace SmartPlanner.Domain.Interfaces.Services
                 "programming" => random.Next(7, 30),
                 _ => random.Next(5, 20)
             };
-            
+
             _logger.LogDebug("Сгенерировано целевое значение '{Target}' для интереса '{Interest}'", target, interest);
             return target;
         }
     }
-}
+

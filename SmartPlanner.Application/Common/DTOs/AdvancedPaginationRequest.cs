@@ -1,27 +1,24 @@
 // SmartPlanner.Application/Common/Dtos/AdvancedPaginationRequest.cs
-namespace SmartPlanner.Application.Common.Dtos
-{
-    public class AdvancedPaginationRequest : PaginationRequest
+namespace SmartPlanner.Application.Common.Dtos;
+
+    public record AdvancedPaginationRequest(
+        int PageNumber = 1,
+        int PageSize = 10,
+        string? Search = null,
+        string? SortBy = "CreatedAt",
+        string? SortOrder = "desc",
+        DateTime? CreatedFrom = null,
+        DateTime? CreatedTo = null,
+        DateTime? DueDateFrom = null,
+        DateTime? DueDateTo = null,
+        string[]? Categories = null,
+        string[]? Priorities = null,
+        bool? IsCompleted = null,
+        bool? IsExpired = null,
+        bool? IsOnTrack = null,
+        int? MinProgress = null,
+        int? MaxProgress = null) : PaginationRequest(PageNumber, PageSize)
     {
-        public string? Search { get; set; }
-        public string? SortBy { get; set; } = "CreatedAt";
-        public string? SortOrder { get; set; } = "desc";
-        
-        // Расширенные фильтры для дат
-        public DateTime? CreatedFrom { get; set; }
-        public DateTime? CreatedTo { get; set; }
-        public DateTime? DueDateFrom { get; set; }
-        public DateTime? DueDateTo { get; set; }
-        
-        // Множественный выбор
-        public string[]? Categories { get; set; }
-        public string[]? Priorities { get; set; }
-        
-        // Дополнительные фильтры
-        public bool? IsCompleted { get; set; }
-        public bool? IsExpired { get; set; }
-        public bool? IsOnTrack { get; set; }
-        public int? MinProgress { get; set; }
-        public int? MaxProgress { get; set; }
+        public int Skip => (PageNumber - 1) * PageSize;
+        public int Take => PageSize;
     }
-}

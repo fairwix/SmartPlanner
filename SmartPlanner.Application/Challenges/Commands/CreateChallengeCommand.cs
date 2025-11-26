@@ -1,8 +1,8 @@
 using MediatR;
 using SmartPlanner.Application.Challenges.Dtos;
 
-namespace SmartPlanner.Application.Challenges.Commands
-{
+namespace SmartPlanner.Application.Challenges.Commands;
+
     public record CreateChallengeCommand : IRequest<ChallengeDto>
     {
         public string Title { get; init; } = string.Empty;
@@ -14,4 +14,3 @@ namespace SmartPlanner.Application.Challenges.Commands
         public int TargetValue { get; init; }
         public Guid CreatedBy { get; init; }
     }
-}

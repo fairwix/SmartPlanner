@@ -3,8 +3,8 @@ using MediatR;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Application.Goals.Dtos;
 
-namespace SmartPlanner.Application.Goals.Commands
-{
+namespace SmartPlanner.Application.Goals.Commands;
+
     public class UpdateGoalProgressCommandHandler : IRequestHandler<UpdateGoalProgressCommand, GoalDto?>
     {
         private readonly IGoalRepository _goalRepository;
@@ -24,9 +24,9 @@ namespace SmartPlanner.Application.Goals.Commands
 
             var oldValue = goal.CurrentValue;
             goal.UpdateProgress(request.Value);
-            
+
             var updatedGoal = await _goalRepository.UpdateAsync(goal, cancellationToken);
-            
+
             // Award user if goal completed
             if (goal.IsCompleted && oldValue < goal.TargetValue)
             {
@@ -43,26 +43,23 @@ namespace SmartPlanner.Application.Goals.Commands
 
         private GoalDto MapToDto(Domain.Entities.Goal goal)
         {
-            return new GoalDto
-            {
-                Id = goal.Id,
-                Title = goal.Title,
-                Description = goal.Description,
-                Category = goal.Category.ToString(),
-                Priority = goal.Priority.ToString(),
-                DueDate = goal.DueDate,
-                TargetValue = goal.TargetValue,
-                CurrentValue = goal.CurrentValue,
-                ProgressPercentage = goal.ProgressPercentage,
-                IsCompleted = goal.IsCompleted,
-                IsAiGenerated = goal.IsAiGenerated,
-                RewardAmount = goal.RewardAmount,
-                UserId = goal.UserId,
-                CreatedAt = goal.CreatedAt,
-                UpdatedAt = goal.UpdatedAt,
-                IsExpired = goal.IsExpired(),
-                IsOnTrack = goal.IsOnTrack()
-            };
+            return new GoalDto(
+                goal.Id,
+                goal.CreatedAt,
+                goal.UpdatedAt,
+                goal.Title,
+                goal.Description,
+                goal.Category.ToString(),
+                goal.Priority.ToString(),
+                goal.DueDate,
+                goal.TargetValue,
+                goal.CurrentValue,
+                goal.ProgressPercentage,
+                goal.IsCompleted,
+                goal.IsAiGenerated,
+                goal.RewardAmount,
+                goal.UserId,
+                goal.IsExpired(),
+                goal.IsOnTrack());
         }
     }
-}

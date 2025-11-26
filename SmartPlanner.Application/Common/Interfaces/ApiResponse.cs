@@ -1,6 +1,6 @@
 // SmartPlanner.Application/Common/ApiResponse.cs
-namespace SmartPlanner.Application.Common
-{
+namespace SmartPlanner.Application.Common;
+
     public class ApiResponse<T>
     {
         public bool Success { get; set; }
@@ -28,4 +28,3 @@ namespace SmartPlanner.Application.Common
             };
         }
     }
-}

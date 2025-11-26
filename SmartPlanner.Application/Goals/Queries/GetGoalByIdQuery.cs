@@ -2,10 +2,9 @@
 using MediatR;
 using SmartPlanner.Application.Goals.Dtos;
 
-namespace SmartPlanner.Application.Goals.Queries
-{
+namespace SmartPlanner.Application.Goals.Queries;
+
     public record GetGoalByIdQuery : IRequest<GoalDto?>
     {
         public Guid GoalId { get; init; }
     }
-}

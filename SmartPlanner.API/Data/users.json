@@ -73,7 +73,7 @@
     "username": "johndoe",
     "email": "john.doe@example.com",
     "passwordHash": "$2a$11$aaJhlH2RkvVVpT72oAnso.TN/VN.p/JAehtBFidZEsrFapzXsoA42",
-    "balance": 5,
+    "balance": 10,
     "interests": [],
     "lastLogin": "2025-11-24T14:49:11.732568Z",
     "streakCount": 0,
@@ -84,6 +84,6 @@
     "challengeParticipants": [],
     "id": "5ac6a4b7-4724-45de-8697-74567c9fc509",
     "createdAt": "2025-11-24T14:49:11.73315Z",
-    "updatedAt": "2025-11-24T14:50:04.027677Z"
+    "updatedAt": "2025-11-26T05:54:22.244429Z"
   }
 ]

@@ -1,8 +1,8 @@
 using SmartPlanner.Application.Common.Dtos;
 using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Application.Common.Interfaces.Repositories
-{
+namespace SmartPlanner.Application.Common.Interfaces.Repositories;
+
     public class GoalStats
     {
         public int TotalGoals { get; set; }
@@ -22,13 +22,13 @@ namespace SmartPlanner.Application.Common.Interfaces.Repositories
         Task<Goal> CreateAsync(Goal entity, CancellationToken cancellationToken = default);
         Task<Goal?> UpdateAsync(Goal entity, CancellationToken cancellationToken = default);
         Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
-        
+
         // Специфичные методы
         Task<PagedResult<Goal>> GetUserGoalsWithPaginationAsync(
-            Guid userId, 
+            Guid userId,
             PaginationRequest pagination,
             string? category = null,
-            string? priority = null, 
+            string? priority = null,
             bool? completed = null,
             string? searchTerm = null,
             CancellationToken cancellationToken = default);
@@ -42,7 +42,6 @@ namespace SmartPlanner.Application.Common.Interfaces.Repositories
             Guid userId,
             AdvancedPaginationRequest pagination,
             CancellationToken cancellationToken = default);
-        
+
         Task<List<Goal>> GetUserGoalsAsync(Guid userId, CancellationToken cancellationToken = default);
     }
-}

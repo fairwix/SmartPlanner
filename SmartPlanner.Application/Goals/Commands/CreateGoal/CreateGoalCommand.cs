@@ -2,8 +2,8 @@
 using MediatR;
 using SmartPlanner.Application.Goals.Dtos;
 
-namespace SmartPlanner.Application.Goals.Commands
-{
+namespace SmartPlanner.Application.Goals.Commands;
+
     public record CreateGoalCommand : IRequest<GoalDto>
     {
         public string Title { get; init; } = string.Empty;
@@ -14,4 +14,3 @@ namespace SmartPlanner.Application.Goals.Commands
         public int TargetValue { get; init; } = 1;
         public Guid UserId { get; init; }
     }
-}

@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using SmartPlanner.Domain.Entities;
-using SmartPlanner.Domain.DTOs.Goal;
-using SmartPlanner.Domain.DTOs.Common;
+using SmartPlanner.Application.DTOs.Common;
+using SmartPlanner.Application.DTOs.Goal;
+using SmartPlanner.Application.Common.Interfaces.Repositories;
 
-namespace SmartPlanner.Domain.Interfaces.Services
-{
+namespace SmartPlanner.Application.Interfaces.Services;
+
     public interface IGoalService
     {
         Task<Goal> CreateGoalAsync(CreateGoalRequest request, CancellationToken cancellationToken = default);
@@ -18,4 +19,4 @@ namespace SmartPlanner.Domain.Interfaces.Services
         Task<List<Goal>> GetUserGoalsAsync(Guid userId, CancellationToken cancellationToken = default);
         Task<PagedResponse<Goal>> GetUserGoalsPagedAsync(Guid userId, int pageNumber, int pageSize, string sortBy = "CreatedAt", string sortOrder = "desc", CancellationToken cancellationToken = default);
     }
-}
+

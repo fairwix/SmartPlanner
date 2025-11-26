@@ -1,7 +1,7 @@
 using FluentValidation;
 
-namespace SmartPlanner.Application.Challenges.Commands
-{
+namespace SmartPlanner.Application.Challenges.Commands;
+
     public class JoinChallengeCommandValidator : AbstractValidator<JoinChallengeCommand>
     {
         public JoinChallengeCommandValidator()
@@ -13,4 +13,3 @@ namespace SmartPlanner.Application.Challenges.Commands
                 .NotEmpty().WithMessage("User ID is required");
         }
     }
-}

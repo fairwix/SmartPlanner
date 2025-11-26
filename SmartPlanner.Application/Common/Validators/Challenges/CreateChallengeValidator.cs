@@ -1,9 +1,11 @@
 using FluentValidation;
-using SmartPlanner.Domain.DTOs.Challenge;
 using System.Threading;
 
-namespace SmartPlanner.Domain.Interfaces.Validators.Challenge
-{
+using SmartPlanner.Application.DTOs.Challenge;
+using SmartPlanner.Domain.Entities;
+
+namespace SmartPlanner.Application.Common.Validators.Challenges;
+
     public class CreateChallengeValidator : AbstractValidator<CreateChallengeRequest>
     {
         public CreateChallengeValidator()
@@ -25,4 +27,4 @@ namespace SmartPlanner.Domain.Interfaces.Validators.Challenge
                 .GreaterThan(0).WithMessage("Целевое значение должно быть положительным");
         }
     }
-}
+

@@ -2,49 +2,44 @@
 
 using SmartPlanner.Application.Common.Dtos;
 
-namespace SmartPlanner.Application.Goals.Dtos
-{
-    public class GoalDto : BaseDto
-    {
-        public string Title { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string Category { get; set; } = string.Empty;
-        public string Priority { get; set; } = string.Empty;
-        public DateTime DueDate { get; set; }
-        public int TargetValue { get; set; }
-        public int CurrentValue { get; set; }
-        public double ProgressPercentage { get; set; }
-        public bool IsCompleted { get; set; }
-        public bool IsAiGenerated { get; set; }
-        public int RewardAmount { get; set; }
-        public Guid UserId { get; set; }
-        public bool IsExpired { get; set; }
-        public bool IsOnTrack { get; set; }
-    }
+namespace SmartPlanner.Application.Goals.Dtos;
 
-    public class CreateGoalDto
-    {
-        public string Title { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public string Category { get; set; } = string.Empty;
-        public string Priority { get; set; } = string.Empty;
-        public DateTime DueDate { get; set; }
-        public int TargetValue { get; set; } = 1;
-        public Guid UserId { get; set; }
-    }
+    public record GoalDto(
+        Guid Id,
+        DateTime CreatedAt,
+        DateTime UpdatedAt,
+        string Title,
+        string Description,
+        string Category,
+        string Priority,
+        DateTime DueDate,
+        int TargetValue,
+        int CurrentValue,
+        double ProgressPercentage,
+        bool IsCompleted,
+        bool IsAiGenerated,
+        int RewardAmount,
+        Guid UserId,
+        bool IsExpired,
+        bool IsOnTrack) : BaseDto(Id, CreatedAt, UpdatedAt);
 
-    public class UpdateGoalDto
-    {
-        public string? Title { get; set; }
-        public string? Description { get; set; }
-        public string? Category { get; set; }
-        public string? Priority { get; set; }
-        public DateTime? DueDate { get; set; }
-        public int? TargetValue { get; set; }
-    }
+    public record CreateGoalDto(
+        string Title,
+        string Description,
+        string Category,
+        string Priority,
+        DateTime DueDate,
+        int TargetValue,
+        Guid UserId,
+        bool IsAiGenerated = false,
+        int RewardAmount = 10);
 
-    public class UpdateGoalProgressDto
-    {
-        public int Value { get; set; }
-    }
-}
+    public record UpdateGoalDto(
+        string? Title,
+        string? Description,
+        string? Category,
+        string? Priority,
+        DateTime? DueDate,
+        int? TargetValue);
+
+    public record UpdateGoalProgressDto(int Value);

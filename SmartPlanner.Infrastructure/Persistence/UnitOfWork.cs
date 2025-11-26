@@ -1,28 +1,38 @@
-using Microsoft.Extensions.DependencyInjection;
 using SmartPlanner.Application.Common.Interfaces;
 using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Application.Interfaces.Repositories;
 
-namespace SmartPlanner.Infrastructure.Persistence
-{
+namespace SmartPlanner.Infrastructure.Persistence;
+
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly IServiceProvider _serviceProvider;
 
-        public UnitOfWork(IServiceProvider serviceProvider)
+        private readonly IUserRepository _userRepository;
+        private readonly IGoalRepository _goalRepository;
+        private readonly IAchievementRepository _achievementRepository;
+        private readonly IChallengeRepository _challengeRepository;
+        private readonly IUserAchievementRepository _userAchievementRepository;
+
+        public UnitOfWork(IUserRepository userRepository, IGoalRepository goalRepository, IAchievementRepository achievementRepository, IChallengeRepository challengeRepository, IUserAchievementRepository userAchievementRepository)
         {
-            _serviceProvider = serviceProvider;
+            _userRepository = userRepository;
+            _goalRepository = goalRepository;
+            _achievementRepository = achievementRepository;
+            _challengeRepository = challengeRepository;
+            _userAchievementRepository = userAchievementRepository;
         }
 
-        public IUserRepository Users => _serviceProvider.GetRequiredService<IUserRepository>();
-        public IGoalRepository Goals => _serviceProvider.GetRequiredService<IGoalRepository>();
-        public IAchievementRepository Achievements => _serviceProvider.GetRequiredService<IAchievementRepository>();
-        public IChallengeRepository Challenges => _serviceProvider.GetRequiredService<IChallengeRepository>();
-        public IUserAchievementRepository UserAchievements => _serviceProvider.GetRequiredService<IUserAchievementRepository>();
+        public IUserRepository Users => _userRepository;
+        public IGoalRepository Goals => _goalRepository;
+        public IAchievementRepository Achievements => _achievementRepository;
+        public IChallengeRepository Challenges => _challengeRepository;
+        public IUserAchievementRepository UserAchievements => _userAchievementRepository;
 
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(1);
+            // В файловом хранилище изменения сохраняются немедленно при операциях Create/Update/Delete
+            // Поэтому здесь просто возвращаем успешный результат
+            return await Task.FromResult(1);
         }
     }
-}
+

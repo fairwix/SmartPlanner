@@ -5,9 +5,9 @@ using SmartPlanner.Application.Challenges.Commands;
 using SmartPlanner.Application.Challenges.Dtos;
 using SmartPlanner.Application.Challenges.Queries;
 using SmartPlanner.Application.Common;
+//управление челленджамищщ
+namespace SmartPlanner.API.Controllers;
 
-namespace SmartPlanner.API.Controllers
-{
     [ApiController]
     [Route("api/[controller]")]
     public class ChallengesController : ControllerBase
@@ -28,14 +28,14 @@ namespace SmartPlanner.API.Controllers
             [FromQuery] bool? isGroupChallenge = null,
             CancellationToken cancellationToken = default)
         {
-            var query = new GetChallengesQuery 
-            { 
-                UserId = userId, 
+            var query = new GetChallengesQuery
+            {
+                UserId = userId,
                 ActiveOnly = active ?? false,
                 Type = type,
                 IsGroupChallenge = isGroupChallenge
             };
-            
+
             var result = await _mediator.Send(query, cancellationToken);
             return Ok(ApiResponse<List<ChallengeDto>>.SuccessResult(result, "Challenges retrieved successfully"));
         }
@@ -44,15 +44,15 @@ namespace SmartPlanner.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<ChallengeDto>), 200)]
         [ProducesResponseType(typeof(ApiResponse<ChallengeDto>), 404)]
         public async Task<ActionResult<ApiResponse<ChallengeDto>>> GetChallenge(
-            Guid id, 
+            Guid id,
             CancellationToken cancellationToken = default)
         {
             var query = new GetChallengeByIdQuery { ChallengeId = id };
             var result = await _mediator.Send(query, cancellationToken);
-            
+
             if (result == null)
                 return NotFound(ApiResponse<ChallengeDto>.ErrorResult("Challenge not found"));
-                
+
             return Ok(ApiResponse<ChallengeDto>.SuccessResult(result, "Challenge retrieved successfully"));
         }
 
@@ -60,11 +60,11 @@ namespace SmartPlanner.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<ChallengeDto>), 201)]
         [ProducesResponseType(typeof(ApiResponse<ChallengeDto>), 400)]
         public async Task<ActionResult<ApiResponse<ChallengeDto>>> CreateChallenge(
-            [FromBody] CreateChallengeCommand command, 
+            [FromBody] CreateChallengeCommand command,
             CancellationToken cancellationToken = default)
         {
             var result = await _mediator.Send(command, cancellationToken);
-            return CreatedAtAction(nameof(GetChallenge), new { id = result.Id }, 
+            return CreatedAtAction(nameof(GetChallenge), new { id = result.Id },
                 ApiResponse<ChallengeDto>.SuccessResult(result, "Challenge created successfully"));
         }
 
@@ -73,16 +73,16 @@ namespace SmartPlanner.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<ChallengeDto>), 200)]
         [ProducesResponseType(typeof(ApiResponse<ChallengeDto>), 400)]
         public async Task<ActionResult<ApiResponse<ChallengeDto>>> JoinChallenge(
-            Guid challengeId, 
+            Guid challengeId,
             Guid userId,
             CancellationToken cancellationToken = default)
         {
-            var command = new JoinChallengeCommand 
-            { 
-                ChallengeId = challengeId, 
-                UserId = userId 
+            var command = new JoinChallengeCommand
+            {
+                ChallengeId = challengeId,
+                UserId = userId
             };
-            
+
             var result = await _mediator.Send(command, cancellationToken);
             return Ok(ApiResponse<ChallengeDto>.SuccessResult(result, "Joined challenge successfully"));
         }
@@ -92,18 +92,18 @@ namespace SmartPlanner.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<ChallengeDto>), 200)]
         [ProducesResponseType(typeof(ApiResponse<ChallengeDto>), 400)]
         public async Task<ActionResult<ApiResponse<ChallengeDto>>> UpdateProgress(
-            Guid challengeId, 
+            Guid challengeId,
             Guid userId,
             [FromBody] UpdateChallengeProgressRequest request, // ✅ Новый DTO для прогресса
             CancellationToken cancellationToken = default)
         {
-            var command = new UpdateChallengeProgressCommand 
-            { 
+            var command = new UpdateChallengeProgressCommand
+            {
                 ChallengeId = challengeId,
                 UserId = userId,
                 Progress = request.Progress
             };
-            
+
             var result = await _mediator.Send(command, cancellationToken);
             return Ok(ApiResponse<ChallengeDto>.SuccessResult(result, "Challenge progress updated successfully"));
         }
@@ -113,16 +113,16 @@ namespace SmartPlanner.API.Controllers
         [ProducesResponseType(typeof(ApiResponse<bool>), 200)]
         [ProducesResponseType(typeof(ApiResponse<bool>), 400)]
         public async Task<ActionResult<ApiResponse<bool>>> LeaveChallenge(
-            Guid challengeId, 
+            Guid challengeId,
             Guid userId,
             CancellationToken cancellationToken = default)
         {
-            var command = new LeaveChallengeCommand 
-            { 
-                ChallengeId = challengeId, 
-                UserId = userId 
+            var command = new LeaveChallengeCommand
+            {
+                ChallengeId = challengeId,
+                UserId = userId
             };
-            
+
             var result = await _mediator.Send(command, cancellationToken);
             return Ok(ApiResponse<bool>.SuccessResult(result, "Left challenge successfully"));
         }
@@ -135,20 +135,17 @@ namespace SmartPlanner.API.Controllers
             [FromQuery] bool includeCompleted = false,
             CancellationToken cancellationToken = default)
         {
-            var query = new GetUserChallengesQuery 
-            { 
+            var query = new GetUserChallengesQuery
+            {
                 UserId = userId,
                 IncludeCompleted = includeCompleted
             };
-            
+
             var result = await _mediator.Send(query, cancellationToken);
             return Ok(ApiResponse<List<ChallengeDto>>.SuccessResult(result, "User challenges retrieved successfully"));
         }
     }
-
-    // ✅ ДОБАВЛЕНО: DTO для обновления прогресса
     public class UpdateChallengeProgressRequest
     {
         public int Progress { get; set; }
     }
-}

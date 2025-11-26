@@ -3,8 +3,8 @@ using SmartPlanner.Application.Challenges.Dtos;
 using SmartPlanner.Application.Interfaces.Repositories;
 using AutoMapper;
 
-namespace SmartPlanner.Application.Challenges.Queries
-{
+namespace SmartPlanner.Application.Challenges.Queries;
+
     public class GetUserChallengesQueryHandler : IRequestHandler<GetUserChallengesQuery, List<ChallengeDto>>
     {
         private readonly IChallengeRepository _challengeRepository;
@@ -19,7 +19,7 @@ namespace SmartPlanner.Application.Challenges.Queries
         public async Task<List<ChallengeDto>> Handle(GetUserChallengesQuery request, CancellationToken cancellationToken)
         {
             var challenges = await _challengeRepository.GetUserChallengesAsync(request.UserId, cancellationToken);
-            
+
             // Фильтрация по завершенным, если нужно
             if (!request.IncludeCompleted)
             {
@@ -29,4 +29,3 @@ namespace SmartPlanner.Application.Challenges.Queries
             return _mapper.Map<List<ChallengeDto>>(challenges);
         }
     }
-}

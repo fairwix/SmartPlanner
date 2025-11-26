@@ -2,10 +2,9 @@
 using MediatR;
 using SmartPlanner.Application.Users.Dtos;
 
-namespace SmartPlanner.Application.Users.Queries
-{
+namespace SmartPlanner.Application.Users.Queries;
+
     public record GetUserByIdQuery : IRequest<UserDto?>
     {
         public Guid UserId { get; init; }
     }
-}

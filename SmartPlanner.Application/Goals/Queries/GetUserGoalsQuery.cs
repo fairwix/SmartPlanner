@@ -2,8 +2,8 @@ using MediatR;
 using SmartPlanner.Application.Common.Dtos;
 using SmartPlanner.Application.Goals.Dtos;
 
-namespace SmartPlanner.Application.Goals.Queries
-{
+namespace SmartPlanner.Application.Goals.Queries;
+
     public record GetUserGoalsQuery : IRequest<PagedResult<GoalDto>>
     {
         public Guid UserId { get; init; }
@@ -22,4 +22,3 @@ namespace SmartPlanner.Application.Goals.Queries
         public Guid UserId { get; init; }
         public AdvancedPaginationRequest Pagination { get; init; } = new();
     }
-}

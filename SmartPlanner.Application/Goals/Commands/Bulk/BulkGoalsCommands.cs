@@ -4,8 +4,8 @@ using MediatR;
 using SmartPlanner.Application.Common.Dtos;
 using SmartPlanner.Application.Goals.Dtos;
 
-namespace SmartPlanner.Application.Goals.Commands
-{
+namespace SmartPlanner.Application.Goals.Commands;
+
     // ✅ BULK CREATE
     public record BulkCreateGoalsCommand : IRequest<BulkOperationResult<GoalDto>>
     {
@@ -22,7 +22,7 @@ namespace SmartPlanner.Application.Goals.Commands
     public class BulkUpdateGoalItem
     {
         public Guid GoalId { get; set; }
-        public UpdateGoalDto UpdateData { get; set; } = new();
+        public UpdateGoalDto UpdateData { get; set; }
     }
 
     // ✅ BULK DELETE
@@ -30,4 +30,3 @@ namespace SmartPlanner.Application.Goals.Commands
     {
         public List<Guid> GoalIds { get; init; } = new();
     }
-}

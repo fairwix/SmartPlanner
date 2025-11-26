@@ -2,8 +2,8 @@
 using FluentValidation;
 using SmartPlanner.Application.Goals.Commands;
 
-namespace SmartPlanner.Application.Goals.Commands
-{
+namespace SmartPlanner.Application.Goals.Commands;
+
     public class BulkCreateGoalsCommandValidator : AbstractValidator<BulkCreateGoalsCommand>
     {
         public BulkCreateGoalsCommandValidator()
@@ -61,4 +61,3 @@ namespace SmartPlanner.Application.Goals.Commands
                 .Must(ids => ids.All(id => id != Guid.Empty)).WithMessage("All goal IDs must be valid");
         }
     }
-}
