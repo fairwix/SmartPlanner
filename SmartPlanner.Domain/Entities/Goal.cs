@@ -4,104 +4,122 @@ using System.Linq;
 
 namespace SmartPlanner.Domain.Entities;
 
-    public class Goal : BaseEntity
+public class Goal : BaseEntity
+{
+    private string _title = string.Empty;
+    private DateTime _dueDate;
+
+    public string Title
     {
-        // ПЕРЕНЕСЕНО ИЗ ProjectState.Messages (преобразовано)
-        public string Title { get; init; } = string.Empty;        // Бывшее "message"
-        public string Description { get; init; } = string.Empty;
+        get => _title;
+        set => _title = !string.IsNullOrWhiteSpace(value) ? value :
+            throw new ArgumentException("Title cannot be empty", nameof(value));
+    }
 
-        // НОВЫЕ ПОЛЯ для расширенной функциональности
-        public GoalCategory Category { get; init; }
-        public GoalPriority Priority { get; init; }
-        public DateTime DueDate { get; init; }
-        public int TargetValue { get; init; } = 1;
-        public int CurrentValue { get; set; } = 0;
-        public bool IsCompleted { get; set; } = false;
-        public bool IsAiGenerated { get; init; } = false;
+    public string Description { get; set; } = string.Empty;
+    public GoalCategory Category { get; set; }
+    public GoalPriority Priority { get; set; }
 
-        // ПЕРЕНЕСЕНО ИЗ HomeController.HandleAction (награда за действие)
-        public int RewardAmount { get; init; } = 10;             // Было: +10 coins за сообщение
+    public DateTime DueDate
+    {
+        get => _dueDate;
+        set => _dueDate = value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(value, DateTimeKind.Utc)
+            : value.ToUniversalTime();
+    }
 
-        // Внешние ключи
-        public Guid UserId { get; init; }
+    public int TargetValue { get; set; } = 1;
+    public int CurrentValue { get; set; } = 0;
+    public bool IsCompleted { get; set; } = false;
+    public bool IsAiGenerated { get; init; } = false;
+    public int RewardAmount { get; init; } = 10;
+    public Guid UserId { get; init; }
 
-        // Навигационные свойства
-        public virtual User User { get; init; } = null!;
-        public virtual List<GoalProgress> ProgressHistory { get; init; } = new List<GoalProgress>();
+    public virtual User User { get; init; } = null!;
+    public virtual List<GoalProgress> ProgressHistory { get; init; } = new List<GoalProgress>();
 
-        // ВЫЧИСЛЯЕМЫЕ СВОЙСТВА
-        public double ProgressPercentage
+    // ЗАМЕНА вычисляемого свойства на метод
+    public double GetProgressPercentage() =>
+        TargetValue > 0 ? (CurrentValue * 100.0) / TargetValue : 0;
+
+    public int GetRemainingValue() => TargetValue - CurrentValue;
+
+    public void UpdateProgress(int value)
+    {
+        if (value < 0 || value > TargetValue)
+            throw new ArgumentOutOfRangeException(nameof(value),
+                $"Value must be between 0 and {TargetValue}");
+
+        var oldValue = CurrentValue;
+        CurrentValue = value;
+
+        ProgressHistory.Add(new GoalProgress
         {
-            get
-            {
-                return TargetValue > 0 ? (CurrentValue * 100.0) / TargetValue : 0;
-            }
+            Id = Guid.NewGuid(),
+            GoalId = this.Id,
+            Value = CurrentValue,
+            PreviousValue = oldValue,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        if (CurrentValue >= TargetValue && !IsCompleted)
+        {
+            CompleteGoal();
         }
 
-        public int RemainingValue => TargetValue - CurrentValue;
+        UpdatedAt = DateTime.UtcNow;
+    }
 
-        // ПЕРЕНЕСЕНО ИЗ HomeController.HandleAction + расширено
-        public void UpdateProgress(int value)
+    private void CompleteGoal()
+    {
+        IsCompleted = true;
+        if (User != null)
         {
-            var oldValue = CurrentValue;
-            CurrentValue = Math.Min(value, TargetValue);
-
-            // Записываем в историю прогресса
-            ProgressHistory.Add(new GoalProgress
-            {
-                Id = Guid.NewGuid(),
-                GoalId = this.Id,
-                Value = CurrentValue,
-                PreviousValue = oldValue,
-                CreatedAt = DateTime.UtcNow
-            });
-
-            // Проверяем завершение (аналог старой логики изменения состояния)
-            if (CurrentValue >= TargetValue && !IsCompleted)
-            {
-                CompleteGoal();
-            }
-
-            UpdatedAt = DateTime.UtcNow;
-        }
-
-        // ПЕРЕНЕСЕНО ИЗ HomeController.HandleAction (начисление награды)
-        private void CompleteGoal()
-        {
-            IsCompleted = true;
-            // Было: _state.UserBalance += 10;
-            User?.AddReward(RewardAmount);
-        }
-
-        // ПЕРЕНЕСЕНО ИЗ HomeController.HandleAction (валидация)
-        public bool IsValid()
-        {
-            // Было: if (string.IsNullOrWhiteSpace(message)) return false;
-            if (string.IsNullOrWhiteSpace(Title))
-                return false;
-
-            // Было: if (message.Length > 500) return false;
-            if (Title.Length > 500)
-                return false;
-
-            return true;
-        }
-
-        // НОВАЯ БИЗНЕС-ЛОГИКА
-        public bool IsExpired() => DueDate < DateTime.UtcNow;
-
-        public bool CanBeEdited() => !IsCompleted && !IsExpired();
-
-        public bool IsOnTrack()
-        {
-            if (IsCompleted || DueDate == DateTime.MinValue)
-                return true;
-
-            var timePassed = (DateTime.UtcNow - CreatedAt).TotalDays;
-            var totalTime = (DueDate - CreatedAt).TotalDays;
-            var expectedProgress = timePassed / totalTime;
-
-            return ProgressPercentage >= expectedProgress * 100;
+            User.AddReward(RewardAmount);
         }
     }
 
+    public bool IsValid()
+    {
+        if (string.IsNullOrWhiteSpace(Title) || Title.Length > 500)
+            return false;
+
+        if (UserId == Guid.Empty)
+            return false;
+
+        if (DueDate == default)
+            return false;
+
+        if (TargetValue <= 0)
+            return false;
+
+        if (CurrentValue < 0 || CurrentValue > TargetValue)
+            return false;
+
+        return true;
+    }
+
+    public bool IsExpired() => DueDate < DateTime.UtcNow;
+
+    public bool CanBeEdited() => !IsCompleted && !IsExpired();
+
+    public bool IsOnTrack()
+    {
+        if (IsCompleted)
+            return true;
+
+        if (DueDate == DateTime.MinValue || DueDate <= CreatedAt)
+            return false;
+
+        var timePassed = (DateTime.UtcNow - CreatedAt).TotalDays;
+        if (timePassed <= 0)
+            return true;
+
+        var totalTime = (DueDate - CreatedAt).TotalDays;
+        if (totalTime <= 0)
+            return false;
+
+        var expectedProgress = (timePassed / totalTime) * 100;
+        return GetProgressPercentage() >= expectedProgress * 0.9;
+    }
+}

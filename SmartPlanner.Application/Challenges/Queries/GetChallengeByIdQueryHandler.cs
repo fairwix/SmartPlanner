@@ -1,21 +1,21 @@
 using AutoMapper;
 using MediatR;
-using SmartPlanner.Application.Common.Interfaces.Repositories;
+using Microsoft.EntityFrameworkCore;
 using SmartPlanner.Application.Challenges.Dtos;
-using SmartPlanner.Application.Interfaces.Repositories;
+using SmartPlanner.Application.Common.Interfaces;
 
-namespace SmartPlanner.Application.Challenges.Queries;
-
+namespace SmartPlanner.Application.Challenges.Queries
+{
     public class GetChallengeByIdQueryHandler : IRequestHandler<GetChallengeByIdQuery, ChallengeDto?>
     {
-        private readonly IChallengeRepository _challengeRepository;
+        private readonly IApplicationDbContext _context;
         private readonly IMapper _mapper;
 
         public GetChallengeByIdQueryHandler(
-            IChallengeRepository challengeRepository,
+            IApplicationDbContext context,
             IMapper mapper)
         {
-            _challengeRepository = challengeRepository;
+            _context = context;
             _mapper = mapper;
         }
 
@@ -23,7 +23,12 @@ namespace SmartPlanner.Application.Challenges.Queries;
             GetChallengeByIdQuery request,
             CancellationToken cancellationToken)
         {
-            var challenge = await _challengeRepository.GetByIdAsync(request.ChallengeId, cancellationToken);
+            var challenge = await _context.Challenges
+                .Include(c => c.Participants)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == request.ChallengeId, cancellationToken);
+
             return challenge != null ? _mapper.Map<ChallengeDto>(challenge) : null;
         }
     }
+}

@@ -1,44 +1,52 @@
+using FluentMigrator.Runner;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using SmartPlanner.Application.Common.Interfaces;
-using SmartPlanner.Application.Common.Interfaces.Repositories;
-using SmartPlanner.Application.Interfaces.Repositories;
-using SmartPlanner.Infrastructure.Configuration;
-using SmartPlanner.Infrastructure.FileStorage;
-using SmartPlanner.Infrastructure.Persistence;
-using SmartPlanner.Infrastructure.Repositories;
+using SmartPlanner.Application.Interfaces.Services; // Будет добавлен позже
+using SmartPlanner.Infrastructure.Data;
+using SmartPlanner.Infrastructure.Services;
 
 namespace SmartPlanner.Infrastructure;
 
-    public static class DependencyInjection
+public static class DependencyInjection
+{
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        public static IServiceCollection AddInfrastructure(
-            this IServiceCollection services,
-            IConfiguration configuration)
-        {
-            // ✅ ПРАВИЛЬНАЯ конфигурация
-            services.Configure<FileStorageOptions>(options =>
-            {
-                options.DataDirectory = configuration["FileStorage:DataDirectory"] ?? "Data";
-            });
+        // Настройка DbContext с PostgreSQL
+        var connectionString = configuration.GetConnectionString("PostgreSQL")
+                               ?? throw new InvalidOperationException("Connection string 'PostgreSQL' not found.");
 
-            // File Storage - Singleton
-            services.AddSingleton<IFileStorageService, FileStorageService>();
+        // DbContext БЕЗ EF Core миграций (используем FluentMigrator)
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseNpgsql(connectionString,
+                npgsqlOptions =>
+                {
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorCodesToAdd: null);
+                    // НЕ включаем миграции EF Core - используем FluentMigrator
+                }));
 
-            services.AddScoped<IUserRepository, UserRepository>();
+        // Регистрация DbContext как IApplicationDbContext
+        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
-            services.AddScoped<IGoalRepository, GoalRepository>();
+        // ✅ РЕГИСТРИРУЕМ СПЕЦИАЛИЗИРОВАННЫЕ СЕРВИСЫ (не Generic Repository)
+        services.AddScoped<IAchievementCheckerService, AchievementCheckerService>();
+        services.AddScoped<AI.ChallengeRecommendationService>();
 
-            services.AddScoped<IAchievementRepository, AchievementRepository>();
+        // ========== FLUENTMIGRATOR ==========
+        services.AddFluentMigratorCore()
+            .ConfigureRunner(rb => rb
+                .AddPostgres()  // PostgreSQL
+                .WithGlobalConnectionString(connectionString)
+                .ScanIn(typeof(DependencyInjection).Assembly).For.Migrations()
+                .ScanIn(typeof(DependencyInjection).Assembly).For.EmbeddedResources())
+            .AddLogging(lb => lb.AddFluentMigratorConsole());
 
-            services.AddScoped<IChallengeRepository, ChallengeRepository>();
-
-            services.AddScoped<IUserAchievementRepository, UserAchievementRepository>();
-
-            // UnitOfWork - Scoped
-            services.AddScoped<IUnitOfWork, UnitOfWork>();
-
-            return services;
-        }
+        return services;
     }
+}

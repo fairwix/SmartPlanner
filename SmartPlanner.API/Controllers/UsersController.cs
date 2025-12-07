@@ -1,12 +1,11 @@
-// SmartPlanner.API/Controllers/UsersController.cs
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
+    // SmartPlanner.API/Controllers/UsersController.cs
+    using MediatR;
+    using Microsoft.AspNetCore.Mvc;
+    using SmartPlanner.Application.Users.Commands;
+    using SmartPlanner.Application.Users.Dtos;
+    using SmartPlanner.Application.Users.Queries;
 
-using SmartPlanner.Application.Users.Commands;
-using SmartPlanner.Application.Users.Dtos;
-using SmartPlanner.Application.Users.Queries;
-//управление пользователями
-namespace SmartPlanner.API.Controllers;
+    namespace SmartPlanner.API.Controllers;
 
     [ApiController]
     [Route("api/[controller]")]
@@ -20,76 +19,28 @@ namespace SmartPlanner.API.Controllers;
         }
 
         [HttpGet("{id:guid}")]
-        [ProducesResponseType(typeof(UserDto), 200)]
-        [ProducesResponseType(404)]
-        public async Task<ActionResult<UserDto>> GetUser(
-            Guid id,
-            CancellationToken cancellationToken = default)
+        public async Task<ActionResult<UserDto>> GetUser(Guid id)
         {
             var query = new GetUserByIdQuery { UserId = id };
-            var result = await _mediator.Send(query, cancellationToken);
-
-            if (result == null)
-                return NotFound();
-
-            return Ok(result);
+            var result = await _mediator.Send(query);
+            return result != null ? Ok(result) : NotFound();
         }
 
         [HttpPost]
-        [ProducesResponseType(typeof(UserDto), 201)]
-        [ProducesResponseType(400)]
-        public async Task<ActionResult<UserDto>> CreateUser(
-            [FromBody] CreateUserCommand command,
-            CancellationToken cancellationToken = default)
+        public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserRequest request)
         {
-            var result = await _mediator.Send(command, cancellationToken);
-            return CreatedAtAction(nameof(GetUser), new { id = result.Id }, result);
-        }
-
-        [HttpPut("{id:guid}")]
-        [ProducesResponseType(typeof(UserDto), 200)]
-        [ProducesResponseType(404)]
-        public async Task<ActionResult<UserDto>> UpdateUser(
-            Guid id,
-            [FromBody] UpdateUserCommand command,
-            CancellationToken cancellationToken = default)
-        {
-            command.UserId = id;
-            var result = await _mediator.Send(command, cancellationToken);
-
-            if (result == null)
-                return NotFound();
-
-            return Ok(result);
-        }
-
-        [HttpGet("{id:guid}/friends")]
-        [ProducesResponseType(typeof(List<UserDto>), 200)]
-        public async Task<ActionResult<List<UserDto>>> GetUserFriends(
-            Guid id,
-            CancellationToken cancellationToken = default)
-        {
-            var query = new GetUserFriendsQuery { UserId = id };
-            var result = await _mediator.Send(query, cancellationToken);
-
-            return Ok(result);
-        }
-
-        [HttpPost("{id:guid}/friends/{friendId:guid}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        public async Task<ActionResult<bool>> AddFriend(
-            Guid id,
-            Guid friendId,
-            CancellationToken cancellationToken = default)
-        {
-            var command = new AddFriendCommand
+            var command = new CreateUserCommand
             {
-                UserId = id,
-                FriendId = friendId
+                Username = request.Username,
+                Email = request.Email,
+                Password = request.Password,
+                Interests = request.Interests ?? new List<string>()
             };
 
-            var result = await _mediator.Send(command, cancellationToken);
-            return Ok(result);
+            var result = await _mediator.Send(command);
+            return CreatedAtAction(nameof(GetUser), new { id = result.Id }, result);
         }
     }
+
+    // Request DTO прямо в том же файле
+    public record CreateUserRequest(string Username, string Email, string Password, List<string>? Interests);

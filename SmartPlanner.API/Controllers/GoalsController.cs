@@ -1,15 +1,16 @@
-// SmartPlanner.API/Controllers/GoalsController.cs
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
+    // SmartPlanner.API/Controllers/GoalsController.cs
+    using MediatR;
+    using Microsoft.AspNetCore.Mvc;
+    using SmartPlanner.Application.Goals.Commands;
+    using SmartPlanner.Application.Goals.Dtos;
+    using SmartPlanner.Application.Goals.Queries;
 
-using SmartPlanner.Application.Goals.Commands;
-using SmartPlanner.Application.Goals.Dtos;
-using SmartPlanner.Application.Goals.Queries;
-//работа с отдельными целями
-namespace SmartPlanner.API.Controllers;
+    namespace SmartPlanner.API.Controllers;
 
     [ApiController]
     [Route("api/[controller]")]
+    [Consumes("application/json")]
+    [Produces("application/json")]
     public class GoalsController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -39,9 +40,20 @@ namespace SmartPlanner.API.Controllers;
         [ProducesResponseType(typeof(GoalDto), 201)]
         [ProducesResponseType(400)]
         public async Task<ActionResult<GoalDto>> CreateGoal(
-            [FromBody] CreateGoalCommand command,
+            [FromBody] CreateGoalRequest request,
             CancellationToken cancellationToken = default)
         {
+            var command = new CreateGoalCommand
+            {
+                Title = request.Title,
+                Description = request.Description ?? string.Empty,
+                Category = request.Category,
+                Priority = request.Priority,
+                DueDate = request.DueDate,
+                TargetValue = request.TargetValue,
+                UserId = request.UserId
+            };
+
             var result = await _mediator.Send(command, cancellationToken);
             return CreatedAtAction(nameof(GetGoal), new { id = result.Id }, result);
         }
@@ -51,10 +63,20 @@ namespace SmartPlanner.API.Controllers;
         [ProducesResponseType(404)]
         public async Task<ActionResult<GoalDto>> UpdateGoal(
             Guid id,
-            [FromBody] UpdateGoalCommand command,
+            [FromBody] UpdateGoalRequest request,
             CancellationToken cancellationToken = default)
         {
-            command.GoalId = id;
+            var command = new UpdateGoalCommand
+            {
+                GoalId = id,
+                Title = request.Title,
+                Description = request.Description,
+                Category = request.Category,
+                Priority = request.Priority,
+                DueDate = request.DueDate,
+                TargetValue = request.TargetValue
+            };
+
             var result = await _mediator.Send(command, cancellationToken);
 
             if (result == null)
@@ -84,10 +106,15 @@ namespace SmartPlanner.API.Controllers;
         [ProducesResponseType(404)]
         public async Task<ActionResult<GoalDto>> UpdateProgress(
             Guid id,
-            [FromBody] UpdateGoalProgressCommand command,
+            [FromBody] UpdateGoalProgressRequest request,
             CancellationToken cancellationToken = default)
         {
-            command.GoalId = id;
+            var command = new UpdateGoalProgressCommand
+            {
+                GoalId = id,
+                Value = request.Value
+            };
+
             var result = await _mediator.Send(command, cancellationToken);
 
             if (result == null)
@@ -96,3 +123,23 @@ namespace SmartPlanner.API.Controllers;
             return Ok(result);
         }
     }
+
+    // ✅ Request DTO для целей
+    public record CreateGoalRequest(
+        string Title,
+        string? Description,
+        string Category,
+        string Priority,
+        DateTime DueDate,
+        int TargetValue,
+        Guid UserId);
+
+    public record UpdateGoalRequest(
+        string? Title,
+        string? Description,
+        string? Category,
+        string? Priority,
+        DateTime? DueDate,
+        int? TargetValue);
+
+    public record UpdateGoalProgressRequest(int Value);

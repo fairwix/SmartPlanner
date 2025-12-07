@@ -1,68 +1,71 @@
-// SmartPlanner.Application/Goals/Commands/UpdateGoalCommandHandler.cs
 using MediatR;
-using SmartPlanner.Application.Common.Interfaces.Repositories;
+using Microsoft.EntityFrameworkCore;
 using SmartPlanner.Application.Goals.Dtos;
 using SmartPlanner.Domain.Entities;
+using SmartPlanner.Application.Common.Interfaces;
 
+using SmartPlanner.Application.Common.Interfaces;
 
-namespace SmartPlanner.Application.Goals.Commands;
-
-    public class UpdateGoalCommandHandler : IRequestHandler<UpdateGoalCommand, GoalDto?>
+namespace SmartPlanner.Application.Goals.Commands
+{
+    public class UpdateGoalProgressCommandHandler : IRequestHandler<UpdateGoalProgressCommand, GoalDto?>
     {
-        private readonly IGoalRepository _goalRepository;
+        private readonly IApplicationDbContext _context;
 
-        public UpdateGoalCommandHandler(IGoalRepository goalRepository)
+        public UpdateGoalProgressCommandHandler(IApplicationDbContext context)
         {
-            _goalRepository = goalRepository;
+            _context = context;
         }
 
-        public async Task<GoalDto?> Handle(UpdateGoalCommand request, CancellationToken cancellationToken)
+        public async Task<GoalDto?> Handle(UpdateGoalProgressCommand request, CancellationToken cancellationToken)
         {
-            var goal = await _goalRepository.GetByIdAsync(request.GoalId, cancellationToken);
+            var goal = await _context.Goals
+                .FirstOrDefaultAsync(g => g.Id == request.GoalId, cancellationToken);
+
             if (goal == null)
                 return null;
 
-            // Create a new goal instance with updated values
-            var updatedGoal = new Goal
-            {
-                Id = goal.Id,
-                CreatedAt = goal.CreatedAt,
-                UpdatedAt = DateTime.UtcNow,
-                Title = !string.IsNullOrEmpty(request.Title) ? request.Title : goal.Title,
-                Description = !string.IsNullOrEmpty(request.Description) ? request.Description : goal.Description,
-                Category = !string.IsNullOrEmpty(request.Category) ? Enum.Parse<GoalCategory>(request.Category, true) : goal.Category,
-                Priority = !string.IsNullOrEmpty(request.Priority) ? Enum.Parse<GoalPriority>(request.Priority, true) : goal.Priority,
-                DueDate = request.DueDate ?? goal.DueDate,
-                TargetValue = request.TargetValue ?? goal.TargetValue,
-                CurrentValue = goal.CurrentValue,
-                IsCompleted = goal.IsCompleted,
-                IsAiGenerated = goal.IsAiGenerated,
-                RewardAmount = goal.RewardAmount,
-                UserId = goal.UserId,
-                User = goal.User,
-                ProgressHistory = goal.ProgressHistory
-            };
+            var oldValue = goal.CurrentValue;
+            goal.CurrentValue = request.Value; // Используем прямое присваивание
 
-            var savedGoal = await _goalRepository.UpdateAsync(updatedGoal, cancellationToken);
-            return savedGoal != null ? MapToDto(savedGoal) : null;
+            // Проверяем завершение цели
+            if (!goal.IsCompleted && goal.CurrentValue >= goal.TargetValue)
+            {
+                goal.IsCompleted = true;
+
+                // Награждаем пользователя
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Id == goal.UserId, cancellationToken);
+
+                if (user != null)
+                {
+                    user.Balance += goal.RewardAmount;
+                    _context.Users.Update(user);
+                }
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return MapToDto(goal);
         }
 
-        private GoalDto MapToDto(Domain.Entities.Goal goal) => new(
-                goal.Id,
-                goal.CreatedAt,
-                goal.UpdatedAt,
-                goal.Title,
-                goal.Description,
-                goal.Category.ToString(), // Using ToString() directly as these are enums
-                goal.Priority.ToString(),
-                goal.DueDate,
-                goal.TargetValue,
-                goal.CurrentValue,
-                goal.ProgressPercentage,
-                goal.IsCompleted,
-                goal.IsAiGenerated,
-                goal.RewardAmount,
-                goal.UserId,
-                goal.IsExpired(),
-                goal.IsOnTrack());
+        private GoalDto MapToDto(Goal goal) => new(
+            goal.Id,
+            goal.CreatedAt,
+            goal.UpdatedAt,
+            goal.Title,
+            goal.Description,
+            goal.Category.ToString(),
+            goal.Priority.ToString(),
+            goal.DueDate,
+            goal.TargetValue,
+            goal.CurrentValue,
+            goal.GetProgressPercentage(),
+            goal.IsCompleted,
+            goal.IsAiGenerated,
+            goal.RewardAmount,
+            goal.UserId,
+            goal.IsExpired(),
+            goal.IsOnTrack());
     }
+}

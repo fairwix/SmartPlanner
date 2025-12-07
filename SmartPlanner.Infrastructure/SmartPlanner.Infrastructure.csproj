@@ -1,26 +1,36 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <!-- ✅ ПРАВИЛЬНЫЕ названия пакетов Entity Framework -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
+    <ItemGroup>
+        <!-- FluentMigrator для миграций -->
+        <PackageReference Include="FluentMigrator" Version="5.0.0" />
+        <PackageReference Include="FluentMigrator.Runner" Version="5.0.0" />
+        <PackageReference Include="FluentMigrator.Runner.Postgres" Version="5.0.0" />
 
-    <!-- ✅ Остальные пакеты -->
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.0" />
-    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
-  </ItemGroup>
+        <!-- PostgreSQL драйвер -->
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.2" />
 
-  <ItemGroup>
-    <ProjectReference Include="..\SmartPlanner.Application\SmartPlanner.Application.csproj" />
-    <ProjectReference Include="..\SmartPlanner.Domain\SmartPlanner.Domain.csproj" />
-  </ItemGroup>
+        <!-- EF Core (только для работы, не для миграций) -->
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+
+        <!-- Общие пакеты -->
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\SmartPlanner.Application\SmartPlanner.Application.csproj" />
+        <ProjectReference Include="..\SmartPlanner.Domain\SmartPlanner.Domain.csproj" />
+    </ItemGroup>
 </Project>

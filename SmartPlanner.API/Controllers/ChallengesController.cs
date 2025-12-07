@@ -1,15 +1,16 @@
-// SmartPlanner.API/Controllers/ChallengesController.cs
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
-using SmartPlanner.Application.Challenges.Commands;
-using SmartPlanner.Application.Challenges.Dtos;
-using SmartPlanner.Application.Challenges.Queries;
+    // SmartPlanner.API/Controllers/ChallengesController.cs
+    using MediatR;
+    using Microsoft.AspNetCore.Mvc;
+    using SmartPlanner.Application.Challenges.Commands;
+    using SmartPlanner.Application.Challenges.Dtos;
+    using SmartPlanner.Application.Challenges.Queries;
 
-//управление челленджамищщ
-namespace SmartPlanner.API.Controllers;
+    namespace SmartPlanner.API.Controllers;
 
     [ApiController]
     [Route("api/[controller]")]
+    [Consumes("application/json")]
+    [Produces("application/json")]
     public class ChallengesController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -60,14 +61,25 @@ namespace SmartPlanner.API.Controllers;
         [ProducesResponseType(typeof(ChallengeDto), 201)]
         [ProducesResponseType(400)]
         public async Task<ActionResult<ChallengeDto>> CreateChallenge(
-            [FromBody] CreateChallengeCommand command,
+            [FromBody] CreateChallengeRequest request,
             CancellationToken cancellationToken = default)
         {
+            var command = new CreateChallengeCommand
+            {
+                Title = request.Title,
+                Description = request.Description ?? string.Empty,
+                Type = request.Type,
+                StartDate = request.StartDate,
+                EndDate = request.EndDate,
+                IsGroupChallenge = request.IsGroupChallenge,
+                TargetValue = request.TargetValue,
+                CreatedBy = request.CreatedBy
+            };
+
             var result = await _mediator.Send(command, cancellationToken);
             return CreatedAtAction(nameof(GetChallenge), new { id = result.Id }, result);
         }
 
-        // ✅ ИСПРАВЛЕНО: Убрали мутацию команды, используем параметры из route
         [HttpPost("{challengeId:guid}/join/{userId:guid}")]
         [ProducesResponseType(typeof(ChallengeDto), 200)]
         [ProducesResponseType(400)]
@@ -86,14 +98,13 @@ namespace SmartPlanner.API.Controllers;
             return Ok(result);
         }
 
-        // ✅ ИСПРАВЛЕНО: Убрали мутацию команды, используем параметры из route
         [HttpPost("{challengeId:guid}/progress/{userId:guid}")]
         [ProducesResponseType(typeof(ChallengeDto), 200)]
         [ProducesResponseType(400)]
         public async Task<ActionResult<ChallengeDto>> UpdateProgress(
             Guid challengeId,
             Guid userId,
-            [FromBody] UpdateChallengeProgressRequest request, // ✅ Новый DTO для прогресса
+            [FromBody] UpdateChallengeProgressRequest request,
             CancellationToken cancellationToken = default)
         {
             var command = new UpdateChallengeProgressCommand
@@ -107,7 +118,6 @@ namespace SmartPlanner.API.Controllers;
             return Ok(result);
         }
 
-        // ✅ ДОБАВЛЕНО: Метод для выхода из челленджа
         [HttpPost("{challengeId:guid}/leave/{userId:guid}")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
@@ -126,7 +136,6 @@ namespace SmartPlanner.API.Controllers;
             return Ok(result);
         }
 
-        // ✅ ДОБАВЛЕНО: Получение челленджей конкретного пользователя
         [HttpGet("user/{userId:guid}")]
         [ProducesResponseType(typeof(List<ChallengeDto>), 200)]
         public async Task<ActionResult<List<ChallengeDto>>> GetUserChallenges(
@@ -144,7 +153,16 @@ namespace SmartPlanner.API.Controllers;
             return Ok(result);
         }
     }
-    public class UpdateChallengeProgressRequest
-    {
-        public int Progress { get; set; }
-    }
+
+    // ✅ Request DTO для челленджей
+    public record CreateChallengeRequest(
+        string Title,
+        string? Description,
+        string Type,
+        DateTime StartDate,
+        DateTime EndDate,
+        bool IsGroupChallenge,
+        int TargetValue,
+        Guid CreatedBy);
+
+    public record UpdateChallengeProgressRequest(int Progress);

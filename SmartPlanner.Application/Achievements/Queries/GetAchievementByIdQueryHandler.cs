@@ -1,35 +1,44 @@
+using AutoMapper;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using SmartPlanner.Application.Achievements.Dtos;
-using SmartPlanner.Application.Common.Interfaces.Repositories;
-using SmartPlanner.Application.Interfaces.Repositories;
+using SmartPlanner.Application.Common.Interfaces;
+using SmartPlanner.Domain.Entities;
 
 namespace SmartPlanner.Application.Achievements.Queries;
 
-    public class GetAchievementByIdQueryHandler : IRequestHandler<GetAchievementByIdQuery, AchievementDto?>
+public class GetAchievementByIdQueryHandler : IRequestHandler<GetAchievementByIdQuery, AchievementDto?>
+{
+    private readonly IApplicationDbContext _context; // ✅ Прямой доступ вместо сервиса
+    private readonly IMapper _mapper;
+
+    public GetAchievementByIdQueryHandler(
+        IApplicationDbContext context,
+        IMapper mapper)
     {
-        private readonly IAchievementRepository _achievementRepository;
-
-        public GetAchievementByIdQueryHandler(IAchievementRepository achievementRepository)
-        {
-            _achievementRepository = achievementRepository;
-        }
-
-        public async Task<AchievementDto?> Handle(GetAchievementByIdQuery request, CancellationToken cancellationToken)
-        {
-            var achievement = await _achievementRepository.GetByIdAsync(request.AchievementId, cancellationToken);
-
-            if (achievement == null)
-                return null;
-
-            return new AchievementDto(
-                achievement.Id,
-                achievement.CreatedAt,
-                achievement.UpdatedAt,
-                achievement.Name,
-                achievement.Description,
-                achievement.BadgeImage,
-                achievement.RewardAmount,
-                achievement.Type.ToString(),
-                achievement.Condition);
-        }
+        _context = context;
+        _mapper = mapper;
     }
+
+    public async Task<AchievementDto?> Handle(
+        GetAchievementByIdQuery request,
+        CancellationToken cancellationToken)
+    {
+        var achievementDto = await _context.Achievements
+            .AsNoTracking()
+            .Where(a => a.Id == request.AchievementId)
+            .Select(a => new AchievementDto(
+                a.Id,
+                a.CreatedAt,
+                a.UpdatedAt,
+                a.Name,
+                a.Description,
+                a.BadgeImage,
+                a.RewardAmount,
+                a.Type.ToString(),
+                a.Condition))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return achievementDto;
+    }
+}

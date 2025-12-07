@@ -1,29 +1,37 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using SmartPlanner.Application.Achievements.Commands;
-using SmartPlanner.Application.Common.Interfaces;
 using SmartPlanner.Domain.Entities;
+using SmartPlanner.Application.Common.Interfaces;
 
 public class AwardAchievementCommandHandler : IRequestHandler<AwardAchievementCommand, bool>
 {
-    private readonly IUnitOfWork _unitOfWork; // ✅ ТОЛЬКО Unit of Work
+    private readonly IApplicationDbContext _context; // ✅ Прямой доступ
 
-    public AwardAchievementCommandHandler(IUnitOfWork unitOfWork)
+    public AwardAchievementCommandHandler(IApplicationDbContext context)
     {
-        _unitOfWork = unitOfWork;
+        _context = context;
     }
 
     public async Task<bool> Handle(AwardAchievementCommand request, CancellationToken cancellationToken)
     {
-        // ✅ Все через Unit of Work
-        var achievement = await _unitOfWork.Achievements.GetByIdAsync(request.AchievementId, cancellationToken);
-        var user = await _unitOfWork.Users.GetByIdAsync(request.UserId, cancellationToken);
-        
+        // ✅ Все через DbContext напрямую
+        var achievement = await _context.Achievements
+            .FirstOrDefaultAsync(a => a.Id == request.AchievementId, cancellationToken);
+
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
+
         if (achievement == null || user == null)
             return false;
 
         // Проверяем, не получено ли уже достижение
-        var userAchievements = await _unitOfWork.UserAchievements.GetByUserIdAsync(request.UserId, cancellationToken);
-        if (userAchievements.Any(ua => ua.AchievementId == request.AchievementId))
+        var alreadyExists = await _context.UserAchievements
+            .AnyAsync(ua => ua.UserId == request.UserId &&
+                            ua.AchievementId == request.AchievementId,
+                cancellationToken);
+
+        if (alreadyExists)
             return false;
 
         // Создаем запись о достижении
@@ -34,14 +42,13 @@ public class AwardAchievementCommandHandler : IRequestHandler<AwardAchievementCo
             AwardedAt = DateTime.UtcNow
         };
 
-        await _unitOfWork.UserAchievements.CreateAsync(userAchievement, cancellationToken);
+        await _context.UserAchievements.AddAsync(userAchievement, cancellationToken);
 
         // Награждаем пользователя
         user.AddReward(achievement.RewardAmount);
-        await _unitOfWork.Users.UpdateAsync(user, cancellationToken);
-        
-        // ✅ Все изменения в одной транзакции
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        _context.Users.Update(user);
+
+        await _context.SaveChangesAsync(cancellationToken);
 
         return true;
     }

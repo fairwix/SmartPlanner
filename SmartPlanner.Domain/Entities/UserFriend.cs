@@ -2,7 +2,7 @@ using System;
 
 namespace SmartPlanner.Domain.Entities;
 
-    public class UserFriend : BaseEntity
+    public class UserFriend
     {
         public Guid UserId { get; init; }
         public Guid FriendId { get; init; }

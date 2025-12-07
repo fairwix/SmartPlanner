@@ -1,28 +1,38 @@
 // SmartPlanner.Application/Users/Commands/CreateUserCommandHandler.cs
 using MediatR;
-using SmartPlanner.Application.Common.Interfaces.Repositories;
+using Microsoft.EntityFrameworkCore;
 using SmartPlanner.Domain.Entities;
 using SmartPlanner.Application.Users.Dtos;
+using SmartPlanner.Application.Common.Interfaces;
 
 namespace SmartPlanner.Application.Users.Commands;
 
     public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, UserDto>
     {
-        private readonly IUserRepository _userRepository;
+        private readonly IApplicationDbContext _context;
 
-        public CreateUserCommandHandler(IUserRepository userRepository)
+        public CreateUserCommandHandler(IApplicationDbContext context)
         {
-            _userRepository = userRepository;
+            _context = context;
         }
 
         public async Task<UserDto> Handle(CreateUserCommand request, CancellationToken cancellationToken)
         {
-            // Check if user already exists
-            if (await _userRepository.ExistsByEmailAsync(request.Email, cancellationToken))
-                return MapToDto(await _userRepository.GetByEmailAsync(request.Email, cancellationToken));
+            // Check if user already exists by email
+            var existingByEmail = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Email == request.Email, cancellationToken);
 
-            if (await _userRepository.ExistsByUsernameAsync(request.Username, cancellationToken))
-                return MapToDto(await _userRepository.GetByUsernameAsync(request.Username, cancellationToken));
+            if (existingByEmail != null)
+                return MapToDto(existingByEmail);
+
+            // Check if user already exists by username
+            var existingByUsername = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Username == request.Username, cancellationToken);
+
+            if (existingByUsername != null)
+                return MapToDto(existingByUsername);
 
             // Create user entity
             var user = new User
@@ -36,11 +46,10 @@ namespace SmartPlanner.Application.Users.Commands;
                 LastLogin = DateTime.UtcNow
             };
 
-            // Save to repository
-            var createdUser = await _userRepository.CreateAsync(user, cancellationToken);
+            await _context.Users.AddAsync(user, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
 
-            // Map to DTO
-            return MapToDto(createdUser);
+            return MapToDto(user);
         }
 
         private UserDto MapToDto(User user)

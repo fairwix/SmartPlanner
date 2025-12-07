@@ -1,31 +1,42 @@
-using MediatR;
-using SmartPlanner.Application.Challenges.Dtos;
-using SmartPlanner.Application.Interfaces.Repositories;
 using AutoMapper;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using SmartPlanner.Application.Challenges.Dtos;
+using SmartPlanner.Application.Common.Interfaces;
 
-namespace SmartPlanner.Application.Challenges.Queries;
-
+namespace SmartPlanner.Application.Challenges.Queries
+{
     public class GetUserChallengesQueryHandler : IRequestHandler<GetUserChallengesQuery, List<ChallengeDto>>
     {
-        private readonly IChallengeRepository _challengeRepository;
+        private readonly IApplicationDbContext _context;
         private readonly IMapper _mapper;
 
-        public GetUserChallengesQueryHandler(IChallengeRepository challengeRepository, IMapper mapper)
+        public GetUserChallengesQueryHandler(
+            IApplicationDbContext context,
+            IMapper mapper)
         {
-            _challengeRepository = challengeRepository;
+            _context = context;
             _mapper = mapper;
         }
 
-        public async Task<List<ChallengeDto>> Handle(GetUserChallengesQuery request, CancellationToken cancellationToken)
+        public async Task<List<ChallengeDto>> Handle(
+            GetUserChallengesQuery request,
+            CancellationToken cancellationToken)
         {
-            var challenges = await _challengeRepository.GetUserChallengesAsync(request.UserId, cancellationToken);
+            var query = _context.Challenges
+                .Include(c => c.Participants)
+                .Where(c => c.CreatedBy == request.UserId ||
+                            c.Participants.Any(p => p.UserId == request.UserId))
+                .AsNoTracking();
 
-            // Фильтрация по завершенным, если нужно
             if (!request.IncludeCompleted)
             {
-                challenges = challenges.Where(c => c.IsActive && !c.IsExpired()).ToList();
+                var now = DateTime.UtcNow;
+                query = query.Where(c => c.EndDate >= now);
             }
 
+            var challenges = await query.ToListAsync(cancellationToken);
             return _mapper.Map<List<ChallengeDto>>(challenges);
         }
     }
+}

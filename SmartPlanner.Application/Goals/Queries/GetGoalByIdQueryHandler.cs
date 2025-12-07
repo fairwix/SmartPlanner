@@ -1,26 +1,30 @@
-// SmartPlanner.Application/Goals/Queries/GetGoalByIdQueryHandler.cs
 using MediatR;
-using SmartPlanner.Application.Common.Interfaces.Repositories;
+using Microsoft.EntityFrameworkCore;
+using SmartPlanner.Application.Common.Interfaces;
 using SmartPlanner.Application.Goals.Dtos;
+using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Application.Goals.Queries;
-
+namespace SmartPlanner.Application.Goals.Queries
+{
     public class GetGoalByIdQueryHandler : IRequestHandler<GetGoalByIdQuery, GoalDto?>
     {
-        private readonly IGoalRepository _goalRepository;
+        private readonly IApplicationDbContext _context;
 
-        public GetGoalByIdQueryHandler(IGoalRepository goalRepository)
+        public GetGoalByIdQueryHandler(IApplicationDbContext context)
         {
-            _goalRepository = goalRepository;
+            _context = context;
         }
 
         public async Task<GoalDto?> Handle(GetGoalByIdQuery request, CancellationToken cancellationToken)
         {
-            var goal = await _goalRepository.GetByIdAsync(request.GoalId, cancellationToken);
+            var goal = await _context.Goals
+                .AsNoTracking()
+                .FirstOrDefaultAsync(g => g.Id == request.GoalId, cancellationToken);
+
             return goal != null ? MapToDto(goal) : null;
         }
 
-        private GoalDto MapToDto(Domain.Entities.Goal goal)
+        private GoalDto MapToDto(Goal goal)
         {
             return new GoalDto(
                 goal.Id,
@@ -33,7 +37,7 @@ namespace SmartPlanner.Application.Goals.Queries;
                 goal.DueDate,
                 goal.TargetValue,
                 goal.CurrentValue,
-                goal.ProgressPercentage,
+                goal.GetProgressPercentage(),
                 goal.IsCompleted,
                 goal.IsAiGenerated,
                 goal.RewardAmount,
@@ -42,3 +46,4 @@ namespace SmartPlanner.Application.Goals.Queries;
                 goal.IsOnTrack());
         }
     }
+}

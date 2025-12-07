@@ -1,62 +1,60 @@
 using AutoMapper;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SmartPlanner.Application.Common.Interfaces;
-using SmartPlanner.Application.Goals.Commands;
 using SmartPlanner.Application.Goals.Dtos;
 using SmartPlanner.Domain.Entities;
+using SmartPlanner.Domain.Enums;
+using GoalCategory = SmartPlanner.Domain.Entities.GoalCategory;
 
-public class CreateGoalCommandHandler : IRequestHandler<CreateGoalCommand, GoalDto>
+namespace SmartPlanner.Application.Goals.Commands
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<CreateGoalCommandHandler> _logger;
-    private readonly IMapper _mapper; // ✅ ДОБАВЛЯЕМ AutoMapper
-
-    public CreateGoalCommandHandler(
-        IUnitOfWork unitOfWork,
-        ILogger<CreateGoalCommandHandler> logger,
-        IMapper mapper) // ✅ ДОБАВЛЯЕМ в конструктор
+    public class CreateGoalCommandHandler : IRequestHandler<CreateGoalCommand, GoalDto>
     {
-        _unitOfWork = unitOfWork;
-        _logger = logger;
-        _mapper = mapper; // ✅ Инициализируем
-    }
+        private readonly IApplicationDbContext _context;
+        private readonly ILogger<CreateGoalCommandHandler> _logger;
+        private readonly IMapper _mapper;
 
-    public async Task<GoalDto> Handle(CreateGoalCommand request, CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("Creating goal for user {UserId}", request.UserId);
-
-        var user = await _unitOfWork.Users.GetByIdAsync(request.UserId, cancellationToken);
-        if (user == null)
+        public CreateGoalCommandHandler(
+            IApplicationDbContext context,
+            ILogger<CreateGoalCommandHandler> logger,
+            IMapper mapper)
         {
-            throw new ArgumentException($"User with ID {request.UserId} not found");
+            _context = context;
+            _logger = logger;
+            _mapper = mapper;
         }
 
-        var goal = new Goal
+        public async Task<GoalDto> Handle(CreateGoalCommand request, CancellationToken cancellationToken)
         {
-            Title = request.Title,
-            Description = request.Description,
-            Category = Enum.Parse<GoalCategory>(request.Category),
-            Priority = Enum.Parse<GoalPriority>(request.Priority),
-            DueDate = request.DueDate,
-            TargetValue = request.TargetValue,
-            UserId = request.UserId,
-            RewardAmount = 10
-        };
+            _logger.LogInformation("Creating goal for user {UserId}", request.UserId);
 
-        await _unitOfWork.Goals.CreateAsync(goal, cancellationToken);
-        
-        user.AddReward(5);
-        await _unitOfWork.Users.UpdateAsync(user, cancellationToken);
-        
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+            // Проверяем пользователя
+            var userExists = await _context.Users
+                .AnyAsync(u => u.Id == request.UserId, cancellationToken);
 
-        _logger.LogInformation("Goal {GoalId} created successfully", goal.Id);
-        
-        // ✅ ИСПРАВЛЯЕМ: Используем AutoMapper вместо MapToDto
-        return _mapper.Map<GoalDto>(goal);
+            if (!userExists)
+                throw new ArgumentException($"User with ID {request.UserId} not found");
+
+            var goal = new Goal
+            {
+                Title = request.Title,
+                Description = request.Description,
+                Category = Enum.Parse<GoalCategory>(request.Category),
+                Priority = Enum.Parse<GoalPriority>(request.Priority),
+                DueDate = request.DueDate,
+                TargetValue = request.TargetValue,
+                UserId = request.UserId,
+                RewardAmount = 10
+            };
+
+            await _context.Goals.AddAsync(goal, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Goal {GoalId} created successfully", goal.Id);
+
+            return _mapper.Map<GoalDto>(goal);
+        }
     }
-
-    // ❌ УДАЛЯЕМ старый метод MapToDto - он больше не нужен
-    // private GoalDto MapToDto(Domain.Entities.Goal goal) { ... }
 }

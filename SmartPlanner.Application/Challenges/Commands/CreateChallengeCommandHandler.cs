@@ -1,28 +1,26 @@
 using AutoMapper;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using SmartPlanner.Application.Common.Interfaces.Repositories;
 using SmartPlanner.Application.Challenges.Dtos;
-using SmartPlanner.Application.Interfaces.Repositories;
+using SmartPlanner.Application.Common.Interfaces;
 using SmartPlanner.Domain.Entities;
+using SmartPlanner.Domain.Enums;
 
-namespace SmartPlanner.Application.Challenges.Commands;
-
+namespace SmartPlanner.Application.Challenges.Commands
+{
     public class CreateChallengeCommandHandler : IRequestHandler<CreateChallengeCommand, ChallengeDto>
     {
-        private readonly IChallengeRepository _challengeRepository;
-        private readonly IUserRepository _userRepository;
+        private readonly IApplicationDbContext _context;
         private readonly IMapper _mapper;
         private readonly ILogger<CreateChallengeCommandHandler> _logger;
 
         public CreateChallengeCommandHandler(
-            IChallengeRepository challengeRepository,
-            IUserRepository userRepository,
+            IApplicationDbContext context,
             IMapper mapper,
             ILogger<CreateChallengeCommandHandler> logger)
         {
-            _challengeRepository = challengeRepository;
-            _userRepository = userRepository;
+            _context = context;
             _mapper = mapper;
             _logger = logger;
         }
@@ -34,12 +32,12 @@ namespace SmartPlanner.Application.Challenges.Commands;
             _logger.LogInformation("Creating challenge: {Title} for user {UserId}",
                 request.Title, request.CreatedBy);
 
-            // Проверяем существование пользователя
-            var user = await _userRepository.GetByIdAsync(request.CreatedBy, cancellationToken);
-            if (user == null)
-            {
-                throw new ArgumentException(nameof(request.CreatedBy), $"User with ID {request.CreatedBy} not found");
-            }
+            // Проверяем пользователя
+            var userExists = await _context.Users
+                .AnyAsync(u => u.Id == request.CreatedBy, cancellationToken);
+
+            if (!userExists)
+                throw new ArgumentException($"User with ID {request.CreatedBy} not found");
 
             var challenge = new Challenge
             {
@@ -54,10 +52,12 @@ namespace SmartPlanner.Application.Challenges.Commands;
                 CreatedBy = request.CreatedBy
             };
 
-            var createdChallenge = await _challengeRepository.CreateAsync(challenge, cancellationToken);
+            await _context.Challenges.AddAsync(challenge, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Challenge {ChallengeId} created successfully", createdChallenge.Id);
+            _logger.LogInformation("Challenge {ChallengeId} created successfully", challenge.Id);
 
-            return _mapper.Map<ChallengeDto>(createdChallenge);
+            return _mapper.Map<ChallengeDto>(challenge);
         }
     }
+}

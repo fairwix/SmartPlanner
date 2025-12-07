@@ -6,10 +6,9 @@ using System.Threading.Tasks;
 using SmartPlanner.Domain.Entities;
 using SmartPlanner.Application.DTOs.User;
 using Microsoft.Extensions.Logging;
-using SmartPlanner.Application.Common.Interfaces.Repositories;
 
 namespace SmartPlanner.Application.Interfaces.Services;
-
+#if false
     public class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;
@@ -375,4 +374,4 @@ namespace SmartPlanner.Application.Interfaces.Services;
             }
         }
     }
-
+#endif

@@ -6,15 +6,13 @@ using System.Threading.Tasks;
 using SmartPlanner.Domain.Entities;
 using SmartPlanner.Application.DTOs.Challenge;
 using Microsoft.Extensions.Logging;
-using SmartPlanner.Application.Common.Interfaces.Repositories;
-using SmartPlanner.Application.Interfaces.Repositories;
-
+#if false
 namespace SmartPlanner.Application.Interfaces.Services;
 
     public class ChallengeService : IChallengeService
     {
         private readonly IChallengeRepository _challengeRepository;
-        private readonly IUserRepository _userRepository;
+        private readonly IUserService _userService;
         private readonly ILogger<ChallengeService> _logger;
 
         public ChallengeService(
@@ -100,7 +98,8 @@ namespace SmartPlanner.Application.Interfaces.Services;
 
             try
             {
-                var challenges = await _challengeRepository.GetActiveChallengesAsync(cancellationToken);
+                var allChallenges = await _challengeRepository.GetAllAsync(cancellationToken);
+                var challenges = allChallenges.Where(c => c.IsActive()).ToList();
                 _logger.LogInformation("Найдено {Count} активных челленджей", challenges.Count);
                 return challenges;
             }
@@ -150,7 +149,7 @@ namespace SmartPlanner.Application.Interfaces.Services;
                     throw new ArgumentException($"Челлендж с ID {challengeId} не найден");
                 }
 
-                if (!challenge.IsActive)
+                if (!challenge.IsActive())
                 {
                     _logger.LogWarning("Челлендж {ChallengeId} не активен. Пользователь {UserId} не может присоединиться", challengeId, userId);
                     throw new ArgumentException(nameof(challenge.IsActive), "Челлендж не активен");
@@ -215,7 +214,7 @@ namespace SmartPlanner.Application.Interfaces.Services;
                     throw new ArgumentException(nameof(challenge), "Челлендж не найден");
                 }
 
-                if (!challenge.IsActive)
+                if (!challenge.IsActive())
                 {
                     _logger.LogWarning("Челлендж {ChallengeId} не активен, обновление прогресса невозможно", challengeId);
                     throw new ArgumentException(nameof(challenge.IsActive), "Челлендж не активен");
@@ -332,4 +331,4 @@ namespace SmartPlanner.Application.Interfaces.Services;
             return target;
         }
     }
-
+#endif

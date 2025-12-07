@@ -1,31 +1,35 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 
-namespace SmartPlanner.Domain.Entities;
-
+namespace SmartPlanner.Domain.Entities
+{
     public class Challenge : BaseEntity
     {
-        public string Title { get; init; } = string.Empty;
-        public string Description { get; init; } = string.Empty;
-        public ChallengeType Type { get; init; }
-        public DateTime StartDate { get; init; }
-        public DateTime EndDate { get; init; }
-        public bool IsGroupChallenge { get; init; }
-        public int TargetValue { get; init; }
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public ChallengeType Type { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public bool IsGroupChallenge { get; set; }
+        public int TargetValue { get; set; }
         public int CurrentValue { get; set; }
-        public Guid CreatedBy { get; init; }
+        public Guid CreatedBy { get; set; }
 
-        public bool IsActive => DateTime.UtcNow >= StartDate && DateTime.UtcNow <= EndDate;
-        public double GroupProgressPercentage => TargetValue > 0 ? (CurrentValue * 100.0) / TargetValue : 0;
+        // ЗАМЕНА вычисляемого свойства на метод
+        public double GetGroupProgressPercentage() =>
+            TargetValue > 0 ? (CurrentValue * 100.0) / TargetValue : 0;
 
-        public virtual User Creator { get; init; } = null!;
-        public virtual List<ChallengeParticipant> Participants { get; set; } = new List<ChallengeParticipant>();
+        public bool IsActive() => DateTime.UtcNow >= StartDate && DateTime.UtcNow <= EndDate;
+
+        public virtual User Creator { get; set; } = null!;
+        public virtual ICollection<ChallengeParticipant> Participants { get; set; } = new List<ChallengeParticipant>();
 
         public bool CanUserJoin(Guid userId)
         {
-            return IsActive &&
-                   !Participants.Any(p => p.UserId == userId && p.Status == ParticipantStatus.Joined);
+            return IsActive() &&
+                   !Participants.Any(p => p.UserId == userId);
         }
 
         public void AddParticipant(Guid userId)
@@ -34,15 +38,24 @@ namespace SmartPlanner.Domain.Entities;
             {
                 Participants.Add(new ChallengeParticipant
                 {
-                    Id = Guid.NewGuid(),
                     ChallengeId = this.Id,
                     UserId = userId,
                     Status = ParticipantStatus.Joined,
-                    JoinedAt = DateTime.UtcNow
+                    JoinedAt = DateTime.UtcNow,
+                    PersonalContribution = 0
                 });
             }
         }
 
         public bool IsExpired() => EndDate < DateTime.UtcNow;
-    }
 
+        public void UpdateProgress(int additionalValue)
+        {
+            if (additionalValue < 0)
+                throw new ArgumentException("Value cannot be negative", nameof(additionalValue));
+
+            CurrentValue = Math.Min(CurrentValue + additionalValue, TargetValue);
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+}

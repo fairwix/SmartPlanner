@@ -1,21 +1,22 @@
 using AutoMapper;
 using MediatR;
-using SmartPlanner.Application.Common.Interfaces.Repositories;
+using Microsoft.EntityFrameworkCore;
 using SmartPlanner.Application.Challenges.Dtos;
-using SmartPlanner.Application.Interfaces.Repositories;
+using SmartPlanner.Application.Common.Interfaces;
+using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Application.Challenges.Queries;
-
+namespace SmartPlanner.Application.Challenges.Queries
+{
     public class GetChallengesQueryHandler : IRequestHandler<GetChallengesQuery, List<ChallengeDto>>
     {
-        private readonly IChallengeRepository _challengeRepository;
+        private readonly IApplicationDbContext _context;
         private readonly IMapper _mapper;
 
         public GetChallengesQueryHandler(
-            IChallengeRepository challengeRepository,
+            IApplicationDbContext context,
             IMapper mapper)
         {
-            _challengeRepository = challengeRepository;
+            _context = context;
             _mapper = mapper;
         }
 
@@ -23,35 +24,39 @@ namespace SmartPlanner.Application.Challenges.Queries;
             GetChallengesQuery request,
             CancellationToken cancellationToken)
         {
-            var challenges = await _challengeRepository.GetAllAsync(cancellationToken);
+            var query = _context.Challenges
+                .Include(c => c.Participants)
+                .AsNoTracking();
 
-            // Применяем фильтры
-            var filteredChallenges = challenges.AsEnumerable();
-
+            // Фильтры
             if (request.ActiveOnly)
             {
-                filteredChallenges = filteredChallenges.Where(c => c.IsActive);
+                var now = DateTime.UtcNow;
+                query = query.Where(c => c.StartDate <= now && c.EndDate >= now);
             }
 
             if (request.UserId.HasValue)
             {
-                filteredChallenges = filteredChallenges.Where(c =>
+                query = query.Where(c =>
                     c.CreatedBy == request.UserId.Value ||
                     c.Participants.Any(p => p.UserId == request.UserId.Value));
             }
 
             if (!string.IsNullOrEmpty(request.Type))
             {
-                filteredChallenges = filteredChallenges.Where(c =>
-                    c.Type.ToString().Equals(request.Type, StringComparison.OrdinalIgnoreCase));
+                if (Enum.TryParse<ChallengeType>(request.Type, true, out var type))
+                {
+                    query = query.Where(c => c.Type == type);
+                }
             }
 
             if (request.IsGroupChallenge.HasValue)
             {
-                filteredChallenges = filteredChallenges.Where(c =>
-                    c.IsGroupChallenge == request.IsGroupChallenge.Value);
+                query = query.Where(c => c.IsGroupChallenge == request.IsGroupChallenge.Value);
             }
 
-            return _mapper.Map<List<ChallengeDto>>(filteredChallenges.ToList());
+            var challenges = await query.ToListAsync(cancellationToken);
+            return _mapper.Map<List<ChallengeDto>>(challenges);
         }
     }
+}

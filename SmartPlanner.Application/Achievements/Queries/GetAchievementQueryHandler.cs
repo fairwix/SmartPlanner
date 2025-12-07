@@ -1,31 +1,34 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using SmartPlanner.Application.Achievements.Dtos;
-using SmartPlanner.Application.Common.Interfaces.Repositories;
-using SmartPlanner.Application.Interfaces.Repositories;
+using SmartPlanner.Domain.Entities;
+using SmartPlanner.Application.Common.Interfaces;
 
-namespace SmartPlanner.Application.Achievements.Queries;
-
+namespace SmartPlanner.Application.Achievements.Queries
+{
     public class GetAchievementsQueryHandler : IRequestHandler<GetAchievementsQuery, List<AchievementDto>>
     {
-        private readonly IAchievementRepository _achievementRepository;
+        private readonly IApplicationDbContext _context;
 
-        public GetAchievementsQueryHandler(IAchievementRepository achievementRepository)
+        public GetAchievementsQueryHandler(IApplicationDbContext context)
         {
-            _achievementRepository = achievementRepository;
+            _context = context;
         }
 
         public async Task<List<AchievementDto>> Handle(GetAchievementsQuery request, CancellationToken cancellationToken)
         {
-            var achievements = await _achievementRepository.GetAllAsync(cancellationToken);
+            var query = _context.Achievements.AsQueryable();
 
-            // Фильтрация по типу, если указана
             if (!string.IsNullOrEmpty(request.AchievementType))
             {
-                // Здесь должна быть логика фильтрации по типу
-                // achievements = achievements.Where(a => a.Type == request.AchievementType).ToList();
+                if (Enum.TryParse<AchievementType>(request.AchievementType, true, out var type))
+                {
+                    query = query.Where(a => a.Type == type);
+                }
             }
 
-            // Маппинг в DTO
+            var achievements = await query.ToListAsync(cancellationToken);
+
             return achievements.Select(a => new AchievementDto(
                 a.Id,
                 a.CreatedAt,
@@ -38,3 +41,4 @@ namespace SmartPlanner.Application.Achievements.Queries;
                 a.Condition)).ToList();
         }
     }
+}

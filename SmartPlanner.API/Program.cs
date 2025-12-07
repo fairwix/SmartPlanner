@@ -1,81 +1,61 @@
-using Microsoft.Extensions.Options;
+// SmartPlanner.API/Program.cs - УЛЬТРА-ПРОСТАЯ
+using FluentMigrator.Runner;
 using SmartPlanner.Application;
 using SmartPlanner.Infrastructure;
-using SmartPlanner.Infrastructure.Configuration;
-using Microsoft.OpenApi.Models;
-using SmartPlanner.API.Infrastructure.Mapping;
+using SmartPlanner.API.Configuration;
+using SmartPlanner.API.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
-builder.Services
-    .AddApplication()
-    .AddInfrastructure(builder.Configuration);
-
+// 1. Добавляем всё необходимое
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-// Program.cs (или в месте регистрации сервисов)
-builder.Services.AddAutoMapper(typeof(GoalsBulkProfile)); // или укажи сборку
+builder.Services.AddSwaggerGen(); // ✅ Без параметров!
 
-// Swagger
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "Smart Planner API",
-        Version = "v1",
-        Description = "API для управления целями, челленджами и достижениями"
-    });
-});
-
-// CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
-    });
-});
+// 2. Добавляем наши сервисы
+builder.Services
+    .AddApplication()
+    .AddInfrastructure(builder.Configuration)
+    .AddApiServices(builder.Configuration);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+// 3. Миграции (пропустим если ошибки)
+try
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
+    using var scope = app.Services.CreateScope();
+    var migrationRunner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
+    if (migrationRunner.HasMigrationsToApplyUp())
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Smart Planner API V1");
-        c.RoutePrefix = string.Empty; // Чтобы Swagger открывался на корневом URL
-    });
-}
-
-app.UseRouting();
-
-// ✅ ПРАВИЛЬНЫЙ ПОРЯДОК Middleware:
-app.UseCors("AllowAll");
-app.UseAuthorization();
-
-// ✅ Добавьте эти важные middleware:
-app.UseHttpsRedirection(); // важно для перенаправления HTTP->HTTPS
-
-app.MapControllers();
-
-app.UseMiddleware<SmartPlanner.API.Middleware.GlobalExceptionHandlingMiddleware>();
-
-// ✅ Создание директории через Options Pattern
-using (var scope = app.Services.CreateScope())
-{
-    var options = scope.ServiceProvider.GetRequiredService<IOptions<FileStorageOptions>>().Value;
-
-    if (!Directory.Exists(options.DataDirectory))
-    {
-        Directory.CreateDirectory(options.DataDirectory);
-        app.Logger.LogInformation("Created data directory: {DataDirectory}", options.DataDirectory);
+        app.Logger.LogInformation("Applying migrations...");
+        migrationRunner.MigrateUp();
     }
 }
+catch { } // Игнорируем ошибки миграций
 
-app.Logger.LogInformation("Smart Planner API started successfully!");
+// 4. Включаем Swagger ВСЕГДА
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Smart Planner API");
+    c.RoutePrefix = ""; // Swagger на главной
+});
+
+// 5. Включаем всё остальное
+app.UseHttpsRedirection();
+app.UseRouting();
+app.MapControllers();
+
+// 6. Добавляем тестовый endpoint
+app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
+app.MapGet("/health", () => "API работает! ✅");
+app.MapGet("/test", () => new {
+    message = "API готов к работе",
+    time = DateTime.Now
+});
+
+app.Logger.LogInformation("=== API запущен ===");
+app.Logger.LogInformation("Swagger доступен: http://localhost:5047");
+app.Logger.LogInformation("Тестовый endpoint: http://localhost:5047/test");
+
 app.Run();

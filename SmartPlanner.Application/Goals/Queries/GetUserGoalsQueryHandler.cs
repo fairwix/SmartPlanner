@@ -1,52 +1,111 @@
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using AutoMapper;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using SmartPlanner.Application.Common.Dtos;
-using SmartPlanner.Application.Common.Interfaces.Repositories;
+using SmartPlanner.Application.Common.Interfaces;
 using SmartPlanner.Application.Goals.Dtos;
 using SmartPlanner.Domain.Entities;
 
-namespace SmartPlanner.Application.Goals.Queries;
-
+namespace SmartPlanner.Application.Goals.Queries
+{
     public class GetUserGoalsQueryHandler :
         IRequestHandler<GetUserGoalsQuery, PagedResult<GoalDto>>,
         IRequestHandler<GetUserGoalsAdvancedQuery, PagedResult<GoalDto>>
     {
-        private readonly IGoalRepository _goalRepository;
+        private readonly IApplicationDbContext _context;
         private readonly IMapper _mapper;
 
-        public GetUserGoalsQueryHandler(IGoalRepository goalRepository, IMapper mapper)
+        public GetUserGoalsQueryHandler(IApplicationDbContext context, IMapper mapper)
         {
-            _goalRepository = goalRepository;
+            _context = context;
             _mapper = mapper;
         }
 
         public async Task<PagedResult<GoalDto>> Handle(GetUserGoalsQuery request, CancellationToken cancellationToken)
         {
-            var pagination = new PaginationRequest(request.PageNumber, request.PageSize);
+            var query = _context.Goals
+                .Where(g => g.UserId == request.UserId)
+                .AsNoTracking();
 
-            var result = await _goalRepository.GetUserGoalsWithPaginationAsync(
-                userId: request.UserId,
-                pagination: pagination,
-                category: request.Category,
-                priority: request.Priority,
-                completed: request.Completed,
-                searchTerm: request.Search,
-                cancellationToken: cancellationToken);
+            // ✅ ИСПРАВЛЕНО: Используем string.IsNullOrEmpty вместо HasValue
+            if (!string.IsNullOrEmpty(request.Category))
+            {
+                if (Enum.TryParse<GoalCategory>(request.Category, true, out var category))
+                {
+                    query = query.Where(g => g.Category == category);
+                }
+            }
 
-            var goalDtos = _mapper.Map<List<GoalDto>>(result.Items);
+            // ✅ ИСПРАВЛЕНО: Используем string.IsNullOrEmpty вместо HasValue
+            if (!string.IsNullOrEmpty(request.Priority))
+            {
+                if (Enum.TryParse<GoalPriority>(request.Priority, true, out var priority))
+                {
+                    query = query.Where(g => g.Priority == priority);
+                }
+            }
 
-            return new PagedResult<GoalDto>(goalDtos, result.TotalCount, result.PageNumber, result.PageSize);
+            // ✅ Completed - это bool?, так что HasValue работает
+            if (request.Completed.HasValue)
+                query = query.Where(g => g.IsCompleted == request.Completed.Value);
+
+            // ✅ Поиск по тексту
+            if (!string.IsNullOrEmpty(request.Search))
+                query = query.Where(g => g.Title.Contains(request.Search) ||
+                                       (g.Description != null && g.Description.Contains(request.Search)));
+
+            var totalCount = await query.CountAsync(cancellationToken);
+
+            // ✅ Применяем сортировку
+            var orderedQuery = ApplySorting(query, request.SortBy, request.SortOrder);
+
+            var goals = await orderedQuery
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .ToListAsync(cancellationToken);
+
+            var goalDtos = _mapper.Map<List<GoalDto>>(goals);
+
+            return new PagedResult<GoalDto>(goalDtos, totalCount, request.PageNumber, request.PageSize);
+        }
+
+        private IQueryable<Goal> ApplySorting(IQueryable<Goal> query, string? sortBy, string? sortOrder)
+        {
+            var isDescending = string.Equals(sortOrder, "desc", StringComparison.OrdinalIgnoreCase);
+
+            return (sortBy?.ToLowerInvariant()) switch
+            {
+                "title" => isDescending ? query.OrderByDescending(g => g.Title) : query.OrderBy(g => g.Title),
+                "duedate" => isDescending ? query.OrderByDescending(g => g.DueDate) : query.OrderBy(g => g.DueDate),
+                "priority" => isDescending ? query.OrderByDescending(g => g.Priority) : query.OrderBy(g => g.Priority),
+                "category" => isDescending ? query.OrderByDescending(g => g.Category) : query.OrderBy(g => g.Category),
+                "createdat" => isDescending ? query.OrderByDescending(g => g.CreatedAt) : query.OrderBy(g => g.CreatedAt),
+                "progress" => isDescending ? query.OrderByDescending(g => g.GetProgressPercentage()) : query.OrderBy(g => g.GetProgressPercentage()),
+                _ => query.OrderByDescending(g => g.CreatedAt)
+            };
         }
 
         public async Task<PagedResult<GoalDto>> Handle(GetUserGoalsAdvancedQuery request, CancellationToken cancellationToken)
         {
-            var result = await _goalRepository.GetUserGoalsWithAdvancedFilteringAsync(
-                userId: request.UserId,
-                pagination: request.Pagination,
-                cancellationToken: cancellationToken);
+            var query = _context.Goals
+                .Where(g => g.UserId == request.UserId)
+                .AsNoTracking();
 
-            var goalDtos = _mapper.Map<List<GoalDto>>(result.Items);
+            var totalCount = await query.CountAsync(cancellationToken);
 
-            return new PagedResult<GoalDto>(goalDtos, result.TotalCount, request.Pagination.PageNumber, request.Pagination.PageSize);
+            var goals = await query
+                .OrderByDescending(g => g.CreatedAt)
+                .Skip((request.Pagination.PageNumber - 1) * request.Pagination.PageSize)
+                .Take(request.Pagination.PageSize)
+                .ToListAsync(cancellationToken);
+
+            var goalDtos = _mapper.Map<List<GoalDto>>(goals);
+
+            return new PagedResult<GoalDto>(goalDtos, totalCount, request.Pagination.PageNumber, request.Pagination.PageSize);
         }
     }
+}

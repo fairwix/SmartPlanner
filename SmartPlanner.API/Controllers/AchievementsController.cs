@@ -1,17 +1,17 @@
-// SmartPlanner.API/Controllers/AchievementsController.cs
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
-using SmartPlanner.Application.Achievements.Commands;
-using SmartPlanner.Application.Achievements.Dtos;
-using SmartPlanner.Application.Achievements.Queries;
+    // SmartPlanner.API/Controllers/AchievementsController.cs
+    using MediatR;
+    using Microsoft.AspNetCore.Mvc;
+    using SmartPlanner.Application.Achievements.Commands;
+    using SmartPlanner.Application.Achievements.Dtos;
+    using SmartPlanner.Application.Achievements.Queries;
 
+    namespace SmartPlanner.API.Controllers;
 
-//работает с достижениями
-namespace SmartPlanner.API.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-public class AchievementsController : ControllerBase
+    [ApiController]
+    [Route("api/[controller]")]
+    [Consumes("application/json")]
+    [Produces("application/json")]
+    public class AchievementsController : ControllerBase
     {
         private readonly IMediator _mediator;
 
@@ -90,4 +90,3 @@ public class AchievementsController : ControllerBase
             return Ok(result);
         }
     }
-

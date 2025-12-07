@@ -1,31 +1,38 @@
-// SmartPlanner.Application/AI/Queries/GeneratePersonalChallengesQueryHandler.cs
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using SmartPlanner.Application.Challenges.Dtos;
-using SmartPlanner.Application.Common.Interfaces.Repositories;
+using SmartPlanner.Application.Common.Interfaces;
+using SmartPlanner.Domain.Entities;
 
-
-namespace SmartPlanner.Application.AI.Queries;
-
-    public class GeneratePersonalChallengesQueryHandler : IRequestHandler<GeneratePersonalChallengesQuery, List<ChallengeDto>>
+namespace SmartPlanner.Application.AI.Queries
+{
+    public class GeneratePersonalChallengesQueryHandler :
+        IRequestHandler<GeneratePersonalChallengesQuery, List<ChallengeDto>>
     {
-        private readonly IUserRepository _userRepository;
+        private readonly IApplicationDbContext _context;
 
-        public GeneratePersonalChallengesQueryHandler(IUserRepository userRepository)
+        public GeneratePersonalChallengesQueryHandler(IApplicationDbContext context)
         {
-            _userRepository = userRepository;
+            _context = context;
         }
 
-        public async Task<List<ChallengeDto>> Handle(GeneratePersonalChallengesQuery request, CancellationToken cancellationToken)
+        public async Task<List<ChallengeDto>> Handle(
+            GeneratePersonalChallengesQuery request,
+            CancellationToken cancellationToken)
         {
-            var user = await _userRepository.GetByIdAsync(request.UserId, cancellationToken);
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
+
             if (user == null)
                 return new List<ChallengeDto>();
 
             var challenges = new List<ChallengeDto>();
             var random = new Random();
 
-            // Генерация SMART-челленджей на основе интересов пользователя
-            foreach (var interest in user.Interests.Take(request.Count))
+            // Берем интересы пользователя
+            var interests = user.Interests?.Take(request.Count).ToList() ?? new List<string>();
+
+            foreach (var interest in interests)
             {
                 var challenge = GenerateSmartChallenge(interest, user.Id, random);
                 challenges.Add(challenge);
@@ -36,38 +43,13 @@ namespace SmartPlanner.Application.AI.Queries;
 
         private ChallengeDto GenerateSmartChallenge(string interest, Guid userId, Random random)
         {
-            var (title, description, type, target) = interest.ToLower() switch
+            var title = interest.ToLower() switch
             {
-                "sports" or "fitness" => (
-                    $"Complete {random.Next(3, 7)} workout sessions this week",
-                    $"Stay consistent with your fitness goals. Each session should be at least 30 minutes.",
-                    "Exercise",
-                    random.Next(3, 7)
-                ),
-                "reading" or "books" => (
-                    $"Read {random.Next(2, 5)} books this month",
-                    $"Expand your knowledge and build a consistent reading habit.",
-                    "Reading",
-                    random.Next(2, 5)
-                ),
-                "programming" or "coding" => (
-                    $"Complete {random.Next(5, 15)} coding exercises",
-                    $"Improve your programming skills with daily practice.",
-                    "Learning",
-                    random.Next(5, 15)
-                ),
-                "music" => (
-                    $"Practice {random.Next(10, 30)} minutes daily for a week",
-                    $"Develop your musical skills through consistent practice.",
-                    "Custom",
-                    random.Next(70, 210) // Total minutes per week
-                ),
-                _ => (
-                    $"Master {interest} in {random.Next(7, 30)} days",
-                    $"Set specific goals to improve your {interest} skills.",
-                    "Custom",
-                    random.Next(5, 20)
-                )
+                "sports" or "fitness" => $"Complete {random.Next(3, 7)} workout sessions this week",
+                "reading" or "books" => $"Read {random.Next(2, 5)} books this month",
+                "programming" or "coding" => $"Complete {random.Next(5, 15)} coding exercises",
+                "music" => $"Practice {random.Next(10, 30)} minutes daily for a week",
+                _ => $"Master {interest} in {random.Next(7, 30)} days"
             };
 
             return new ChallengeDto(
@@ -75,12 +57,12 @@ namespace SmartPlanner.Application.AI.Queries;
                 DateTime.UtcNow,
                 DateTime.UtcNow,
                 title,
-                description,
-                type,
+                $"Challenge based on your interest in {interest}",
+                "Custom",
                 DateTime.UtcNow,
                 DateTime.UtcNow.AddDays(7),
                 random.Next(0, 2) == 1,
-                target,
+                random.Next(5, 20),
                 0,
                 0,
                 true,
@@ -88,3 +70,4 @@ namespace SmartPlanner.Application.AI.Queries;
                 new List<ChallengeParticipantDto>());
         }
     }
+}
