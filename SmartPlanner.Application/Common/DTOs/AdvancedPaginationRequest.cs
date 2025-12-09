@@ -18,6 +18,6 @@ public record AdvancedPaginationRequest(
     int? MinProgress = null,
     int? MaxProgress = null) : PaginationRequest(PageNumber, PageSize)
 {
-    public new int Skip => (PageNumber - 1) * PageSize; // ✅ Добавить 'new'
-    public new int Take => PageSize; // ✅ Добавить 'new'
+    public new int Skip => (PageNumber - 1) * PageSize;
+    public new int Take => PageSize;
 }
