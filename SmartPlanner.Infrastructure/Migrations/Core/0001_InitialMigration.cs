@@ -13,7 +13,6 @@ public class InitialMigration : Migration
             .WithColumn("Username").AsString(100).NotNullable()
             .WithColumn("Email").AsString(255).NotNullable()
             .WithColumn("PasswordHash").AsString().NotNullable()
-            .WithColumn("Interests").AsCustom("jsonb").Nullable()
             .WithColumn("Balance").AsInt32().NotNullable().WithDefaultValue(0)
             .WithColumn("StreakCount").AsInt32().NotNullable().WithDefaultValue(0)
             .WithColumn("LastLogin").AsDateTime().Nullable()

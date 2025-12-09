@@ -11,8 +11,8 @@ public class User : BaseEntity
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
 
-    // Interests теперь хранится как JSON в БД
-    public List<string> Interests { get; set; } = new List<string>();
+    public virtual List<UserInterest> UserInterests { get; set; } = new List<UserInterest>();
+
 
     // ПЕРЕНЕСЕНО ИЗ ProjectState.UserBalance
     public int Balance { get; set; } = 0;
@@ -49,11 +49,23 @@ public class User : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public bool HasInterest(string interest) => Interests.Contains(interest);
+    public bool HasInterest(string interest)
+    {
+        return UserInterests?.Any(ui =>
+            ui.Interest != null &&
+            ui.Interest.Name.Equals(interest, StringComparison.OrdinalIgnoreCase)
+        ) ?? false;
+    }
 
     public bool CanJoinChallenge(Challenge challenge)
     {
         return challenge.IsActive() &&
                !challenge.Participants.Any(p => p.UserId == Id && p.Status == ParticipantStatus.Joined);
     }
+
+    public List<string> GetInterests()
+    {
+        return UserInterests?.Select(ui => ui.Interest.Name).ToList() ?? new List<string>();
+    }
+
 }

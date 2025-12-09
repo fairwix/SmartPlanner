@@ -40,13 +40,37 @@ namespace SmartPlanner.Application.Users.Commands;
                 Username = request.Username,
                 Email = request.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Interests = request.Interests ?? new List<string>(),
                 Balance = 0,
                 StreakCount = 0,
                 LastLogin = DateTime.UtcNow
             };
 
             await _context.Users.AddAsync(user, cancellationToken);
+            if (request.Interests?.Any() == true)
+            {
+                foreach (var interestName in request.Interests)
+                {
+                    var interest = await _context.Interests
+                        .FirstOrDefaultAsync(i => i.Name == interestName, cancellationToken);
+
+                    if (interest == null)
+                    {
+                        interest = new Interest
+                        {
+                            Name = interestName,
+                            Description = null
+                        };
+                        await _context.Interests.AddAsync(interest, cancellationToken);
+                    }
+
+                    var userInterest = new UserInterest
+                    {
+                        UserId = user.Id,
+                        InterestId = interest.Id
+                    };
+                    await _context.UserInterests.AddAsync(userInterest, cancellationToken);
+                }
+            }
             await _context.SaveChangesAsync(cancellationToken);
 
             return MapToDto(user);
@@ -60,7 +84,7 @@ namespace SmartPlanner.Application.Users.Commands;
                 user.UpdatedAt,
                 user.Username,
                 user.Email,
-                user.Interests,
+                user.UserInterests?.Select(ui => ui.Interest.Name).ToList() ?? new List<string>(),
                 user.Balance,
                 user.StreakCount,
                 user.LastLogin);

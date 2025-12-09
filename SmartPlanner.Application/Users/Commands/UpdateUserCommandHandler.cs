@@ -17,15 +17,21 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
 
     public async Task<UserDto?> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
     {
+        // Загружаем пользователя с его текущими интересами
         var user = await _context.Users
+            .Include(u => u.UserInterests)  // Включаем UserInterests
+            .ThenInclude(ui => ui.Interest) // И связанные Interest
             .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
         if (user == null)
             return null;
 
-        // Проверяем уникальность username если он изменяется
+        bool hasChanges = false;
+
+        // Обновляем username, если он указан и изменился
         if (!string.IsNullOrWhiteSpace(request.Username) && request.Username != user.Username)
         {
+            // Проверяем уникальность username
             var usernameExists = await _context.Users
                 .AnyAsync(u => u.Username == request.Username && u.Id != request.UserId,
                          cancellationToken);
@@ -33,49 +39,104 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
             if (usernameExists)
                 throw new ArgumentException($"Username '{request.Username}' is already taken");
 
-            // EF Core не позволяет менять init-поля, создаем новый объект
-            var updatedUser = new User
-            {
-                Id = user.Id,
-                Username = request.Username,
-                Email = user.Email,
-                PasswordHash = user.PasswordHash,
-                Interests = request.Interests ?? user.Interests,
-                Balance = user.Balance,
-                StreakCount = user.StreakCount,
-                LastLogin = user.LastLogin,
-                CreatedAt = user.CreatedAt,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            // Удаляем старый и добавляем новый
-            _context.Users.Remove(user);
-            await _context.Users.AddAsync(updatedUser, cancellationToken);
+            user.Username = request.Username;
+            hasChanges = true;
         }
-        else if (request.Interests is not null)
+
+        // Обновляем интересы, если они указаны
+        if (request.Interests is not null)
         {
-            // Только интересы меняем
-            user.Interests = request.Interests;
-            user.UpdatedAt = DateTime.UtcNow;
+            // Получаем текущие интересы как список имен
+            var currentInterestNames = user.UserInterests
+                .Select(ui => ui.Interest.Name)
+                .ToList();
+
+            // Сравниваем с новыми интересами
+            var newInterestNames = request.Interests
+                .Where(i => !string.IsNullOrWhiteSpace(i))
+                .Distinct()
+                .ToList();
+
+            // Если интересы изменились
+            if (!currentInterestNames.SequenceEqual(newInterestNames))
+            {
+                // Удаляем все существующие связи UserInterest
+                var existingUserInterests = _context.UserInterests
+                    .Where(ui => ui.UserId == request.UserId);
+                _context.UserInterests.RemoveRange(existingUserInterests);
+
+                // Добавляем новые связи
+                foreach (var interestName in newInterestNames)
+                {
+                    // Находим или создаем интерес
+                    var interest = await _context.Interests
+                        .FirstOrDefaultAsync(i => i.Name.ToLower() == interestName.ToLower(),
+                            cancellationToken);
+
+                    if (interest == null)
+                    {
+                        interest = new Interest
+                        {
+                            Name = interestName,
+                            Description = null,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        await _context.Interests.AddAsync(interest, cancellationToken);
+
+                        // Нужно сохранить, чтобы получить Id
+                        await _context.SaveChangesAsync(cancellationToken);
+                    }
+
+                    // Создаем связь пользователя с интересом
+                    var userInterest = new UserInterest
+                    {
+                        UserId = user.Id,
+                        InterestId = interest.Id,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    await _context.UserInterests.AddAsync(userInterest, cancellationToken);
+                }
+
+                hasChanges = true;
+            }
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
+        // Сохраняем изменения, если они есть
+        if (hasChanges)
+        {
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+        }
 
-        // Получаем обновленного пользователя
-        var finalUser = await _context.Users
+        // Загружаем обновленного пользователя с интересами для DTO
+        var updatedUser = await _context.Users
+            .Include(u => u.UserInterests)
+            .ThenInclude(ui => ui.Interest)
+            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
-        return finalUser != null ? MapToDto(finalUser) : null;
+        return updatedUser != null ? MapToDto(updatedUser) : null;
     }
 
-    private static UserDto MapToDto(User user) => new(
-        user.Id,
-        user.CreatedAt,
-        user.UpdatedAt,
-        user.Username,
-        user.Email,
-        user.Interests,
-        user.Balance,
-        user.StreakCount,
-        user.LastLogin);
+    private static UserDto MapToDto(User user)
+    {
+        // Получаем имена интересов из UserInterests
+        var interests = user.UserInterests?
+            .Where(ui => ui.Interest != null)
+            .Select(ui => ui.Interest.Name)
+            .ToList() ?? new List<string>();
+
+        return new UserDto(
+            user.Id,
+            user.CreatedAt,
+            user.UpdatedAt,
+            user.Username,
+            user.Email,
+            interests,
+            user.Balance,
+            user.StreakCount,
+            user.LastLogin);
+    }
 }

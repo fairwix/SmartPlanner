@@ -1,61 +1,98 @@
-// SmartPlanner.API/Program.cs - УЛЬТРА-ПРОСТАЯ
-using FluentMigrator.Runner;
+using System;
+using System.Diagnostics;
 using SmartPlanner.Application;
 using SmartPlanner.Infrastructure;
 using SmartPlanner.API.Configuration;
-using SmartPlanner.API.Middleware;
+using FluentMigrator.Runner;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// 1. Добавляем всё необходимое
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(); // ✅ Без параметров!
-
-// 2. Добавляем наши сервисы
-builder.Services
-    .AddApplication()
-    .AddInfrastructure(builder.Configuration)
-    .AddApiServices(builder.Configuration);
-
-var app = builder.Build();
-
-// 3. Миграции (пропустим если ошибки)
 try
 {
-    using var scope = app.Services.CreateScope();
-    var migrationRunner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
-    if (migrationRunner.HasMigrationsToApplyUp())
+    var builder = WebApplication.CreateBuilder(args);
+
+    builder.Services.AddControllers();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
+
+    builder.Services
+        .AddApplication()
+        .AddInfrastructure(builder.Configuration)
+        .AddApiServices(builder.Configuration);
+
+    var app = builder.Build();
+
+    // ========== МИГРАЦИИ ==========
+    try
     {
-        app.Logger.LogInformation("Applying migrations...");
-        migrationRunner.MigrateUp();
+        app.Logger.LogInformation("Checking database migrations...");
+
+        using var scope = app.Services.CreateScope();
+        var migrationRunner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
+
+        if (migrationRunner.HasMigrationsToApplyUp())
+        {
+            app.Logger.LogInformation("Applying database migrations...");
+            migrationRunner.MigrateUp();
+            app.Logger.LogInformation("✅ Database migrations applied successfully");
+        }
+        else
+        {
+            app.Logger.LogInformation("✅ No pending migrations");
+        }
     }
+    catch (Exception ex)
+    {
+        // ЛОГИРУЕМ И ДЕЛАЕМ THROW
+        app.Logger.LogCritical(ex, "❌ Database migration failed");
+        throw; // "роняем" приложение
+    }
+
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Smart Planner API");
+        c.RoutePrefix = "";
+    });
+
+    app.UseHttpsRedirection();
+    app.MapControllers();
+
+    app.MapGet("/", () => "Smart Planner API - Go to /swagger");
+    app.MapGet("/health", () => "OK");
+
+    app.Logger.LogInformation("=== SmartPlanner API started ===");
+    app.Logger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
+
+    app.Run();
 }
-catch { } // Игнорируем ошибки миграций
-
-// 4. Включаем Swagger ВСЕГДА
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+catch (Exception ex)
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Smart Planner API");
-    c.RoutePrefix = ""; // Swagger на главной
-});
+    // Этот catch ловит ВСЕ ошибки, даже те что ДО настройки логгера
 
-// 5. Включаем всё остальное
-app.UseHttpsRedirection();
-app.UseRouting();
-app.MapControllers();
+    // Пытаемся записать в лог если возможно
+    try
+    {
+        // Создаем временный логгер
+        using var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.AddConsole();
+            builder.AddDebug();
+        });
+        var logger = loggerFactory.CreateLogger<Program>();
 
-// 6. Добавляем тестовый endpoint
-app.MapGet("/", () => Results.Redirect("/swagger/index.html"));
-app.MapGet("/health", () => "API работает! ✅");
-app.MapGet("/test", () => new {
-    message = "API готов к работе",
-    time = DateTime.Now
-});
+        logger.LogCritical(ex, "❌❌❌ APPLICATION STARTUP FAILED: {Message}", ex.Message);
 
-app.Logger.LogInformation("=== API запущен ===");
-app.Logger.LogInformation("Swagger доступен: http://localhost:5047");
-app.Logger.LogInformation("Тестовый endpoint: http://localhost:5047/test");
+        // Также пишем в консоль (на всякий случай)
+        Console.Error.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+        Console.Error.WriteLine($"Stack trace: {ex.StackTrace}");
+    }
+    catch
+    {
+        // Если даже логгер не работает - пишем куда можем
+        Console.Error.WriteLine($"❌ FATAL ERROR (logging failed): {ex.Message}");
+        Debug.WriteLine($"FATAL: {ex}");
+    }
 
-app.Run();
+    //как в примере преподавателя
+    Environment.ExitCode = -1;
+    throw; // пробрасываем дальше
+}

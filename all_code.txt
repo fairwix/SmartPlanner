@@ -110,7 +110,6 @@ namespace SmartPlanner.API.Middleware;
         }
     }
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.OpenApi.Models;
 using System.Reflection;
 
 namespace SmartPlanner.API.Configuration;
@@ -146,20 +145,20 @@ public static class ApiDependencyInjection
         return services;
     }
 }
-// SmartPlanner.API/Controllers/AchievementsController.cs
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
-using SmartPlanner.Application.Achievements.Commands;
-using SmartPlanner.Application.Achievements.Dtos;
-using SmartPlanner.Application.Achievements.Queries;
+    // SmartPlanner.API/Controllers/AchievementsController.cs
+    using MediatR;
+    using Microsoft.AspNetCore.Mvc;
+    using SmartPlanner.Application.Achievements.Commands;
+    using SmartPlanner.Application.Achievements.Dtos;
+    using SmartPlanner.Application.Achievements.Queries;
 
+    namespace SmartPlanner.API.Controllers;
 
-//работает с достижениями
-namespace SmartPlanner.API.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-public class AchievementsController : ControllerBase
+    [ApiController]
+    [Route("api/[controller]")]
+    [Consumes("application/json")]
+    [Produces("application/json")]
+    public class AchievementsController : ControllerBase
     {
         private readonly IMediator _mediator;
 
@@ -238,7 +237,6 @@ public class AchievementsController : ControllerBase
             return Ok(result);
         }
     }
-
 // SmartPlanner.API/Controllers/GoalsQueryController.cs
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -359,18 +357,19 @@ namespace SmartPlanner.API.Controllers;
             return Ok(result);
         }
     }
-// SmartPlanner.API/Controllers/GoalsController.cs
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
+    // SmartPlanner.API/Controllers/GoalsController.cs
+    using MediatR;
+    using Microsoft.AspNetCore.Mvc;
+    using SmartPlanner.Application.Goals.Commands;
+    using SmartPlanner.Application.Goals.Dtos;
+    using SmartPlanner.Application.Goals.Queries;
 
-using SmartPlanner.Application.Goals.Commands;
-using SmartPlanner.Application.Goals.Dtos;
-using SmartPlanner.Application.Goals.Queries;
-//работа с отдельными целями
-namespace SmartPlanner.API.Controllers;
+    namespace SmartPlanner.API.Controllers;
 
     [ApiController]
     [Route("api/[controller]")]
+    [Consumes("application/json")]
+    [Produces("application/json")]
     public class GoalsController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -400,9 +399,20 @@ namespace SmartPlanner.API.Controllers;
         [ProducesResponseType(typeof(GoalDto), 201)]
         [ProducesResponseType(400)]
         public async Task<ActionResult<GoalDto>> CreateGoal(
-            [FromBody] CreateGoalCommand command,
+            [FromBody] CreateGoalRequest request,
             CancellationToken cancellationToken = default)
         {
+            var command = new CreateGoalCommand
+            {
+                Title = request.Title,
+                Description = request.Description ?? string.Empty,
+                Category = request.Category,
+                Priority = request.Priority,
+                DueDate = request.DueDate,
+                TargetValue = request.TargetValue,
+                UserId = request.UserId
+            };
+
             var result = await _mediator.Send(command, cancellationToken);
             return CreatedAtAction(nameof(GetGoal), new { id = result.Id }, result);
         }
@@ -412,10 +422,20 @@ namespace SmartPlanner.API.Controllers;
         [ProducesResponseType(404)]
         public async Task<ActionResult<GoalDto>> UpdateGoal(
             Guid id,
-            [FromBody] UpdateGoalCommand command,
+            [FromBody] UpdateGoalRequest request,
             CancellationToken cancellationToken = default)
         {
-            command.GoalId = id;
+            var command = new UpdateGoalCommand
+            {
+                GoalId = id,
+                Title = request.Title,
+                Description = request.Description,
+                Category = request.Category,
+                Priority = request.Priority,
+                DueDate = request.DueDate,
+                TargetValue = request.TargetValue
+            };
+
             var result = await _mediator.Send(command, cancellationToken);
 
             if (result == null)
@@ -445,10 +465,15 @@ namespace SmartPlanner.API.Controllers;
         [ProducesResponseType(404)]
         public async Task<ActionResult<GoalDto>> UpdateProgress(
             Guid id,
-            [FromBody] UpdateGoalProgressCommand command,
+            [FromBody] UpdateGoalProgressRequest request,
             CancellationToken cancellationToken = default)
         {
-            command.GoalId = id;
+            var command = new UpdateGoalProgressCommand
+            {
+                GoalId = id,
+                Value = request.Value
+            };
+
             var result = await _mediator.Send(command, cancellationToken);
 
             if (result == null)
@@ -457,18 +482,39 @@ namespace SmartPlanner.API.Controllers;
             return Ok(result);
         }
     }
-// SmartPlanner.API/Controllers/ChallengesController.cs
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
-using SmartPlanner.Application.Challenges.Commands;
-using SmartPlanner.Application.Challenges.Dtos;
-using SmartPlanner.Application.Challenges.Queries;
 
-//управление челленджамищщ
-namespace SmartPlanner.API.Controllers;
+    // ✅ Request DTO для целей
+    public record CreateGoalRequest(
+        string Title,
+        string? Description,
+        string Category,
+        string Priority,
+        DateTime DueDate,
+        int TargetValue,
+        Guid UserId);
+
+    public record UpdateGoalRequest(
+        string? Title,
+        string? Description,
+        string? Category,
+        string? Priority,
+        DateTime? DueDate,
+        int? TargetValue);
+
+    public record UpdateGoalProgressRequest(int Value);
+    // SmartPlanner.API/Controllers/ChallengesController.cs
+    using MediatR;
+    using Microsoft.AspNetCore.Mvc;
+    using SmartPlanner.Application.Challenges.Commands;
+    using SmartPlanner.Application.Challenges.Dtos;
+    using SmartPlanner.Application.Challenges.Queries;
+
+    namespace SmartPlanner.API.Controllers;
 
     [ApiController]
     [Route("api/[controller]")]
+    [Consumes("application/json")]
+    [Produces("application/json")]
     public class ChallengesController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -519,14 +565,25 @@ namespace SmartPlanner.API.Controllers;
         [ProducesResponseType(typeof(ChallengeDto), 201)]
         [ProducesResponseType(400)]
         public async Task<ActionResult<ChallengeDto>> CreateChallenge(
-            [FromBody] CreateChallengeCommand command,
+            [FromBody] CreateChallengeRequest request,
             CancellationToken cancellationToken = default)
         {
+            var command = new CreateChallengeCommand
+            {
+                Title = request.Title,
+                Description = request.Description ?? string.Empty,
+                Type = request.Type,
+                StartDate = request.StartDate,
+                EndDate = request.EndDate,
+                IsGroupChallenge = request.IsGroupChallenge,
+                TargetValue = request.TargetValue,
+                CreatedBy = request.CreatedBy
+            };
+
             var result = await _mediator.Send(command, cancellationToken);
             return CreatedAtAction(nameof(GetChallenge), new { id = result.Id }, result);
         }
 
-        // ✅ ИСПРАВЛЕНО: Убрали мутацию команды, используем параметры из route
         [HttpPost("{challengeId:guid}/join/{userId:guid}")]
         [ProducesResponseType(typeof(ChallengeDto), 200)]
         [ProducesResponseType(400)]
@@ -545,14 +602,13 @@ namespace SmartPlanner.API.Controllers;
             return Ok(result);
         }
 
-        // ✅ ИСПРАВЛЕНО: Убрали мутацию команды, используем параметры из route
         [HttpPost("{challengeId:guid}/progress/{userId:guid}")]
         [ProducesResponseType(typeof(ChallengeDto), 200)]
         [ProducesResponseType(400)]
         public async Task<ActionResult<ChallengeDto>> UpdateProgress(
             Guid challengeId,
             Guid userId,
-            [FromBody] UpdateChallengeProgressRequest request, // ✅ Новый DTO для прогресса
+            [FromBody] UpdateChallengeProgressRequest request,
             CancellationToken cancellationToken = default)
         {
             var command = new UpdateChallengeProgressCommand
@@ -566,7 +622,6 @@ namespace SmartPlanner.API.Controllers;
             return Ok(result);
         }
 
-        // ✅ ДОБАВЛЕНО: Метод для выхода из челленджа
         [HttpPost("{challengeId:guid}/leave/{userId:guid}")]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
@@ -585,7 +640,6 @@ namespace SmartPlanner.API.Controllers;
             return Ok(result);
         }
 
-        // ✅ ДОБАВЛЕНО: Получение челленджей конкретного пользователя
         [HttpGet("user/{userId:guid}")]
         [ProducesResponseType(typeof(List<ChallengeDto>), 200)]
         public async Task<ActionResult<List<ChallengeDto>>> GetUserChallenges(
@@ -603,10 +657,19 @@ namespace SmartPlanner.API.Controllers;
             return Ok(result);
         }
     }
-    public class UpdateChallengeProgressRequest
-    {
-        public int Progress { get; set; }
-    }
+
+    // ✅ Request DTO для челленджей
+    public record CreateChallengeRequest(
+        string Title,
+        string? Description,
+        string Type,
+        DateTime StartDate,
+        DateTime EndDate,
+        bool IsGroupChallenge,
+        int TargetValue,
+        Guid CreatedBy);
+
+    public record UpdateChallengeProgressRequest(int Progress);
 // SmartPlanner.API/Controllers/GoalsBulkController.cs
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -664,15 +727,14 @@ namespace SmartPlanner.API.Controllers;
             return Ok(result);
         }
     }
-// SmartPlanner.API/Controllers/UsersController.cs
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
+    // SmartPlanner.API/Controllers/UsersController.cs
+    using MediatR;
+    using Microsoft.AspNetCore.Mvc;
+    using SmartPlanner.Application.Users.Commands;
+    using SmartPlanner.Application.Users.Dtos;
+    using SmartPlanner.Application.Users.Queries;
 
-using SmartPlanner.Application.Users.Commands;
-using SmartPlanner.Application.Users.Dtos;
-using SmartPlanner.Application.Users.Queries;
-//управление пользователями
-namespace SmartPlanner.API.Controllers;
+    namespace SmartPlanner.API.Controllers;
 
     [ApiController]
     [Route("api/[controller]")]
@@ -686,531 +748,128 @@ namespace SmartPlanner.API.Controllers;
         }
 
         [HttpGet("{id:guid}")]
-        [ProducesResponseType(typeof(UserDto), 200)]
-        [ProducesResponseType(404)]
-        public async Task<ActionResult<UserDto>> GetUser(
-            Guid id,
-            CancellationToken cancellationToken = default)
+        public async Task<ActionResult<UserDto>> GetUser(Guid id)
         {
             var query = new GetUserByIdQuery { UserId = id };
-            var result = await _mediator.Send(query, cancellationToken);
-
-            if (result == null)
-                return NotFound();
-
-            return Ok(result);
+            var result = await _mediator.Send(query);
+            return result != null ? Ok(result) : NotFound();
         }
 
         [HttpPost]
-        [ProducesResponseType(typeof(UserDto), 201)]
-        [ProducesResponseType(400)]
-        public async Task<ActionResult<UserDto>> CreateUser(
-            [FromBody] CreateUserCommand command,
-            CancellationToken cancellationToken = default)
+        public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserRequest request)
         {
-            var result = await _mediator.Send(command, cancellationToken);
-            return CreatedAtAction(nameof(GetUser), new { id = result.Id }, result);
-        }
-
-        [HttpPut("{id:guid}")]
-        [ProducesResponseType(typeof(UserDto), 200)]
-        [ProducesResponseType(404)]
-        public async Task<ActionResult<UserDto>> UpdateUser(
-            Guid id,
-            [FromBody] UpdateUserCommand command,
-            CancellationToken cancellationToken = default)
-        {
-            command.UserId = id;
-            var result = await _mediator.Send(command, cancellationToken);
-
-            if (result == null)
-                return NotFound();
-
-            return Ok(result);
-        }
-
-        [HttpGet("{id:guid}/friends")]
-        [ProducesResponseType(typeof(List<UserDto>), 200)]
-        public async Task<ActionResult<List<UserDto>>> GetUserFriends(
-            Guid id,
-            CancellationToken cancellationToken = default)
-        {
-            var query = new GetUserFriendsQuery { UserId = id };
-            var result = await _mediator.Send(query, cancellationToken);
-
-            return Ok(result);
-        }
-
-        [HttpPost("{id:guid}/friends/{friendId:guid}")]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
-        public async Task<ActionResult<bool>> AddFriend(
-            Guid id,
-            Guid friendId,
-            CancellationToken cancellationToken = default)
-        {
-            var command = new AddFriendCommand
+            var command = new CreateUserCommand
             {
-                UserId = id,
-                FriendId = friendId
+                Username = request.Username,
+                Email = request.Email,
+                Password = request.Password,
+                Interests = request.Interests ?? new List<string>()
             };
 
-            var result = await _mediator.Send(command, cancellationToken);
-            return Ok(result);
+            var result = await _mediator.Send(command);
+            return CreatedAtAction(nameof(GetUser), new { id = result.Id }, result);
         }
     }
-using FluentMigrator.Runner;
-using Microsoft.EntityFrameworkCore;
+
+    // Request DTO прямо в том же файле
+    public record CreateUserRequest(string Username, string Email, string Password, List<string>? Interests);
+using System;
+using System.Diagnostics;
 using SmartPlanner.Application;
 using SmartPlanner.Infrastructure;
-using SmartPlanner.Infrastructure.Data;
-using SmartPlanner.API.Infrastructure.Mapping;
 using SmartPlanner.API.Configuration;
-using SmartPlanner.API.Middleware;
+using FluentMigrator.Runner;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container
-builder.Services
-    .AddApplication()
-    .AddInfrastructure(builder.Configuration)
-    .AddApiServices(builder.Configuration);
-
-builder.Services.AddAutoMapper(typeof(GoalsBulkProfile));
-
-// Swagger
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
-    {
-        Title = "Smart Planner API",
-        Version = "v1",
-        Description = "API для управления целями, челленджами и достижениями"
-    });
-});
-
-var app = builder.Build();
-
-// ========== FLUENTMIGRATOR MIGRATIONS ==========
-// ✅ ВСЕГДА применяем FluentMigrator при запуске
 try
 {
-    using var scope = app.Services.CreateScope();
-    var migrationRunner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var builder = WebApplication.CreateBuilder(args);
 
-    logger.LogInformation("Checking for pending migrations...");
+    builder.Services.AddControllers();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
 
-    if (migrationRunner.HasMigrationsToApplyUp())
-    {
-        logger.LogInformation("Applying FluentMigrator migrations...");
-        migrationRunner.MigrateUp();
-        logger.LogInformation("Migrations applied successfully");
-    }
-    else
-    {
-        logger.LogInformation("Database is up to date");
-    }
-}
-catch (Exception ex)
-{
-    app.Logger.LogCritical(ex, "Failed to apply migrations");
-    // Не прерываем запуск в Development для отладки
-    if (!app.Environment.IsDevelopment())
-    {
-        throw;
-    }
-}
+    builder.Services
+        .AddApplication()
+        .AddInfrastructure(builder.Configuration)
+        .AddApiServices(builder.Configuration);
 
-// Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
+    var app = builder.Build();
+
+    // ========== МИГРАЦИИ ==========
+    try
+    {
+        app.Logger.LogInformation("Checking database migrations...");
+
+        using var scope = app.Services.CreateScope();
+        var migrationRunner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
+
+        if (migrationRunner.HasMigrationsToApplyUp())
+        {
+            app.Logger.LogInformation("Applying database migrations...");
+            migrationRunner.MigrateUp();
+            app.Logger.LogInformation("✅ Database migrations applied successfully");
+        }
+        else
+        {
+            app.Logger.LogInformation("✅ No pending migrations");
+        }
+    }
+    catch (Exception ex)
+    {
+        // ЛОГИРУЕМ И ДЕЛАЕМ THROW
+        app.Logger.LogCritical(ex, "❌ Database migration failed");
+        throw; // "роняем" приложение
+    }
+
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Smart Planner API V1");
-        c.RoutePrefix = string.Empty;
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Smart Planner API");
+        c.RoutePrefix = "";
     });
+
+    app.UseHttpsRedirection();
+    app.MapControllers();
+
+    app.MapGet("/", () => "Smart Planner API - Go to /swagger");
+    app.MapGet("/health", () => "OK");
+
+    app.Logger.LogInformation("=== SmartPlanner API started ===");
+    app.Logger.LogInformation("Environment: {Environment}", app.Environment.EnvironmentName);
+
+    app.Run();
 }
-
-app.UseRouting();
-app.UseCors("AllowAll");
-app.UseHttpsRedirection();
-app.UseAuthorization();
-
-// Middleware
-app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
-
-app.MapControllers();
-
-app.Logger.LogInformation("Smart Planner API started successfully!");
-app.Run();
-using System.Data;
-using FluentMigrator;
-
-[Migration(0001)]
-public class InitialMigration : Migration
+catch (Exception ex)
 {
-    public override void Up()
+    // Этот catch ловит ВСЕ ошибки, даже те что ДО настройки логгера
+
+    // Пытаемся записать в лог если возможно
+    try
     {
-        // Users table
-        Create.Table("Users")
-            .WithColumn("Id").AsGuid().PrimaryKey()
-            .WithColumn("Username").AsString(100).NotNullable()
-            .WithColumn("Email").AsString(255).NotNullable()
-            .WithColumn("PasswordHash").AsString().NotNullable()
-            .WithColumn("Balance").AsInt32().WithDefaultValue(0)
-            .WithColumn("StreakCount").AsInt32().WithDefaultValue(0)
-            .WithColumn("LastLogin").AsDateTime().Nullable()
-            .WithColumn("CreatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime)
-            .WithColumn("UpdatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
-
-        // Goals table
-        Create.Table("Goals")
-            .WithColumn("Id").AsGuid().PrimaryKey()
-            .WithColumn("Title").AsString(500).NotNullable()
-            .WithColumn("Description").AsString(2000).Nullable()
-            .WithColumn("UserId").AsGuid().NotNullable()
-            .WithColumn("Category").AsInt32().NotNullable()
-            .WithColumn("Priority").AsInt32().NotNullable()
-            .WithColumn("DueDate").AsDateTime().NotNullable()
-            .WithColumn("TargetValue").AsInt32().WithDefaultValue(1)
-            .WithColumn("CurrentValue").AsInt32().WithDefaultValue(0)
-            .WithColumn("IsCompleted").AsBoolean().WithDefaultValue(false)
-            .WithColumn("IsAiGenerated").AsBoolean().WithDefaultValue(false)
-            .WithColumn("RewardAmount").AsInt32().WithDefaultValue(10)
-            .WithColumn("CreatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime)
-            .WithColumn("UpdatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
-
-        // GoalProgress table
-        Create.Table("GoalProgress")
-            .WithColumn("Id").AsGuid().PrimaryKey()
-            .WithColumn("GoalId").AsGuid().NotNullable()
-            .WithColumn("Value").AsInt32().NotNullable()
-            .WithColumn("PreviousValue").AsInt32().NotNullable()
-            .WithColumn("Notes").AsString(1000).Nullable()
-            .WithColumn("CreatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
-
-        // Achievements table
-        Create.Table("Achievements")
-            .WithColumn("Id").AsGuid().PrimaryKey()
-            .WithColumn("Name").AsString(200).NotNullable()
-            .WithColumn("Description").AsString(1000).Nullable()
-            .WithColumn("BadgeImage").AsString(500).Nullable()
-            .WithColumn("RewardAmount").AsInt32().WithDefaultValue(0)
-            .WithColumn("Type").AsInt32().NotNullable()
-            .WithColumn("Condition").AsString(500).Nullable()
-            .WithColumn("CreatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime)
-            .WithColumn("UpdatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
-
-        // Challenges table
-        Create.Table("Challenges")
-            .WithColumn("Id").AsGuid().PrimaryKey()
-            .WithColumn("Title").AsString(200).NotNullable()
-            .WithColumn("Description").AsString(2000).Nullable()
-            .WithColumn("Type").AsInt32().NotNullable()
-            .WithColumn("StartDate").AsDateTime().NotNullable()
-            .WithColumn("EndDate").AsDateTime().NotNullable()
-            .WithColumn("IsGroupChallenge").AsBoolean().WithDefaultValue(false)
-            .WithColumn("TargetValue").AsInt32().WithDefaultValue(0)
-            .WithColumn("CurrentValue").AsInt32().WithDefaultValue(0)
-            .WithColumn("CreatedBy").AsGuid().NotNullable()
-            .WithColumn("CreatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime)
-            .WithColumn("UpdatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
-
-        // UserAchievements junction table - БЕЗ отдельного Id!
-        Create.Table("UserAchievements")
-            .WithColumn("UserId").AsGuid().NotNullable().PrimaryKey()
-            .WithColumn("AchievementId").AsGuid().NotNullable().PrimaryKey()
-            .WithColumn("AwardedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
-
-        // ChallengeParticipants junction table - БЕЗ отдельного Id!
-        Create.Table("ChallengeParticipants")
-            .WithColumn("ChallengeId").AsGuid().NotNullable().PrimaryKey()
-            .WithColumn("UserId").AsGuid().NotNullable().PrimaryKey()
-            .WithColumn("Status").AsInt32().WithDefaultValue(1) // 1 = Joined
-            .WithColumn("JoinedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime)
-            .WithColumn("PersonalContribution").AsInt32().WithDefaultValue(0);
-
-        // UserFriends junction table
-        Create.Table("UserFriends")
-            .WithColumn("UserId").AsGuid().NotNullable().PrimaryKey()
-            .WithColumn("FriendId").AsGuid().NotNullable().PrimaryKey()
-            .WithColumn("Status").AsInt32().NotNullable()
-            .WithColumn("CreatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
-
-        // Roles table
-        Create.Table("Roles")
-            .WithColumn("Id").AsInt32().PrimaryKey().Identity()
-            .WithColumn("Name").AsString(50).NotNullable()
-            .WithColumn("NormalizedName").AsString(50).NotNullable();
-
-        // UserRoles junction table
-        Create.Table("UserRoles")
-            .WithColumn("UserId").AsGuid().NotNullable().PrimaryKey()
-            .WithColumn("RoleId").AsInt32().NotNullable().PrimaryKey();
-
-        // Foreign keys
-        Create.ForeignKey("FK_Goals_Users")
-            .FromTable("Goals").ForeignColumn("UserId")
-            .ToTable("Users").PrimaryColumn("Id")
-            .OnDelete(Rule.Cascade);
-
-        Create.ForeignKey("FK_GoalProgress_Goals")
-            .FromTable("GoalProgress").ForeignColumn("GoalId")
-            .ToTable("Goals").PrimaryColumn("Id")
-            .OnDelete(Rule.Cascade);
-
-        Create.ForeignKey("FK_Challenges_Users")
-            .FromTable("Challenges").ForeignColumn("CreatedBy")
-            .ToTable("Users").PrimaryColumn("Id")
-            .OnDelete(Rule.Restrict);
-
-        Create.ForeignKey("FK_UserAchievements_Users")
-            .FromTable("UserAchievements").ForeignColumn("UserId")
-            .ToTable("Users").PrimaryColumn("Id")
-            .OnDelete(Rule.Cascade);
-
-        Create.ForeignKey("FK_UserAchievements_Achievements")
-            .FromTable("UserAchievements").ForeignColumn("AchievementId")
-            .ToTable("Achievements").PrimaryColumn("Id")
-            .OnDelete(Rule.Cascade);
-
-        Create.ForeignKey("FK_ChallengeParticipants_Challenges")
-            .FromTable("ChallengeParticipants").ForeignColumn("ChallengeId")
-            .ToTable("Challenges").PrimaryColumn("Id")
-            .OnDelete(Rule.Cascade);
-
-        Create.ForeignKey("FK_ChallengeParticipants_Users")
-            .FromTable("ChallengeParticipants").ForeignColumn("UserId")
-            .ToTable("Users").PrimaryColumn("Id")
-            .OnDelete(Rule.Cascade);
-
-        Create.ForeignKey("FK_UserFriends_Users_User")
-            .FromTable("UserFriends").ForeignColumn("UserId")
-            .ToTable("Users").PrimaryColumn("Id")
-            .OnDelete(Rule.Cascade);
-
-        Create.ForeignKey("FK_UserFriends_Users_Friend")
-            .FromTable("UserFriends").ForeignColumn("FriendId")
-            .ToTable("Users").PrimaryColumn("Id")
-            .OnDelete(Rule.Restrict);
-
-        Create.ForeignKey("FK_UserRoles_Users")
-            .FromTable("UserRoles").ForeignColumn("UserId")
-            .ToTable("Users").PrimaryColumn("Id")
-            .OnDelete(Rule.Cascade);
-
-        Create.ForeignKey("FK_UserRoles_Roles")
-            .FromTable("UserRoles").ForeignColumn("RoleId")
-            .ToTable("Roles").PrimaryColumn("Id")
-            .OnDelete(Rule.Cascade);
-
-        // Indexes
-        Create.Index("IX_Users_Email").OnTable("Users").OnColumn("Email").Unique();
-        Create.Index("IX_Users_Username").OnTable("Users").OnColumn("Username").Unique();
-        Create.Index("IX_Goals_UserId").OnTable("Goals").OnColumn("UserId");
-        Create.Index("IX_Goals_DueDate").OnTable("Goals").OnColumn("DueDate");
-        Create.Index("IX_Goals_Priority").OnTable("Goals").OnColumn("Priority");
-        Create.Index("IX_Goals_IsCompleted").OnTable("Goals").OnColumn("IsCompleted");
-
-        Create.Index("IX_GoalProgress_GoalId").OnTable("GoalProgress").OnColumn("GoalId");
-        Create.Index("IX_GoalProgress_CreatedAt").OnTable("GoalProgress").OnColumn("CreatedAt");
-
-        Create.Index("IX_Challenges_CreatedBy").OnTable("Challenges").OnColumn("CreatedBy");
-        Create.Index("IX_Challenges_StartDate").OnTable("Challenges").OnColumn("StartDate");
-        Create.Index("IX_Challenges_EndDate").OnTable("Challenges").OnColumn("EndDate");
-
-        Create.Index("IX_Achievements_Type").OnTable("Achievements").OnColumn("Type");
-
-        // Составные индексы уже не нужны, так как PK составные
-        // Но можно добавить для других комбинаций
-        Create.Index("IX_UserFriends_Status").OnTable("UserFriends").OnColumn("Status");
-        Create.Index("IX_ChallengeParticipants_Status").OnTable("ChallengeParticipants").OnColumn("Status");
-    }
-
-    public override void Down()
-    {
-        // Drop foreign keys first
-        Delete.ForeignKey("FK_UserRoles_Roles").OnTable("UserRoles");
-        Delete.ForeignKey("FK_UserRoles_Users").OnTable("UserRoles");
-        Delete.ForeignKey("FK_UserFriends_Users_Friend").OnTable("UserFriends");
-        Delete.ForeignKey("FK_UserFriends_Users_User").OnTable("UserFriends");
-        Delete.ForeignKey("FK_ChallengeParticipants_Users").OnTable("ChallengeParticipants");
-        Delete.ForeignKey("FK_ChallengeParticipants_Challenges").OnTable("ChallengeParticipants");
-        Delete.ForeignKey("FK_UserAchievements_Achievements").OnTable("UserAchievements");
-        Delete.ForeignKey("FK_UserAchievements_Users").OnTable("UserAchievements");
-        Delete.ForeignKey("FK_Challenges_Users").OnTable("Challenges");
-        Delete.ForeignKey("FK_GoalProgress_Goals").OnTable("GoalProgress");
-        Delete.ForeignKey("FK_Goals_Users").OnTable("Goals");
-
-        // Drop tables
-        Delete.Table("UserRoles");
-        Delete.Table("Roles");
-        Delete.Table("UserFriends");
-        Delete.Table("ChallengeParticipants");
-        Delete.Table("UserAchievements");
-        Delete.Table("Challenges");
-        Delete.Table("Achievements");
-        Delete.Table("GoalProgress");
-        Delete.Table("Goals");
-        Delete.Table("Users");
-    }
-}
-using FluentMigrator;
-
-[Migration(0003)]
-public class AddConstraintsAndComputedColumns : Migration
-{
-    public override void Up()
-    {
-        // Проверочные ограничения
-        Execute.Sql(@"
-            ALTER TABLE ""Goals""
-            ADD CONSTRAINT ""CK_Goals_TargetValue_Positive""
-            CHECK (""TargetValue"" > 0);
-
-            ALTER TABLE ""Goals""
-            ADD CONSTRAINT ""CK_Goals_CurrentValue_Range""
-            CHECK (""CurrentValue"" >= 0 AND ""CurrentValue"" <= ""TargetValue"");
-
-            ALTER TABLE ""Challenges""
-            ADD CONSTRAINT ""CK_Challenges_Dates""
-            CHECK (""EndDate"" > ""StartDate"");
-
-            ALTER TABLE ""Users""
-            ADD CONSTRAINT ""CK_Users_Balance_NonNegative""
-            CHECK (""Balance"" >= 0);
-        ");
-
-        // Генерируемые столбцы (опционально)
-        Execute.Sql(@"
-            ALTER TABLE ""Goals""
-            ADD COLUMN ""ProgressPercentage"" DECIMAL(5,2)
-            GENERATED ALWAYS AS (
-                CASE
-                    WHEN ""TargetValue"" > 0
-                    THEN (""CurrentValue"" * 100.0) / ""TargetValue""
-                    ELSE 0
-                END
-            ) STORED;
-
-            ALTER TABLE ""Challenges""
-            ADD COLUMN ""GroupProgressPercentage"" DECIMAL(5,2)
-            GENERATED ALWAYS AS (
-                CASE
-                    WHEN ""TargetValue"" > 0
-                    THEN (""CurrentValue"" * 100.0) / ""TargetValue""
-                    ELSE 0
-                END
-            ) STORED;
-        ");
-    }
-
-    public override void Down()
-    {
-        Execute.Sql(@"
-            ALTER TABLE ""Goals"" DROP CONSTRAINT ""CK_Goals_TargetValue_Positive"";
-            ALTER TABLE ""Goals"" DROP CONSTRAINT ""CK_Goals_CurrentValue_Range"";
-            ALTER TABLE ""Challenges"" DROP CONSTRAINT ""CK_Challenges_Dates"";
-            ALTER TABLE ""Users"" DROP CONSTRAINT ""CK_Users_Balance_NonNegative"";
-
-            ALTER TABLE ""Goals"" DROP COLUMN ""ProgressPercentage"";
-            ALTER TABLE ""Challenges"" DROP COLUMN ""GroupProgressPercentage"";
-        ");
-    }
-}
-// SmartPlanner.Infrastructure/Migrations/0002_SeedData.cs
-using System;
-using FluentMigrator;
-
-namespace SmartPlanner.Infrastructure.Migrations
-{
-    [Migration(0002)]
-    public class SeedData : Migration
-    {
-        public override void Up()
+        // Создаем временный логгер
+        using var loggerFactory = LoggerFactory.Create(builder =>
         {
-            // Insert default roles
-            Insert.IntoTable("Users")
-                .Row(new
-                {
-                    Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-                    Username = "admin",
-                    Email = "admin@smartplanner.com",
-                    PasswordHash = "AQAAAAIAAYagAAAAEHYZ1wJ3XKJk4XzXJ9X8Q==", // hashed "admin123"
-                    Balance = 1000,
-                    StreakCount = 7,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                })
-                .Row(new
-                {
-                    Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
-                    Username = "testuser",
-                    Email = "user@example.com",
-                    PasswordHash = "AQAAAAIAAYagAAAAEHYZ1wJ3XKJk4XzXJ9X8Q==", // hashed "user123"
-                    Balance = 500,
-                    StreakCount = 3,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                });
+            builder.AddConsole();
+            builder.AddDebug();
+        });
+        var logger = loggerFactory.CreateLogger<Program>();
 
-            // Insert sample achievements
-            Insert.IntoTable("Achievements")
-                .Row(new
-                {
-                    Id = Guid.Parse("10000000-0000-0000-0000-000000000001"),
-                    Name = "First Steps",
-                    Description = "Complete your first goal",
-                    BadgeImage = "badges/first-steps.png",
-                    RewardAmount = 50,
-                    Type = 1, // GoalsCompleted
-                    Condition = "goals_completed:1",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                })
-                .Row(new
-                {
-                    Id = Guid.Parse("10000000-0000-0000-0000-000000000002"),
-                    Name = "Week Streak",
-                    Description = "Maintain a 7-day streak",
-                    BadgeImage = "badges/week-streak.png",
-                    RewardAmount = 100,
-                    Type = 0, // Streak
-                    Condition = "streak:7",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                });
+        logger.LogCritical(ex, "❌❌❌ APPLICATION STARTUP FAILED: {Message}", ex.Message);
 
-            // Insert sample challenge
-            Insert.IntoTable("Challenges")
-                .Row(new
-                {
-                    Id = Guid.Parse("20000000-0000-0000-0000-000000000001"),
-                    Title = "30-Day Fitness Challenge",
-                    Description = "Complete your fitness goals for 30 days",
-                    Type = 2, // Exercise
-                    StartDate = DateTime.Today,
-                    EndDate = DateTime.Today.AddDays(30),
-                    IsGroupChallenge = true,
-                    TargetValue = 30,
-                    CurrentValue = 0,
-                    CreatedBy = Guid.Parse("00000000-0000-0000-0000-000000000001"), // admin
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                });
-        }
-
-        public override void Down()
-        {
-            // Delete the seeded data in reverse order
-            Delete.FromTable("Challenges").AllRows();
-            Delete.FromTable("Achievements").AllRows();
-            Delete.FromTable("Users").AllRows();
-        }
+        // Также пишем в консоль (на всякий случай)
+        Console.Error.WriteLine($"❌ FATAL ERROR: {ex.Message}");
+        Console.Error.WriteLine($"Stack trace: {ex.StackTrace}");
     }
+    catch
+    {
+        // Если даже логгер не работает - пишем куда можем
+        Console.Error.WriteLine($"❌ FATAL ERROR (logging failed): {ex.Message}");
+        Debug.WriteLine($"FATAL: {ex}");
+    }
+
+    //как в примере преподавателя
+    Environment.ExitCode = -1;
+    throw; // пробрасываем дальше
 }
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -2041,50 +1700,57 @@ using Microsoft.EntityFrameworkCore;
 using SmartPlanner.Application.Goals.Dtos;
 using SmartPlanner.Domain.Entities;
 using SmartPlanner.Application.Common.Interfaces;
-
-using SmartPlanner.Application.Common.Interfaces;
+using Microsoft.Extensions.Logging; // Добавляем логирование
 
 namespace SmartPlanner.Application.Goals.Commands
 {
     public class UpdateGoalProgressCommandHandler : IRequestHandler<UpdateGoalProgressCommand, GoalDto?>
     {
         private readonly IApplicationDbContext _context;
+        private readonly ILogger<UpdateGoalProgressCommandHandler> _logger;
 
-        public UpdateGoalProgressCommandHandler(IApplicationDbContext context)
+        // ✅ ДОБАВЛЯЕМ ЛОГГЕР
+        public UpdateGoalProgressCommandHandler(
+            IApplicationDbContext context,
+            ILogger<UpdateGoalProgressCommandHandler> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<GoalDto?> Handle(UpdateGoalProgressCommand request, CancellationToken cancellationToken)
         {
+            // ✅ 1. ЗАГРУЖАЕМ ЦЕЛЬ С ПОЛЬЗОВАТЕЛЕМ И ИСТОРИЕЙ
             var goal = await _context.Goals
+                .Include(g => g.User) // ⚠️ ВАЖНО: Include для User!
+                .Include(g => g.ProgressHistory) // опционально, если нужно
                 .FirstOrDefaultAsync(g => g.Id == request.GoalId, cancellationToken);
 
             if (goal == null)
-                return null;
-
-            var oldValue = goal.CurrentValue;
-            goal.CurrentValue = request.Value; // Используем прямое присваивание
-
-            // Проверяем завершение цели
-            if (!goal.IsCompleted && goal.CurrentValue >= goal.TargetValue)
             {
-                goal.IsCompleted = true;
-
-                // Награждаем пользователя
-                var user = await _context.Users
-                    .FirstOrDefaultAsync(u => u.Id == goal.UserId, cancellationToken);
-
-                if (user != null)
-                {
-                    user.Balance += goal.RewardAmount;
-                    _context.Users.Update(user);
-                }
+                _logger.LogWarning("Goal with ID {GoalId} not found", request.GoalId);
+                return null;
             }
 
-            await _context.SaveChangesAsync(cancellationToken);
+            try
+            {
+                // ✅ 2. ИСПОЛЬЗУЕМ ДОМЕННЫЙ МЕТОД ВМЕСТО ПРЯМОГО ПРИСВАИВАНИЯ
+                goal.UpdateProgress(request.Value);
 
-            return MapToDto(goal);
+                // ✅ 3. User уже обновлён внутри CompleteGoal() - не нужно вручную
+
+                await _context.SaveChangesAsync(cancellationToken);
+
+                _logger.LogInformation("Progress updated for goal {GoalId}: {CurrentValue}/{TargetValue}",
+                    goal.Id, goal.CurrentValue, goal.TargetValue);
+
+                return MapToDto(goal);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating progress for goal {GoalId}", request.GoalId);
+                throw; // Пробрасываем дальше
+            }
         }
 
         private GoalDto MapToDto(Goal goal) => new(
@@ -3241,6 +2907,9 @@ public interface IApplicationDbContext
     DbSet<Role> Roles { get; }
     DbSet<UserRole> UserRoles { get; }
 
+    DbSet<Interest> Interests { get; }
+    DbSet<UserInterest> UserInterests { get; }
+
     // Метод для сохранения изменений
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
@@ -3297,7 +2966,11 @@ namespace SmartPlanner.Application.AI.Queries
             GeneratePersonalChallengesQuery request,
             CancellationToken cancellationToken)
         {
+            // Загружаем пользователя с его интересами
             var user = await _context.Users
+                .Include(u => u.UserInterests)          // Включаем UserInterests
+                .ThenInclude(ui => ui.Interest)         // И связанные Interest
+                .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
             if (user == null)
@@ -3306,9 +2979,20 @@ namespace SmartPlanner.Application.AI.Queries
             var challenges = new List<ChallengeDto>();
             var random = new Random();
 
-            // Берем интересы пользователя
-            var interests = user.Interests?.Take(request.Count).ToList() ?? new List<string>();
+            // Получаем интересы пользователя из UserInterests
+            var interests = user.UserInterests
+                .Where(ui => ui.Interest != null)
+                .Select(ui => ui.Interest.Name)
+                .Take(request.Count)
+                .ToList();
 
+            // Если у пользователя нет интересов, используем дефолтные
+            if (!interests.Any())
+            {
+                interests = new List<string> { "fitness", "reading", "learning" };
+            }
+
+            // Генерируем челленджи на основе интересов
             foreach (var interest in interests)
             {
                 var challenge = GenerateSmartChallenge(interest, user.Id, random);
@@ -3320,31 +3004,72 @@ namespace SmartPlanner.Application.AI.Queries
 
         private ChallengeDto GenerateSmartChallenge(string interest, Guid userId, Random random)
         {
-            var title = interest.ToLower() switch
+            var (title, targetValue) = interest.ToLower() switch
             {
-                "sports" or "fitness" => $"Complete {random.Next(3, 7)} workout sessions this week",
-                "reading" or "books" => $"Read {random.Next(2, 5)} books this month",
-                "programming" or "coding" => $"Complete {random.Next(5, 15)} coding exercises",
-                "music" => $"Practice {random.Next(10, 30)} minutes daily for a week",
-                _ => $"Master {interest} in {random.Next(7, 30)} days"
+                "sports" or "fitness" or "exercise" =>
+                    ($"Complete {random.Next(5, 10)} workout sessions", random.Next(5000, 15000)),
+                "reading" or "books" or "literature" =>
+                    ($"Read {random.Next(3, 7)} books this month", random.Next(3, 7)),
+                "programming" or "coding" or "development" =>
+                    ($"Complete {random.Next(10, 20)} coding exercises", random.Next(10, 20)),
+                "music" or "instrument" or "singing" =>
+                    ($"Practice {random.Next(30, 60)} minutes daily", random.Next(1800, 3600)),
+                "art" or "drawing" or "painting" =>
+                    ($"Create {random.Next(5, 10)} artworks", random.Next(5, 10)),
+                "writing" or "blogging" =>
+                    ($"Write {random.Next(5, 15)} pages", random.Next(5, 15)),
+                "cooking" or "baking" =>
+                    ($"Try {random.Next(3, 8)} new recipes", random.Next(3, 8)),
+                "language" or "linguistics" =>
+                    ($"Learn {random.Next(50, 150)} new words", random.Next(50, 150)),
+                "photography" =>
+                    ($"Take {random.Next(20, 50)} photos", random.Next(20, 50)),
+                "meditation" or "mindfulness" =>
+                    ($"Meditate for {random.Next(300, 600)} minutes total", random.Next(300, 600)),
+                _ =>
+                    ($"Master {interest} in {random.Next(7, 30)} days", random.Next(10, 30))
             };
 
+            var description = $"Personalized challenge based on your interest in {interest}. " +
+                             "Complete this challenge to earn rewards and improve your skills!";
+
+            var startDate = DateTime.UtcNow;
+            var endDate = startDate.AddDays(random.Next(7, 30));
+
             return new ChallengeDto(
-                Guid.NewGuid(),
-                DateTime.UtcNow,
-                DateTime.UtcNow,
+                Guid.NewGuid(),                     // Id будет сгенерирован при сохранении
+                startDate,                          // CreatedAt
+                startDate,                          // UpdatedAt
                 title,
-                $"Challenge based on your interest in {interest}",
-                "Custom",
-                DateTime.UtcNow,
-                DateTime.UtcNow.AddDays(7),
-                random.Next(0, 2) == 1,
-                random.Next(5, 20),
-                0,
-                0,
-                true,
+                description,
+                GetChallengeType(interest),
+                startDate,
+                endDate,
+                random.Next(0, 2) == 1,            // IsGroupChallenge
+                targetValue,
+                0,                                  // CurrentValue
+                0.0,                               // GroupProgressPercentage
+                true,                              // IsActive
                 userId,
                 new List<ChallengeParticipantDto>());
+        }
+
+        private string GetChallengeType(string interest)
+        {
+            return interest.ToLower() switch
+            {
+                "sports" or "fitness" => "Exercise",
+                "reading" => "Reading",
+                "programming" => "Learning",
+                "music" => "Practice",
+                "art" => "Creative",
+                "writing" => "Writing",
+                "cooking" => "Culinary",
+                "language" => "Education",
+                "photography" => "Creative",
+                "meditation" => "Wellness",
+                _ => "Custom"
+            };
         }
     }
 }
@@ -3358,7 +3083,6 @@ namespace SmartPlanner.Application.Users.Queries;
     {
         public Guid UserId { get; init; }
     }
-// SmartPlanner.Application/Users/Queries/GetUserByIdQueryHandler.cs
 using MediatR;
 using SmartPlanner.Application.Users.Dtos;
 using Microsoft.EntityFrameworkCore;
@@ -3367,39 +3091,50 @@ using SmartPlanner.Domain.Entities;
 
 namespace SmartPlanner.Application.Users.Queries;
 
-    public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto?>
+public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto?>
+{
+    private readonly IApplicationDbContext _context;
+
+    public GetUserByIdQueryHandler(IApplicationDbContext context)
     {
-        private readonly IApplicationDbContext _context;
-
-        public GetUserByIdQueryHandler(IApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        public async Task<UserDto?> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
-        {
-            var user = await _context.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
-
-            return user != null ? MapToDto(user) : null;
-        }
-
-        private UserDto MapToDto(User user)
-        {
-            return new UserDto(
-                user.Id,
-                user.CreatedAt,
-                user.UpdatedAt,
-                user.Username,
-                user.Email,
-                user.Interests,
-                user.Balance,
-                user.StreakCount,
-                user.LastLogin);
-        }
+        _context = context;
     }
-// SmartPlanner.Application/Users/Queries/GetUserFriendsQueryHandler.cs
+
+    public async Task<UserDto?> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
+    {
+        // Загружаем пользователя с его интересами
+        var user = await _context.Users
+            .Include(u => u.UserInterests)          // Включаем UserInterests
+            .ThenInclude(ui => ui.Interest)         // И связанные Interest
+            .AsNoTracking()                         // Только для чтения
+            .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
+
+        if (user == null)
+            return null;
+
+        return MapToDto(user);
+    }
+
+    private UserDto MapToDto(User user)
+    {
+        // Получаем имена интересов из UserInterests
+        var interests = user.UserInterests
+            .Where(ui => ui.Interest != null)
+            .Select(ui => ui.Interest.Name)
+            .ToList();
+
+        return new UserDto(
+            user.Id,
+            user.CreatedAt,
+            user.UpdatedAt,
+            user.Username,
+            user.Email,
+            interests,
+            user.Balance,
+            user.StreakCount,
+            user.LastLogin);
+    }
+}
 using MediatR;
 using SmartPlanner.Application.Users.Dtos;
 using Microsoft.EntityFrameworkCore;
@@ -3408,41 +3143,73 @@ using SmartPlanner.Domain.Entities;
 
 namespace SmartPlanner.Application.Users.Queries;
 
-    public class GetUserFriendsQueryHandler : IRequestHandler<GetUserFriendsQuery, List<UserDto>>
+public class GetUserFriendsQueryHandler : IRequestHandler<GetUserFriendsQuery, List<UserDto>>
+{
+    private readonly IApplicationDbContext _context;
+
+    public GetUserFriendsQueryHandler(IApplicationDbContext context)
     {
-        private readonly IApplicationDbContext _context;
-
-        public GetUserFriendsQueryHandler(IApplicationDbContext context)
-        {
-            _context = context;
-        }
-
-        public async Task<List<UserDto>> Handle(GetUserFriendsQuery request, CancellationToken cancellationToken)
-        {
-            var friends = await _context.UserFriends
-                .AsNoTracking()
-                .Include(uf => uf.Friend)
-                .Where(uf => uf.UserId == request.UserId && uf.Status == FriendStatus.Accepted)
-                .Select(uf => uf.Friend)
-                .ToListAsync(cancellationToken);
-
-            return friends.Select(MapToDto).ToList();
-        }
-
-        private UserDto MapToDto(User user)
-        {
-            return new UserDto(
-                user.Id,
-                user.CreatedAt,
-                user.UpdatedAt,
-                user.Username,
-                user.Email,
-                user.Interests,
-                user.Balance,
-                user.StreakCount,
-                user.LastLogin);
-        }
+        _context = context;
     }
+
+    public async Task<List<UserDto>> Handle(GetUserFriendsQuery request, CancellationToken cancellationToken)
+    {
+        // Загружаем друзей с их интересами через UserFriends
+        var friendIds = await _context.UserFriends
+            .AsNoTracking()
+            .Where(uf => uf.UserId == request.UserId && uf.Status == FriendStatus.Accepted)
+            .Select(uf => uf.FriendId)
+            .ToListAsync(cancellationToken);
+
+        if (!friendIds.Any())
+            return new List<UserDto>();
+
+        // Загружаем полную информацию о друзьях с их интересами
+        var friends = await _context.Users
+            .Include(u => u.UserInterests)          // Включаем UserInterests
+            .ThenInclude(ui => ui.Interest)         // И связанные Interest
+            .Where(u => friendIds.Contains(u.Id))
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return friends.Select(MapToDto).ToList();
+    }
+
+    // Альтернативный вариант с одним запросом (JOIN):
+    public async Task<List<UserDto>> Handle_Alternative(GetUserFriendsQuery request, CancellationToken cancellationToken)
+    {
+        var friends = await _context.UserFriends
+            .Include(uf => uf.Friend)               // Включаем Friend
+            .ThenInclude(f => f.UserInterests)      // И его UserInterests
+            .ThenInclude(ui => ui.Interest)         // И связанные Interest
+            .Where(uf => uf.UserId == request.UserId && uf.Status == FriendStatus.Accepted)
+            .Select(uf => uf.Friend)
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        return friends.Select(MapToDto).ToList();
+    }
+
+    private UserDto MapToDto(User user)
+    {
+        // Получаем имена интересов из UserInterests
+        var interests = user.UserInterests
+            .Where(ui => ui.Interest != null)
+            .Select(ui => ui.Interest.Name)
+            .ToList();
+
+        return new UserDto(
+            user.Id,
+            user.CreatedAt,
+            user.UpdatedAt,
+            user.Username,
+            user.Email,
+            interests,
+            user.Balance,
+            user.StreakCount,
+            user.LastLogin);
+    }
+}
 // SmartPlanner.Application/Users/Queries/GetUserByIdQuery.cs
 using MediatR;
 using SmartPlanner.Application.Users.Dtos;
@@ -3582,13 +3349,37 @@ namespace SmartPlanner.Application.Users.Commands;
                 Username = request.Username,
                 Email = request.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Interests = request.Interests ?? new List<string>(),
                 Balance = 0,
                 StreakCount = 0,
                 LastLogin = DateTime.UtcNow
             };
 
             await _context.Users.AddAsync(user, cancellationToken);
+            if (request.Interests?.Any() == true)
+            {
+                foreach (var interestName in request.Interests)
+                {
+                    var interest = await _context.Interests
+                        .FirstOrDefaultAsync(i => i.Name == interestName, cancellationToken);
+
+                    if (interest == null)
+                    {
+                        interest = new Interest
+                        {
+                            Name = interestName,
+                            Description = null
+                        };
+                        await _context.Interests.AddAsync(interest, cancellationToken);
+                    }
+
+                    var userInterest = new UserInterest
+                    {
+                        UserId = user.Id,
+                        InterestId = interest.Id
+                    };
+                    await _context.UserInterests.AddAsync(userInterest, cancellationToken);
+                }
+            }
             await _context.SaveChangesAsync(cancellationToken);
 
             return MapToDto(user);
@@ -3602,7 +3393,7 @@ namespace SmartPlanner.Application.Users.Commands;
                 user.UpdatedAt,
                 user.Username,
                 user.Email,
-                user.Interests,
+                user.UserInterests?.Select(ui => ui.Interest.Name).ToList() ?? new List<string>(),
                 user.Balance,
                 user.StreakCount,
                 user.LastLogin);
@@ -3627,15 +3418,21 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
 
     public async Task<UserDto?> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
     {
+        // Загружаем пользователя с его текущими интересами
         var user = await _context.Users
+            .Include(u => u.UserInterests)  // Включаем UserInterests
+            .ThenInclude(ui => ui.Interest) // И связанные Interest
             .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
         if (user == null)
             return null;
 
-        // Проверяем уникальность username если он изменяется
+        bool hasChanges = false;
+
+        // Обновляем username, если он указан и изменился
         if (!string.IsNullOrWhiteSpace(request.Username) && request.Username != user.Username)
         {
+            // Проверяем уникальность username
             var usernameExists = await _context.Users
                 .AnyAsync(u => u.Username == request.Username && u.Id != request.UserId,
                          cancellationToken);
@@ -3643,51 +3440,106 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
             if (usernameExists)
                 throw new ArgumentException($"Username '{request.Username}' is already taken");
 
-            // EF Core не позволяет менять init-поля, создаем новый объект
-            var updatedUser = new User
-            {
-                Id = user.Id,
-                Username = request.Username,
-                Email = user.Email,
-                PasswordHash = user.PasswordHash,
-                Interests = request.Interests ?? user.Interests,
-                Balance = user.Balance,
-                StreakCount = user.StreakCount,
-                LastLogin = user.LastLogin,
-                CreatedAt = user.CreatedAt,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            // Удаляем старый и добавляем новый
-            _context.Users.Remove(user);
-            await _context.Users.AddAsync(updatedUser, cancellationToken);
+            user.Username = request.Username;
+            hasChanges = true;
         }
-        else if (request.Interests is not null)
+
+        // Обновляем интересы, если они указаны
+        if (request.Interests is not null)
         {
-            // Только интересы меняем
-            user.Interests = request.Interests;
-            user.UpdatedAt = DateTime.UtcNow;
+            // Получаем текущие интересы как список имен
+            var currentInterestNames = user.UserInterests
+                .Select(ui => ui.Interest.Name)
+                .ToList();
+
+            // Сравниваем с новыми интересами
+            var newInterestNames = request.Interests
+                .Where(i => !string.IsNullOrWhiteSpace(i))
+                .Distinct()
+                .ToList();
+
+            // Если интересы изменились
+            if (!currentInterestNames.SequenceEqual(newInterestNames))
+            {
+                // Удаляем все существующие связи UserInterest
+                var existingUserInterests = _context.UserInterests
+                    .Where(ui => ui.UserId == request.UserId);
+                _context.UserInterests.RemoveRange(existingUserInterests);
+
+                // Добавляем новые связи
+                foreach (var interestName in newInterestNames)
+                {
+                    // Находим или создаем интерес
+                    var interest = await _context.Interests
+                        .FirstOrDefaultAsync(i => i.Name.ToLower() == interestName.ToLower(),
+                            cancellationToken);
+
+                    if (interest == null)
+                    {
+                        interest = new Interest
+                        {
+                            Name = interestName,
+                            Description = null,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        await _context.Interests.AddAsync(interest, cancellationToken);
+
+                        // Нужно сохранить, чтобы получить Id
+                        await _context.SaveChangesAsync(cancellationToken);
+                    }
+
+                    // Создаем связь пользователя с интересом
+                    var userInterest = new UserInterest
+                    {
+                        UserId = user.Id,
+                        InterestId = interest.Id,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    await _context.UserInterests.AddAsync(userInterest, cancellationToken);
+                }
+
+                hasChanges = true;
+            }
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
+        // Сохраняем изменения, если они есть
+        if (hasChanges)
+        {
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+        }
 
-        // Получаем обновленного пользователя
-        var finalUser = await _context.Users
+        // Загружаем обновленного пользователя с интересами для DTO
+        var updatedUser = await _context.Users
+            .Include(u => u.UserInterests)
+            .ThenInclude(ui => ui.Interest)
+            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
-        return finalUser != null ? MapToDto(finalUser) : null;
+        return updatedUser != null ? MapToDto(updatedUser) : null;
     }
 
-    private static UserDto MapToDto(User user) => new(
-        user.Id,
-        user.CreatedAt,
-        user.UpdatedAt,
-        user.Username,
-        user.Email,
-        user.Interests,
-        user.Balance,
-        user.StreakCount,
-        user.LastLogin);
+    private static UserDto MapToDto(User user)
+    {
+        // Получаем имена интересов из UserInterests
+        var interests = user.UserInterests?
+            .Where(ui => ui.Interest != null)
+            .Select(ui => ui.Interest.Name)
+            .ToList() ?? new List<string>();
+
+        return new UserDto(
+            user.Id,
+            user.CreatedAt,
+            user.UpdatedAt,
+            user.Username,
+            user.Email,
+            interests,
+            user.Balance,
+            user.StreakCount,
+            user.LastLogin);
+    }
 }
 // SmartPlanner.Application/Users/Commands/CreateUserCommandValidator.cs
 using FluentValidation;
@@ -4605,7 +4457,6 @@ public class InitialMigration : Migration
             .WithColumn("Username").AsString(100).NotNullable()
             .WithColumn("Email").AsString(255).NotNullable()
             .WithColumn("PasswordHash").AsString().NotNullable()
-            .WithColumn("Interests").AsCustom("jsonb").Nullable()
             .WithColumn("Balance").AsInt32().NotNullable().WithDefaultValue(0)
             .WithColumn("StreakCount").AsInt32().NotNullable().WithDefaultValue(0)
             .WithColumn("LastLogin").AsDateTime().Nullable()
@@ -4891,6 +4742,113 @@ public class InitialMigration : Migration
         Delete.Table("GoalProgress");
         Delete.Table("Goals");
         Delete.Table("Users");
+    }
+}
+using System;
+using FluentMigrator;
+
+[Migration(0003)]
+public class NormalizeInterests : Migration
+{
+    public override void Up()
+    {
+        // 1. Создаем таблицу Interests (если не существует)
+        if (!Schema.Table("Interests").Exists())
+        {
+            Create.Table("Interests")
+                .WithColumn("Id").AsGuid().PrimaryKey()
+                .WithColumn("Name").AsString(100).NotNullable()
+                .WithColumn("Description").AsString(500).Nullable()
+                .WithColumn("CreatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime)
+                .WithColumn("UpdatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
+
+            Create.Index("IX_Interests_Name")
+                .OnTable("Interests")
+                .OnColumn("Name")
+                .Unique();
+        }
+
+        // 2. Создаем таблицу UserInterests (если не существует)
+        if (!Schema.Table("UserInterests").Exists())
+        {
+            Create.Table("UserInterests")
+                .WithColumn("Id").AsGuid().PrimaryKey()
+                .WithColumn("UserId").AsGuid().NotNullable()
+                .WithColumn("InterestId").AsGuid().NotNullable()
+                .WithColumn("CreatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime)
+                .WithColumn("UpdatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
+
+            Create.Index("IX_UserInterests_UserId_InterestId")
+                .OnTable("UserInterests")
+                .OnColumn("UserId").Ascending()
+                .OnColumn("InterestId").Ascending()
+                .WithOptions().Unique();
+
+            // Foreign keys
+            Create.ForeignKey("FK_UserInterests_Users")
+                .FromTable("UserInterests").ForeignColumn("UserId")
+                .ToTable("Users").PrimaryColumn("Id")
+                .OnDelete(System.Data.Rule.Cascade);
+
+            Create.ForeignKey("FK_UserInterests_Interests")
+                .FromTable("UserInterests").ForeignColumn("InterestId")
+                .ToTable("Interests").PrimaryColumn("Id")
+                .OnDelete(System.Data.Rule.Cascade);
+        }
+
+        // 3. Добавляем популярные интересы
+        Execute.Sql(@"
+            INSERT INTO ""Interests"" (""Id"", ""Name"", ""Description"") VALUES
+            ('11111111-1111-1111-1111-111111111111', 'programming', 'Coding and software development'),
+            ('22222222-2222-2222-2222-222222222222', 'sports', 'Physical activities and sports'),
+            ('33333333-3333-3333-3333-333333333333', 'reading', 'Books and literature'),
+            ('44444444-4444-4444-4444-444444444444', 'music', 'Listening and playing music'),
+            ('55555555-5555-5555-5555-555555555555', 'travel', 'Travel and exploration'),
+            ('66666666-6666-6666-6666-666666666666', 'gaming', 'Video and board games'),
+            ('77777777-7777-7777-7777-777777777777', 'fitness', 'Exercise and wellness'),
+            ('88888888-8888-8888-8888-888888888888', 'cooking', 'Culinary arts and cooking'),
+            ('99999999-9999-9999-9999-999999999999', 'photography', 'Photography and visual arts'),
+            ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'art', 'Drawing, painting and creative arts')
+            ON CONFLICT (""Name"") DO NOTHING;
+        ");
+
+        // 4. Обновляем seed данных - преобразуем JSON интересы в нормализованные
+        // Администратор
+        Execute.Sql(@"
+            -- Администратор интересы
+            INSERT INTO ""UserInterests"" (""Id"", ""UserId"", ""InterestId"") VALUES
+            (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111'),
+            (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222'),
+            (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333')
+            ON CONFLICT (""UserId"", ""InterestId"") DO NOTHING;
+        ");
+
+        // Test user
+        Execute.Sql(@"
+            -- Test user интересы
+            INSERT INTO ""UserInterests"" (""Id"", ""UserId"", ""InterestId"") VALUES
+            (gen_random_uuid(), '00000000-0000-0000-0000-000000000002', '44444444-4444-4444-4444-444444444444'),
+            (gen_random_uuid(), '00000000-0000-0000-0000-000000000002', '55555555-5555-5555-5555-555555555555'),
+            (gen_random_uuid(), '00000000-0000-0000-0000-000000000002', '66666666-6666-6666-6666-666666666666')
+            ON CONFLICT (""UserId"", ""InterestId"") DO NOTHING;
+        ");
+
+        // John Doe
+        Execute.Sql(@"
+            -- John Doe интересы
+            INSERT INTO ""UserInterests"" (""Id"", ""UserId"", ""InterestId"") VALUES
+            (gen_random_uuid(), '00000000-0000-0000-0000-000000000003', '77777777-7777-7777-7777-777777777777'),
+            (gen_random_uuid(), '00000000-0000-0000-0000-000000000003', '88888888-8888-8888-8888-888888888888'),
+            (gen_random_uuid(), '00000000-0000-0000-0000-000000000003', '99999999-9999-9999-9999-999999999999')
+            ON CONFLICT (""UserId"", ""InterestId"") DO NOTHING;
+        ");
+    }
+
+    public override void Down()
+    {
+        // Удаляем таблицы (для отката)
+        Delete.Table("UserInterests");
+        Delete.Table("Interests");
     }
 }
 using System;
@@ -5368,6 +5326,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public virtual DbSet<Role> Roles { get; set; } = null!;
     public virtual DbSet<UserRole> UserRoles { get; set; } = null!;
 
+    public virtual DbSet<Interest> Interests { get; set; } = null!;
+    public virtual DbSet<UserInterest> UserInterests { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -5461,16 +5422,38 @@ public class AppDbContext : DbContext, IApplicationDbContext
             .HasForeignKey(ur => ur.RoleId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // 3. JSON конвертация для PostgreSQL jsonb
         modelBuilder.Entity<User>()
-            .Property(u => u.Interests)
-            .HasConversion(
-                v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null!),
-                v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions)null!) ?? new List<string>()
-            );
+            .HasMany(u => u.UserInterests)
+            .WithOne(ui => ui.User)
+            .HasForeignKey(ui => ui.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        // 4. Игнорировать вычисляемые свойства (их нет в БД)
-        modelBuilder.Entity<Goal>().Ignore(g => g.GetProgressPercentage());
+        // ========== НОВЫЕ КОНФИГУРАЦИИ ДЛЯ INTERESTS ==========
+
+        // UserInterest -> User
+        modelBuilder.Entity<UserInterest>()
+            .HasOne(ui => ui.User)
+            .WithMany() // User не имеет коллекции UserInterests
+            .HasForeignKey(ui => ui.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // UserInterest -> Interest
+        modelBuilder.Entity<UserInterest>()
+            .HasOne(ui => ui.Interest)
+            .WithMany(i => i.UserInterests)
+            .HasForeignKey(ui => ui.InterestId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Уникальный индекс для Interest.Name
+        modelBuilder.Entity<Interest>()
+            .HasIndex(i => i.Name)
+            .IsUnique();
+
+        // Уникальный индекс для UserInterest (UserId, InterestId)
+        modelBuilder.Entity<UserInterest>()
+            .HasIndex(ui => new { ui.UserId, ui.InterestId })
+            .IsUnique();
+
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -5578,6 +5561,17 @@ namespace SmartPlanner.Domain.Exceptions;
         {
         }
     }
+// SmartPlanner.Domain/Entities/Interest.cs
+namespace SmartPlanner.Domain.Entities;
+
+public class Interest : BaseEntity
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+
+    // Навигационное свойство
+    public virtual List<UserInterest> UserInterests { get; set; } = new();
+}
 using SmartPlanner.Domain.Entities;
 
 public class UserAchievement
@@ -5674,8 +5668,8 @@ public class User : BaseEntity
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
 
-    // Interests теперь хранится как JSON в БД
-    public List<string> Interests { get; set; } = new List<string>();
+    public virtual List<UserInterest> UserInterests { get; set; } = new List<UserInterest>();
+
 
     // ПЕРЕНЕСЕНО ИЗ ProjectState.UserBalance
     public int Balance { get; set; } = 0;
@@ -5712,13 +5706,25 @@ public class User : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public bool HasInterest(string interest) => Interests.Contains(interest);
+    public bool HasInterest(string interest)
+    {
+        return UserInterests?.Any(ui =>
+            ui.Interest != null &&
+            ui.Interest.Name.Equals(interest, StringComparison.OrdinalIgnoreCase)
+        ) ?? false;
+    }
 
     public bool CanJoinChallenge(Challenge challenge)
     {
         return challenge.IsActive() &&
                !challenge.Participants.Any(p => p.UserId == Id && p.Status == ParticipantStatus.Joined);
     }
+
+    public List<string> GetInterests()
+    {
+        return UserInterests?.Select(ui => ui.Interest.Name).ToList() ?? new List<string>();
+    }
+
 }
 using System;
 
@@ -5928,6 +5934,18 @@ namespace SmartPlanner.Domain.Entities
             UpdatedAt = DateTime.UtcNow;
         }
     }
+}
+// SmartPlanner.Domain/Entities/UserInterest.cs
+namespace SmartPlanner.Domain.Entities;
+
+public class UserInterest : BaseEntity
+{
+    public Guid UserId { get; set; }
+    public Guid InterestId { get; set; }
+
+    // Навигационные свойства
+    public virtual User User { get; set; } = null!;
+    public virtual Interest Interest { get; set; } = null!;
 }
 using System;
 

@@ -9,6 +9,7 @@
         <!-- УДАЛИТЬ FluentMigrator из API -->
         <!-- <PackageReference Include="FluentMigrator.Runner.Core" Version="5.0.0" /> -->
 
+
         <PackageReference Include="Swashbuckle.AspNetCore" Version="7.1.0" />
         <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
         <PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="9.0.0" />
@@ -17,6 +18,10 @@
         <PackageReference Include="MediatR" Version="12.2.0" />
         <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.0.1" />
         <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.0.1" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>

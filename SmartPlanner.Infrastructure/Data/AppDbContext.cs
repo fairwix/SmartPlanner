@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SmartPlanner.Domain.Entities;
 using SmartPlanner.Application.Common.Interfaces;
-using System.Text.Json;
 
 namespace SmartPlanner.Infrastructure.Data;
 
@@ -21,6 +20,9 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public virtual DbSet<Achievement> Achievements { get; set; } = null!;
     public virtual DbSet<Role> Roles { get; set; } = null!;
     public virtual DbSet<UserRole> UserRoles { get; set; } = null!;
+
+    public virtual DbSet<Interest> Interests { get; set; } = null!;
+    public virtual DbSet<UserInterest> UserInterests { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -115,16 +117,31 @@ public class AppDbContext : DbContext, IApplicationDbContext
             .HasForeignKey(ur => ur.RoleId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // 3. JSON конвертация для PostgreSQL jsonb
-        modelBuilder.Entity<User>()
-            .Property(u => u.Interests)
-            .HasConversion(
-                v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null!),
-                v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions)null!) ?? new List<string>()
-            );
+        // ========== ИСПРАВЛЕННАЯ КОНФИГУРАЦИЯ ДЛЯ INTERESTS ==========
 
-        // 4. Игнорировать вычисляемые свойства (их нет в БД)
-        modelBuilder.Entity<Goal>().Ignore(g => g.GetProgressPercentage());
+        // Вариант А: User -> UserInterests (One-to-Many) - ТОЛЬКО ЭТО
+        modelBuilder.Entity<User>()
+            .HasMany(u => u.UserInterests)
+            .WithOne(ui => ui.User)
+            .HasForeignKey(ui => ui.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // UserInterest -> Interest (Many-to-One)
+        modelBuilder.Entity<UserInterest>()
+            .HasOne(ui => ui.Interest)
+            .WithMany(i => i.UserInterests)
+            .HasForeignKey(ui => ui.InterestId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Уникальный индекс для Interest.Name
+        modelBuilder.Entity<Interest>()
+            .HasIndex(i => i.Name)
+            .IsUnique();
+
+        // Уникальный индекс для UserInterest (UserId, InterestId)
+        modelBuilder.Entity<UserInterest>()
+            .HasIndex(ui => new { ui.UserId, ui.InterestId })
+            .IsUnique();
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

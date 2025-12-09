@@ -27,6 +27,9 @@ public interface IApplicationDbContext
     DbSet<Role> Roles { get; }
     DbSet<UserRole> UserRoles { get; }
 
+    DbSet<Interest> Interests { get; }
+    DbSet<UserInterest> UserInterests { get; }
+
     // Метод для сохранения изменений
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
