@@ -42,7 +42,7 @@ namespace SmartPlanner.Application.Users.Commands;
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 Balance = 0,
                 StreakCount = 0,
-                LastLogin = DateTime.UtcNow
+                LastLoginAt = DateTime.UtcNow
             };
 
             await _context.Users.AddAsync(user, cancellationToken);
@@ -87,6 +87,6 @@ namespace SmartPlanner.Application.Users.Commands;
                 user.UserInterests?.Select(ui => ui.Interest.Name).ToList() ?? new List<string>(),
                 user.Balance,
                 user.StreakCount,
-                user.LastLogin);
+                user.LastLoginAt);
         }
     }

@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartPlanner.Infrastructure
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartPlanner.API", "SmartPlanner.API\SmartPlanner.API.csproj", "{FA286FB7-0267-4AE1-9824-603DE5D5AEAB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartPlanner.Tests", "SmartPlanner.Tests\SmartPlanner.Tests.csproj", "{1E23A03B-5219-4E50-864A-77C4E68C13B8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,18 @@ Global
 		{FA286FB7-0267-4AE1-9824-603DE5D5AEAB}.Release|x64.Build.0 = Release|Any CPU
 		{FA286FB7-0267-4AE1-9824-603DE5D5AEAB}.Release|x86.ActiveCfg = Release|Any CPU
 		{FA286FB7-0267-4AE1-9824-603DE5D5AEAB}.Release|x86.Build.0 = Release|Any CPU
+		{1E23A03B-5219-4E50-864A-77C4E68C13B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E23A03B-5219-4E50-864A-77C4E68C13B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E23A03B-5219-4E50-864A-77C4E68C13B8}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1E23A03B-5219-4E50-864A-77C4E68C13B8}.Debug|x64.Build.0 = Debug|Any CPU
+		{1E23A03B-5219-4E50-864A-77C4E68C13B8}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1E23A03B-5219-4E50-864A-77C4E68C13B8}.Debug|x86.Build.0 = Debug|Any CPU
+		{1E23A03B-5219-4E50-864A-77C4E68C13B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E23A03B-5219-4E50-864A-77C4E68C13B8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E23A03B-5219-4E50-864A-77C4E68C13B8}.Release|x64.ActiveCfg = Release|Any CPU
+		{1E23A03B-5219-4E50-864A-77C4E68C13B8}.Release|x64.Build.0 = Release|Any CPU
+		{1E23A03B-5219-4E50-864A-77C4E68C13B8}.Release|x86.ActiveCfg = Release|Any CPU
+		{1E23A03B-5219-4E50-864A-77C4E68C13B8}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

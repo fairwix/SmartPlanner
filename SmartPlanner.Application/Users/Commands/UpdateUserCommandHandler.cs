@@ -137,6 +137,6 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
             interests,
             user.Balance,
             user.StreakCount,
-            user.LastLogin);
+            user.LastLoginAt);
     }
 }

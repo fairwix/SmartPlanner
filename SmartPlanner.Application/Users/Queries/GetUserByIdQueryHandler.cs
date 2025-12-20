@@ -47,6 +47,6 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
             interests,
             user.Balance,
             user.StreakCount,
-            user.LastLogin);
+            user.LastLoginAt);
     }
 }

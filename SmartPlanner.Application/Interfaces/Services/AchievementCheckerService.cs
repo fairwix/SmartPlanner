@@ -4,7 +4,7 @@ using SmartPlanner.Application.Interfaces.Services;
 using SmartPlanner.Domain.Entities;
 using SmartPlanner.Domain.Enums;
 
-namespace SmartPlanner.Infrastructure.Services;
+namespace SmartPlanner.Application.Services;
 
 public class AchievementCheckerService : IAchievementCheckerService
 {

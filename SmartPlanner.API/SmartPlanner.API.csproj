@@ -1,23 +1,48 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
     <PropertyGroup>
         <TargetFramework>net9.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
-    </PropertyGroup>
+      <UserSecretsId>d36c8f0d-ff14-4bee-8a7a-63e52c6db61f</UserSecretsId>
+  </PropertyGroup>
 
     <ItemGroup>
-        <!-- УДАЛИТЬ FluentMigrator из API -->
-        <!-- <PackageReference Include="FluentMigrator.Runner.Core" Version="5.0.0" /> -->
+        <!-- Rate Limiting пакеты -->
+        <PackageReference Include="Microsoft.AspNetCore.RateLimiting" Version="7.0.0-rc.2.22476.2" />
 
-
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="7.1.0" />
-        <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
-        <PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="9.0.0" />
+        <!-- Аутентификация и авторизация -->
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="9.0.0" />
         <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.0" />
-        <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.9.0" />
+        
+
+        <!-- Для работы с кэшем в памяти -->
+        <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
+        
+        <!-- Основные пакеты ASP.NET Core -->
+        <PackageReference Include="Microsoft.AspNetCore.JsonPatch" Version="9.0.0" />
+        <PackageReference Include="AspNetCore.HealthChecks.Uris" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.0" />
+
+        <!-- Swagger/OpenAPI -->
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+        <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="6.6.2" />
+        <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="6.6.2" />
+
+        <!-- JWT и Security -->
+        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.1.2" />
+
+        <!-- MediatR -->
         <PackageReference Include="MediatR" Version="12.2.0" />
-        <PackageReference Include="Swashbuckle.AspNetCore.Annotations" Version="10.0.1" />
-        <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.0.1" />
+
+        <!-- FluentValidation -->
+        <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.9.0" />
+
+        <!-- AutoMapper -->
+        <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+
+        <!-- EF Core Design Tools -->
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

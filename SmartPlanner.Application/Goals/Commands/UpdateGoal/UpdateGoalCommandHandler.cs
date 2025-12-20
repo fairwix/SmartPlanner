@@ -24,16 +24,12 @@ namespace SmartPlanner.Application.Goals.Commands
         public async Task<GoalDto?> Handle(UpdateGoalProgressCommand request, CancellationToken cancellationToken)
         {
             // ✅ 1. ЗАГРУЖАЕМ ЦЕЛЬ С ПОЛЬЗОВАТЕЛЕМ И ИСТОРИЕЙ
+            // Проверяем, что цель существует И принадлежит пользователю
             var goal = await _context.Goals
-                .Include(g => g.User) // ⚠️ ВАЖНО: Include для User!
-                .Include(g => g.ProgressHistory) // опционально, если нужно
                 .FirstOrDefaultAsync(g => g.Id == request.GoalId, cancellationToken);
 
             if (goal == null)
-            {
-                _logger.LogWarning("Goal with ID {GoalId} not found", request.GoalId);
                 return null;
-            }
 
             try
             {

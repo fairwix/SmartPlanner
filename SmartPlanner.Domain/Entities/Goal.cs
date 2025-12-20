@@ -4,7 +4,12 @@ using System.Linq;
 
 namespace SmartPlanner.Domain.Entities;
 
-public class Goal : BaseEntity
+public interface IUserOwnedResource
+{
+    Guid UserId { get; }
+}
+
+public class Goal : BaseEntity, IUserOwnedResource
 {
     private string _title = string.Empty;
     private DateTime _dueDate;

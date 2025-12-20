@@ -24,6 +24,16 @@ public class AppDbContext : DbContext, IApplicationDbContext
     public virtual DbSet<Interest> Interests { get; set; } = null!;
     public virtual DbSet<UserInterest> UserInterests { get; set; } = null!;
 
+    public virtual DbSet<UserSession> UserSessions { get; set; } = null!;
+    public virtual DbSet<Permission> Permissions { get; set; } = null!;
+    public virtual DbSet<RolePermission> RolePermissions { get; set; } = null!;
+    public virtual DbSet<UserClaim> UserClaims { get; set; } = null!;
+
+    public virtual DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
+    public virtual DbSet<EmailConfirmationToken> EmailConfirmationTokens { get; set; } = null!;
+
+    public virtual DbSet<SecurityAuditLog> SecurityAuditLogs { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -142,6 +152,161 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<UserInterest>()
             .HasIndex(ui => new { ui.UserId, ui.InterestId })
             .IsUnique();
+        // UserSession конфигурация
+        modelBuilder.Entity<UserSession>(entity =>
+        {
+            entity.HasKey(us => us.Id);
+
+            entity.HasOne(us => us.User)
+                .WithMany()
+                .HasForeignKey(us => us.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(us => us.UserId);
+            entity.HasIndex(us => us.ExpiresAt);
+            entity.HasIndex(us => us.RefreshTokenHash);
+        });
+
+        // Permission конфигурация
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+            entity.HasIndex(p => p.Name);
+        });
+
+        // Role конфигурация
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.Id).ValueGeneratedOnAdd();
+            entity.HasIndex(r => r.Name).IsUnique();
+            entity.HasIndex(r => r.NormalizedName).IsUnique();
+        });
+
+        // UserRole конфигурация (составной ключ)
+        modelBuilder.Entity<UserRole>(entity =>
+        {
+            entity.HasKey(ur => new { ur.UserId, ur.RoleId });
+
+            entity.HasOne(ur => ur.User)
+                .WithMany()
+                .HasForeignKey(ur => ur.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ur => ur.Role)
+                .WithMany(r => r.UserRoles)
+                .HasForeignKey(ur => ur.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+
+        // RolePermission конфигурация (составной ключ)
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.HasKey(rp => new { rp.RoleId, rp.PermissionId });
+
+            entity.HasOne(rp => rp.Role)
+                .WithMany(r => r.RolePermissions)
+                .HasForeignKey(rp => rp.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(rp => rp.Permission)
+                .WithMany(p => p.RolePermissions)
+                .HasForeignKey(rp => rp.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // UserClaim конфигурация
+        modelBuilder.Entity<UserClaim>(entity =>
+        {
+            entity.HasKey(uc => uc.Id);
+
+            entity.HasOne(uc => uc.User)
+                .WithMany()
+                .HasForeignKey(uc => uc.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(uc => uc.UserId);
+            entity.HasIndex(uc => new { uc.UserId, uc.ClaimType });
+        });
+        modelBuilder.Entity<PasswordResetToken>(entity =>
+        {
+            entity.HasKey(prt => prt.Id);
+
+            entity.HasOne(prt => prt.User)
+                .WithMany()
+                .HasForeignKey(prt => prt.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(prt => prt.TokenHash)
+                .IsUnique();
+
+            entity.HasIndex(prt => prt.ExpiresAt);
+            entity.HasIndex(prt => new { prt.UserId, prt.IsUsed });
+        });
+
+        modelBuilder.Entity<EmailConfirmationToken>(entity =>
+        {
+            entity.HasKey(ect => ect.Id);
+
+            entity.HasOne(ect => ect.User)
+                .WithMany()
+                .HasForeignKey(ect => ect.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(ect => ect.TokenHash)
+                .IsUnique();
+
+            entity.HasIndex(ect => ect.ExpiresAt);
+            entity.HasIndex(ect => new { ect.UserId, ect.IsUsed });
+        });
+
+        // Конфигурация SecurityAuditLog
+        modelBuilder.Entity<SecurityAuditLog>(entity =>
+        {
+            entity.HasKey(sal => sal.Id);
+
+            entity.Property(sal => sal.EventType)
+                .HasConversion<int>();
+
+            entity.Property(sal => sal.Details)
+                .HasColumnType("jsonb"); // PostgreSQL JSONB для эффективного поиска
+
+            entity.HasIndex(sal => sal.EventType);
+            entity.HasIndex(sal => sal.UserId);
+            entity.HasIndex(sal => sal.Timestamp);
+            entity.HasIndex(sal => sal.IpAddress);
+            entity.HasIndex(sal => sal.Success);
+
+            // Необязательная связь с User
+            entity.HasOne(sal => sal.User)
+                .WithMany()
+                .HasForeignKey(sal => sal.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<SecurityAuditLog>(entity =>
+        {
+            entity.HasKey(sal => sal.Id);
+
+            entity.Property(sal => sal.EventType)
+                .HasConversion<int>();
+
+            entity.Property(sal => sal.Details)
+                .HasColumnType("jsonb");
+
+            entity.HasIndex(sal => sal.EventType);
+            entity.HasIndex(sal => sal.UserId);
+            entity.HasIndex(sal => sal.Timestamp);
+            entity.HasIndex(sal => sal.IpAddress);
+            entity.HasIndex(sal => sal.Success);
+
+            entity.HasOne(sal => sal.User)
+                .WithMany()
+                .HasForeignKey(sal => sal.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

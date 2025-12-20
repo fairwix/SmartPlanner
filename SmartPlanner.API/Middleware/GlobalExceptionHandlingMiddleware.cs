@@ -2,7 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace SmartPlanner.API.Middleware;
+namespace SmartPlanner.API.Filters;
 
     public class GlobalExceptionHandlingMiddleware
     {

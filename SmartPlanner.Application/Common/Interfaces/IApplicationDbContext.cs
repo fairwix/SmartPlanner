@@ -29,6 +29,14 @@ public interface IApplicationDbContext
 
     DbSet<Interest> Interests { get; }
     DbSet<UserInterest> UserInterests { get; }
+    DbSet<UserSession> UserSessions { get; }
+    DbSet<Permission> Permissions { get; }
+    DbSet<RolePermission> RolePermissions { get; }
+    DbSet<UserClaim> UserClaims { get; }
+
+    DbSet<PasswordResetToken> PasswordResetTokens { get; }
+    DbSet<EmailConfirmationToken> EmailConfirmationTokens { get; }
+    DbSet<SecurityAuditLog> SecurityAuditLogs { get; }
 
     // Метод для сохранения изменений
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

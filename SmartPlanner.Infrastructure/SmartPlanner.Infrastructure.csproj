@@ -6,31 +6,55 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <!-- FluentMigrator для миграций -->
+        <!-- Основные пакеты для инфраструктуры -->
         <PackageReference Include="FluentMigrator" Version="5.0.0" />
         <PackageReference Include="FluentMigrator.Runner" Version="5.0.0" />
         <PackageReference Include="FluentMigrator.Runner.Postgres" Version="5.0.0" />
-
-        <!-- PostgreSQL драйвер -->
-        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.2" />
-
-        <!-- EF Core (только для работы, не для миграций) -->
-        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-            <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+          <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.1">
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+          <PrivateAssets>all</PrivateAssets>
         </PackageReference>
 
-        <!-- Общие пакеты -->
+        <!-- PostgreSQL и EF Core -->
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.2" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
+
+        <!-- Конфигурация и Dependency Injection -->
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.0" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
         <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.0" />
+
+        <!-- Логирование -->
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+
+        <!-- Хостинг и окружение -->
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
         <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.0" />
+
+        <!-- Email и SMTP -->
+        <PackageReference Include="MailKit" Version="4.7.1" />
+
+        <!-- BCrypt для хеширования паролей (совместимо с ТЗ) -->
+        <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+
+        <!-- Для работы с JWT (если нужно в инфраструктуре) -->
+        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.1.2" />
+        <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.1.2" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\SmartPlanner.Application\SmartPlanner.Application.csproj" />
         <ProjectReference Include="..\SmartPlanner.Domain\SmartPlanner.Domain.csproj" />
+    </ItemGroup>
+
+    <!-- Копирование миграций в выходную папку -->
+    <ItemGroup>
+        <EmbeddedResource Include="Migrations\*.cs" />
     </ItemGroup>
 </Project>

@@ -66,7 +66,7 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.PasswordHash, opt => opt.MapFrom(src => BCrypt.Net.BCrypt.HashPassword(src.Password)))
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
             .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
-            .ForMember(dest => dest.LastLogin, opt => opt.MapFrom(_ => DateTime.UtcNow))
+            .ForMember(dest => dest.LastLoginAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
             .ForMember(dest => dest.Balance, opt => opt.MapFrom(_ => 0))
             .ForMember(dest => dest.StreakCount, opt => opt.MapFrom(_ => 0));
     }

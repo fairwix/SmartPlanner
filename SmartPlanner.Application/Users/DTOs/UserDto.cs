@@ -11,7 +11,7 @@ public record UserDto(
     List<string> Interests,
     int Balance,
     int StreakCount,
-    DateTime LastLogin) : BaseDto(Id, CreatedAt, UpdatedAt);
+    DateTime? LastLogin) : BaseDto(Id, CreatedAt, UpdatedAt);
 
 public record CreateUserDto(
     string Username,

@@ -70,6 +70,6 @@ public class GetUserFriendsQueryHandler : IRequestHandler<GetUserFriendsQuery, L
             interests,
             user.Balance,
             user.StreakCount,
-            user.LastLogin);
+            user.LastLoginAt);
     }
 }
