@@ -13,7 +13,7 @@ namespace SmartPlanner.API.Controllers;
 [Route("api/[controller]")]
 [Consumes("application/json")]
 [Produces("application/json")]
-[Authorize] // ✅ Весь контроллер защищен
+[Authorize]
 public class ChallengesController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -43,7 +43,6 @@ public class ChallengesController : ControllerBase
     {
         _logger.LogInformation("Creating new challenge");
 
-        // ✅ Берем UserId из JWT токена
         var userIdClaim = User.FindFirst("userId")?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var currentUserId))
         {
@@ -60,7 +59,7 @@ public class ChallengesController : ControllerBase
             EndDate = request.EndDate,
             IsGroupChallenge = request.IsGroupChallenge,
             TargetValue = request.TargetValue,
-            CreatedBy = currentUserId // ✅ Только из токена!
+            CreatedBy = currentUserId
         };
 
         var result = await _mediator.Send(command, cancellationToken);
@@ -81,14 +80,12 @@ public class ChallengesController : ControllerBase
     {
         _logger.LogDebug("Joining challenge {ChallengeId}", challengeId);
 
-        // ✅ Берем UserId из JWT токена
         var userIdClaim = User.FindFirst("userId")?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var currentUserId))
         {
             return Unauthorized();
         }
 
-        // ✅ Проверяем существование челленджа
         var challenge = await _context.Challenges
             .FirstOrDefaultAsync(c => c.Id == challengeId, cancellationToken);
 
@@ -101,7 +98,7 @@ public class ChallengesController : ControllerBase
         var command = new JoinChallengeCommand
         {
             ChallengeId = challengeId,
-            UserId = currentUserId // ✅ Только из токена!
+            UserId = currentUserId
         };
 
         var result = await _mediator.Send(command, cancellationToken);
@@ -123,14 +120,12 @@ public class ChallengesController : ControllerBase
     {
         _logger.LogDebug("Updating progress for challenge {ChallengeId}", challengeId);
 
-        // ✅ Берем UserId из JWT токена
         var userIdClaim = User.FindFirst("userId")?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var currentUserId))
         {
             return Unauthorized();
         }
 
-        // ✅ Загружаем участие в челлендже для проверки прав
         var participant = await _context.ChallengeParticipants
             .Include(p => p.Challenge)
             .FirstOrDefaultAsync(p =>
@@ -145,8 +140,6 @@ public class ChallengesController : ControllerBase
             return NotFound();
         }
 
-        // ✅ Проверяем, что пользователь может обновлять прогресс
-        // (здесь можно добавить дополнительные проверки)
         if (participant.Challenge == null || !participant.Challenge.IsActive())
         {
             _logger.LogWarning("Challenge {ChallengeId} not active", challengeId);
@@ -157,7 +150,7 @@ public class ChallengesController : ControllerBase
         {
             ChallengeId = challengeId,
             Progress = request.Progress,
-            UserId = currentUserId // ✅ Только из токена!
+            UserId = currentUserId
         };
 
         var result = await _mediator.Send(command, cancellationToken);
@@ -178,14 +171,12 @@ public class ChallengesController : ControllerBase
     {
         _logger.LogDebug("Leaving challenge {ChallengeId}", challengeId);
 
-        // ✅ Берем UserId из JWT токена
         var userIdClaim = User.FindFirst("userId")?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var currentUserId))
         {
             return Unauthorized();
         }
 
-        // ✅ Проверяем участие
         var participant = await _context.ChallengeParticipants
             .FirstOrDefaultAsync(p =>
                 p.ChallengeId == challengeId &&
@@ -202,7 +193,7 @@ public class ChallengesController : ControllerBase
         var command = new LeaveChallengeCommand
         {
             ChallengeId = challengeId,
-            UserId = currentUserId // ✅ Только из токена!
+            UserId = currentUserId
         };
 
         var result = await _mediator.Send(command, cancellationToken);
@@ -213,7 +204,6 @@ public class ChallengesController : ControllerBase
         return Ok(result);
     }
 
-    // Остальные методы остаются примерно такими же, но добавляем проверку auth для GET если нужно
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ChallengeDto), 200)]
     [ProducesResponseType(404)]
@@ -227,24 +217,21 @@ public class ChallengesController : ControllerBase
         if (result == null)
             return NotFound();
 
-        // ✅ Если челлендж приватный - проверяем права
         if (result.CreatedBy != Guid.Parse(User.FindFirst("userId")?.Value ?? ""))
         {
-            // Проверяем участие
             var isParticipant = await _context.ChallengeParticipants
                 .AnyAsync(p => p.ChallengeId == id &&
                              p.UserId == Guid.Parse(User.FindFirst("userId").Value ?? ""),
                     cancellationToken);
 
             if (!isParticipant)
-                return Forbid(); // 403 если не создатель и не участник
+                return Forbid();
         }
 
         return Ok(result);
     }
 }
 
-// ✅ УДАЛИЛИ CreatedBy из DTO
 public record CreateChallengeRequest(
     string Title,
     string? Description,

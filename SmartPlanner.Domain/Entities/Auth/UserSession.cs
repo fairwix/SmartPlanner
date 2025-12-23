@@ -13,10 +13,8 @@ namespace SmartPlanner.Domain.Entities
         public DateTime? RevokedAt { get; set; }
         public bool IsRevoked { get; set; }
 
-        // Навигационное свойство
         public virtual User User { get; set; } = null!;
 
-        // Бизнес-методы (как в книге, глава 4)
         public bool IsValid() => !IsRevoked && ExpiresAt > DateTime.UtcNow;
         public bool IsExpired() => ExpiresAt <= DateTime.UtcNow;
     }

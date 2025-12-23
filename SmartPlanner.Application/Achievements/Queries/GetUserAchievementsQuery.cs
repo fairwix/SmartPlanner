@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Achievements/Queries/GetUserAchievementsQuery.cs
 using MediatR;
 using SmartPlanner.Application.Achievements.Dtos;
 

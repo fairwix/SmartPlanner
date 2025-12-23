@@ -9,7 +9,7 @@ namespace SmartPlanner.API.Controllers;
 
 [ApiController]
 [Route("api/goals")]
-[Authorize] // ✅ Требуется аутентификация
+[Authorize]
 public class GoalsQueryController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -42,14 +42,12 @@ public class GoalsQueryController : ControllerBase
         if (pageSize < 1 || pageSize > 100)
             return BadRequest("Page size must be between 1 and 100");
 
-        // ✅ Берем UserId из JWT токена
         var userIdClaim = User.FindFirst("userId")?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var currentUserId))
         {
             return Unauthorized();
         }
 
-        // ✅ Админы могут видеть все цели, обычные пользователи - только свои
         var isAdmin = User.IsInRole("Admin");
 
         var query = new GetUserGoalsQuery
@@ -70,7 +68,6 @@ public class GoalsQueryController : ControllerBase
         return Ok(result);
     }
 
-    // Добавляем метод для админов
     [HttpGet("admin/all")]
     [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(typeof(PagedResult<GoalDto>), 200)]
@@ -80,8 +77,6 @@ public class GoalsQueryController : ControllerBase
         [FromQuery] Guid? userId = null,
         CancellationToken cancellationToken = default)
     {
-        // Реализация для админов - видит все цели
-        // Здесь можно использовать другой query handler
         return Ok();
     }
 }

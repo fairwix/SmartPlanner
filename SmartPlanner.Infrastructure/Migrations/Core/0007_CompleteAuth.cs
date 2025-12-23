@@ -1,4 +1,4 @@
-    // Infrastructure/Migrations/0007_CompleteAuth.cs
+
     using FluentMigrator;
 
     [Migration(0007)]
@@ -6,7 +6,6 @@
     {
         public override void Up()
         {
-            // 1. Добавляем недостающие поля в Users (если их нет)
             if (!Schema.Table("Users").Column("FirstName").Exists())
             {
                 Alter.Table("Users")
@@ -20,7 +19,6 @@
                     .AddColumn("IsDeleted").AsBoolean().NotNullable().WithDefaultValue(false);
             }
 
-            // 2. Обновляем существующих пользователей
             Execute.Sql(@"
                 -- Обновляем seed пользователей с новыми полями
                 UPDATE ""Users"" SET
@@ -42,7 +40,6 @@
                 WHERE ""FirstName"" IS NULL;
             ");
 
-            // 3. Добавляем недостающие permissions (до 7 как в ТЗ)
             Execute.Sql(@"
                 -- Дополняем до 7 permissions для User role
                 INSERT INTO ""Permissions"" (""Id"", ""Name"", ""Description"", ""Category"", ""CreatedAt"") VALUES
@@ -68,7 +65,7 @@
 
         public override void Down()
         {
-            // Безопасный откат - не удаляем таблицы, только добавленные поля
+
             if (Schema.Table("Users").Column("FirstName").Exists())
             {
                 Delete.Column("FirstName").FromTable("Users");
@@ -81,7 +78,6 @@
                 Delete.Column("IsDeleted").FromTable("Users");
             }
 
-            // Удаляем добавленные permissions
             Execute.Sql(@"
                 DELETE FROM ""RolePermissions"" WHERE ""PermissionId"" IN (
                     SELECT ""Id"" FROM ""Permissions"" WHERE ""Name"" IN (

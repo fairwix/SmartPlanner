@@ -6,7 +6,7 @@ public class NormalizeInterests : Migration
 {
     public override void Up()
     {
-        // 1. Создаем таблицу Interests (если не существует)
+
         if (!Schema.Table("Interests").Exists())
         {
             Create.Table("Interests")
@@ -22,7 +22,7 @@ public class NormalizeInterests : Migration
                 .Unique();
         }
 
-        // 2. Создаем таблицу UserInterests (если не существует)
+
         if (!Schema.Table("UserInterests").Exists())
         {
             Create.Table("UserInterests")
@@ -38,7 +38,7 @@ public class NormalizeInterests : Migration
                 .OnColumn("InterestId").Ascending()
                 .WithOptions().Unique();
 
-            // Foreign keys
+
             Create.ForeignKey("FK_UserInterests_Users")
                 .FromTable("UserInterests").ForeignColumn("UserId")
                 .ToTable("Users").PrimaryColumn("Id")
@@ -50,7 +50,7 @@ public class NormalizeInterests : Migration
                 .OnDelete(System.Data.Rule.Cascade);
         }
 
-        // 3. Добавляем популярные интересы
+
         Execute.Sql(@"
             INSERT INTO ""Interests"" (""Id"", ""Name"", ""Description"") VALUES
             ('11111111-1111-1111-1111-111111111111', 'programming', 'Coding and software development'),
@@ -66,8 +66,7 @@ public class NormalizeInterests : Migration
             ON CONFLICT (""Name"") DO NOTHING;
         ");
 
-        // 4. Обновляем seed данных - преобразуем JSON интересы в нормализованные
-        // Администратор
+
         Execute.Sql(@"
             -- Администратор интересы
             INSERT INTO ""UserInterests"" (""Id"", ""UserId"", ""InterestId"") VALUES
@@ -77,7 +76,7 @@ public class NormalizeInterests : Migration
             ON CONFLICT (""UserId"", ""InterestId"") DO NOTHING;
         ");
 
-        // Test user
+
         Execute.Sql(@"
             -- Test user интересы
             INSERT INTO ""UserInterests"" (""Id"", ""UserId"", ""InterestId"") VALUES
@@ -87,7 +86,7 @@ public class NormalizeInterests : Migration
             ON CONFLICT (""UserId"", ""InterestId"") DO NOTHING;
         ");
 
-        // John Doe
+
         Execute.Sql(@"
             -- John Doe интересы
             INSERT INTO ""UserInterests"" (""Id"", ""UserId"", ""InterestId"") VALUES
@@ -100,7 +99,6 @@ public class NormalizeInterests : Migration
 
     public override void Down()
     {
-        // Удаляем таблицы (для отката)
         Delete.Table("UserInterests");
         Delete.Table("Interests");
     }

@@ -17,7 +17,6 @@ namespace SmartPlanner.Domain.Entities
         public int CurrentValue { get; set; }
         public Guid CreatedBy { get; set; }
 
-        // ЗАМЕНА вычисляемого свойства на метод
         public double GetGroupProgressPercentage() =>
             TargetValue > 0 ? (CurrentValue * 100.0) / TargetValue : 0;
 

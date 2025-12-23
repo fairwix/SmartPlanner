@@ -35,7 +35,6 @@ namespace SmartPlanner.Application.Auth.Commands
         {
             _logger.LogInformation("Login attempt for: {Identifier}", request.EmailOrUsername);
 
-            // 1. Поиск пользователя по email или username
             var user = await _context.Users
                 .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
@@ -60,10 +59,8 @@ namespace SmartPlanner.Application.Auth.Commands
                 throw new UnauthorizedAccessException("Invalid credentials");
             }
 
-            // 2. Проверка активности пользователя (ТЗ)
             if (!user.IsActive)
             {
-                // Логируем с причиной
                 await _auditService.LogSecurityEventAsync(
                     SecurityEventType.FailedLogin,
                     user.Id,
@@ -88,10 +85,8 @@ namespace SmartPlanner.Application.Auth.Commands
                 throw new UnauthorizedAccessException("Account not found");
             }
 
-            // 3. Проверка пароля
             if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash, user.PasswordSalt))
             {
-                // Логируем неверный пароль
                 await _auditService.LogSecurityEventAsync(
                     SecurityEventType.FailedLogin,
                     user.Id,
@@ -105,14 +100,12 @@ namespace SmartPlanner.Application.Auth.Commands
                 throw new UnauthorizedAccessException("Invalid credentials");
             }
 
-            // 4. Проверка подтверждения email (опционально по ТЗ)
             if (!user.IsEmailConfirmed)
             {
                 _logger.LogWarning("User with unconfirmed email attempted login: {UserId}", user.Id);
                 throw new UnauthorizedAccessException("Email not confirmed. Please confirm your email before logging in.");
             }
 
-            // Логируем успешный вход
             await _auditService.LogSecurityEventAsync(
                 SecurityEventType.Login,
                 user.Id,
@@ -122,15 +115,12 @@ namespace SmartPlanner.Application.Auth.Commands
                 success: true,
                 cancellationToken: cancellationToken);
 
-            // 5. Обновление LastLoginAt
             user.LastLoginAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
 
-            // 6. Генерация токенов
             var accessToken = await _tokenService.GenerateAccessTokenAsync(user, cancellationToken);
             var (refreshToken, refreshTokenHash) = _tokenService.GenerateRefreshToken();
 
-            // 7. Создание сессии
             var refreshTokenExpiry = DateTime.UtcNow.AddDays(7);
             await _tokenService.CreateUserSessionAsync(
                 user.Id,
@@ -140,18 +130,16 @@ namespace SmartPlanner.Application.Auth.Commands
                 request.IpAddress,
                 cancellationToken);
 
-            // 8. Получение ролей и permissions
             var roles = user.UserRoles.Select(ur => ur.Role.Name).Distinct().ToList();
             var permissions = user.UserRoles
                 .SelectMany(ur => ur.Role.RolePermissions.Select(rp => rp.Permission.Name))
                 .Distinct()
                 .ToList();
 
-            // 9. Формирование ответа
             var response = new AuthResponseDto(
                 accessToken,
                 refreshToken,
-                DateTime.UtcNow.AddMinutes(30), // Из конфигурации
+                DateTime.UtcNow.AddMinutes(30),
                 refreshTokenExpiry,
                 new UserProfileDto(
                     user.Id,

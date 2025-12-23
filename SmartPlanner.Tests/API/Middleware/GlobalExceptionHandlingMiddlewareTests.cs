@@ -14,11 +14,11 @@ namespace SmartPlanner.Tests.API.Middleware
 {
     public class GlobalExceptionHandlingMiddlewareTests
     {
-        private readonly Mock<ILogger<SmartPlanner.API.Middleware.GlobalExceptionHandlingMiddleware>> _mockLogger;
+        private readonly Mock<ILogger<SmartPlanner.API.Filters.GlobalExceptionHandlingMiddleware>> _mockLogger;
 
         public GlobalExceptionHandlingMiddlewareTests()
         {
-            _mockLogger = new Mock<ILogger<SmartPlanner.API.Middleware.GlobalExceptionHandlingMiddleware>>();
+            _mockLogger = new Mock<ILogger<SmartPlanner.API.Filters.GlobalExceptionHandlingMiddleware>>();
         }
 
         private DefaultHttpContext CreateHttpContext()
@@ -34,7 +34,7 @@ namespace SmartPlanner.Tests.API.Middleware
         {
             // Arrange
             var context = CreateHttpContext();
-            var middleware = new SmartPlanner.API.Middleware.GlobalExceptionHandlingMiddleware(
+            var middleware = new SmartPlanner.API.Filters.GlobalExceptionHandlingMiddleware(
                 next: (innerContext) => throw new ValidationException("Validation failed"),
                 logger: _mockLogger.Object
             );
@@ -56,7 +56,7 @@ namespace SmartPlanner.Tests.API.Middleware
         {
             // Arrange
             var context = CreateHttpContext();
-            var middleware = new SmartPlanner.API.Middleware.GlobalExceptionHandlingMiddleware(
+            var middleware = new SmartPlanner.API.Filters.GlobalExceptionHandlingMiddleware(
                 next: (innerContext) => throw new ArgumentException("Invalid argument"),
                 logger: _mockLogger.Object
             );
@@ -74,7 +74,7 @@ namespace SmartPlanner.Tests.API.Middleware
         {
             // Arrange
             var context = CreateHttpContext();
-            var middleware = new SmartPlanner.API.Middleware.GlobalExceptionHandlingMiddleware(
+            var middleware = new SmartPlanner.API.Filters.GlobalExceptionHandlingMiddleware(
                 next: (innerContext) => throw new Exception("Something went wrong"),
                 logger: _mockLogger.Object
             );
@@ -94,7 +94,7 @@ namespace SmartPlanner.Tests.API.Middleware
             var context = CreateHttpContext();
             var wasCalled = false;
 
-            var middleware = new SmartPlanner.API.Middleware.GlobalExceptionHandlingMiddleware(
+            var middleware = new SmartPlanner.API.Filters.GlobalExceptionHandlingMiddleware(
                 next: (innerContext) =>
                 {
                     wasCalled = true;

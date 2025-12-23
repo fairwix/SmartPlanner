@@ -1,4 +1,3 @@
-// Dtos/GoalsBulk/BulkUpdateGoalsRequest.cs
 namespace SmartPlanner.API.Dtos.GoalsBulk;
 
 public class BulkUpdateGoalsRequest

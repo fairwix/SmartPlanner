@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Goals/Commands/CreateGoalCommand.cs
 using MediatR;
 using SmartPlanner.Application.Goals.Dtos;
 

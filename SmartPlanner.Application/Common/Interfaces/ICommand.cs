@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Common/Interfaces/ICommand.cs
 using MediatR;
 
 namespace SmartPlanner.Application.Common.Interfaces;

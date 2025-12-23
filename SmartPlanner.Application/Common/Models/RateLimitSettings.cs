@@ -7,7 +7,6 @@ namespace SmartPlanner.Application.Common.Models
         public int WindowSeconds { get; set; } = 60;
         public int QueueLimit { get; set; } = 2;
 
-        // JWT-specific rate limits
         public RateLimitRule LoginRateLimit { get; set; } = new RateLimitRule
         {
             Endpoint = "POST:/api/auth/login",

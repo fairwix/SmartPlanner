@@ -17,7 +17,6 @@ namespace SmartPlanner.API.Middleware
 
         public async Task InvokeAsync(HttpContext context, IAuditService auditService)
         {
-            // Пропускаем preflight запросы и health checks
             if (context.Request.Method == "OPTIONS" ||
                 context.Request.Path.StartsWithSegments("/health") ||
                 context.Request.Path.StartsWithSegments("/swagger"))
@@ -34,7 +33,6 @@ namespace SmartPlanner.API.Middleware
             {
                 await _next(context);
 
-                // Логируем успешные/неуспешные запросы
                 if (context.Response.StatusCode >= 400)
                 {
                     await LogFailedRequestAsync(context, auditService);

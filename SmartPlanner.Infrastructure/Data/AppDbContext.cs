@@ -38,9 +38,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // ========== ТОЛЬКО ДЛЯ НАВИГАЦИИ EF Core ==========
-
-        // 1. Составные ключи (ОБЯЗАТЕЛЬНО)
         modelBuilder.Entity<UserFriend>()
             .HasKey(uf => new { uf.UserId, uf.FriendId });
 
@@ -53,29 +50,28 @@ public class AppDbContext : DbContext, IApplicationDbContext
         modelBuilder.Entity<UserRole>()
             .HasKey(ur => new { ur.UserId, ur.RoleId });
 
-        // 2. Навигационные свойства
-        // User -> Goals (One-to-Many)
+
         modelBuilder.Entity<User>()
             .HasMany(u => u.Goals)
             .WithOne(g => g.User)
             .HasForeignKey(g => g.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Goal -> GoalProgress (One-to-Many)
+
         modelBuilder.Entity<Goal>()
             .HasMany(g => g.ProgressHistory)
             .WithOne(gp => gp.Goal)
             .HasForeignKey(gp => gp.GoalId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Challenge -> Creator (Many-to-One)
+
         modelBuilder.Entity<Challenge>()
             .HasOne(c => c.Creator)
             .WithMany(u => u.CreatedChallenges)
             .HasForeignKey(c => c.CreatedBy)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // User -> Friends (Many-to-Many через UserFriend)
+
         modelBuilder.Entity<UserFriend>()
             .HasOne(uf => uf.User)
             .WithMany(u => u.Friends)
@@ -88,7 +84,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             .HasForeignKey(uf => uf.FriendId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // User -> Achievements (Many-to-Many через UserAchievement)
+
         modelBuilder.Entity<UserAchievement>()
             .HasOne(ua => ua.User)
             .WithMany(u => u.Achievements)
@@ -101,7 +97,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             .HasForeignKey(ua => ua.AchievementId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Challenge -> Participants (Many-to-Many через ChallengeParticipant)
+
         modelBuilder.Entity<ChallengeParticipant>()
             .HasOne(cp => cp.Challenge)
             .WithMany(c => c.Participants)
@@ -114,7 +110,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             .HasForeignKey(cp => cp.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // User -> Roles (Many-to-Many через UserRole)
+
         modelBuilder.Entity<UserRole>()
             .HasOne(ur => ur.User)
             .WithMany()
@@ -127,32 +123,29 @@ public class AppDbContext : DbContext, IApplicationDbContext
             .HasForeignKey(ur => ur.RoleId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // ========== ИСПРАВЛЕННАЯ КОНФИГУРАЦИЯ ДЛЯ INTERESTS ==========
 
-        // Вариант А: User -> UserInterests (One-to-Many) - ТОЛЬКО ЭТО
         modelBuilder.Entity<User>()
             .HasMany(u => u.UserInterests)
             .WithOne(ui => ui.User)
             .HasForeignKey(ui => ui.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // UserInterest -> Interest (Many-to-One)
+
         modelBuilder.Entity<UserInterest>()
             .HasOne(ui => ui.Interest)
             .WithMany(i => i.UserInterests)
             .HasForeignKey(ui => ui.InterestId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Уникальный индекс для Interest.Name
         modelBuilder.Entity<Interest>()
             .HasIndex(i => i.Name)
             .IsUnique();
 
-        // Уникальный индекс для UserInterest (UserId, InterestId)
+
         modelBuilder.Entity<UserInterest>()
             .HasIndex(ui => new { ui.UserId, ui.InterestId })
             .IsUnique();
-        // UserSession конфигурация
+
         modelBuilder.Entity<UserSession>(entity =>
         {
             entity.HasKey(us => us.Id);
@@ -167,14 +160,14 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasIndex(us => us.RefreshTokenHash);
         });
 
-        // Permission конфигурация
+
         modelBuilder.Entity<Permission>(entity =>
         {
             entity.HasKey(p => p.Id);
             entity.HasIndex(p => p.Name);
         });
 
-        // Role конфигурация
+
         modelBuilder.Entity<Role>(entity =>
         {
             entity.HasKey(r => r.Id);
@@ -183,7 +176,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasIndex(r => r.NormalizedName).IsUnique();
         });
 
-        // UserRole конфигурация (составной ключ)
         modelBuilder.Entity<UserRole>(entity =>
         {
             entity.HasKey(ur => new { ur.UserId, ur.RoleId });
@@ -200,7 +192,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
         });
 
 
-        // RolePermission конфигурация (составной ключ)
         modelBuilder.Entity<RolePermission>(entity =>
         {
             entity.HasKey(rp => new { rp.RoleId, rp.PermissionId });
@@ -216,7 +207,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // UserClaim конфигурация
         modelBuilder.Entity<UserClaim>(entity =>
         {
             entity.HasKey(uc => uc.Id);
@@ -261,7 +251,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasIndex(ect => new { ect.UserId, ect.IsUsed });
         });
 
-        // Конфигурация SecurityAuditLog
         modelBuilder.Entity<SecurityAuditLog>(entity =>
         {
             entity.HasKey(sal => sal.Id);
@@ -270,7 +259,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .HasConversion<int>();
 
             entity.Property(sal => sal.Details)
-                .HasColumnType("jsonb"); // PostgreSQL JSONB для эффективного поиска
+                .HasColumnType("jsonb");
 
             entity.HasIndex(sal => sal.EventType);
             entity.HasIndex(sal => sal.UserId);
@@ -278,7 +267,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasIndex(sal => sal.IpAddress);
             entity.HasIndex(sal => sal.Success);
 
-            // Необязательная связь с User
             entity.HasOne(sal => sal.User)
                 .WithMany()
                 .HasForeignKey(sal => sal.UserId)
@@ -311,7 +299,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        // Автоматическое обновление UpdatedAt
         var entries = ChangeTracker
             .Entries()
             .Where(e => e.Entity is BaseEntity &&

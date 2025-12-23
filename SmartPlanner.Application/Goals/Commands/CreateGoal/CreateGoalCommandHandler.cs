@@ -30,7 +30,6 @@ namespace SmartPlanner.Application.Goals.Commands
         {
             _logger.LogInformation("Creating goal for user {UserId}", request.UserId);
 
-            // Проверяем пользователя
             var userExists = await _context.Users
                 .AnyAsync(u => u.Id == request.UserId, cancellationToken);
 

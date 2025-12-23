@@ -14,7 +14,6 @@ public class MappingProfile : Profile
 {
     public MappingProfile()
     {
-        // ========== Goals Mapping ==========
         CreateMap<Goal, GoalDto>()
             .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category.ToString()))
             .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => src.Priority.ToString()))
@@ -25,12 +24,10 @@ public class MappingProfile : Profile
         CreateMap<CreateGoalDto, CreateGoalCommand>();
         CreateMap<UpdateGoalDto, UpdateGoalCommand>();
 
-        // ========== Users Mapping ==========
         CreateMap<User, UserDto>();
         CreateMap<CreateUserDto, CreateUserCommand>();
         CreateMap<UpdateUserDto, UpdateUserCommand>();
 
-        // ========== Achievements Mapping ==========
         CreateMap<Achievement, AchievementDto>()
             .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.Type.ToString()));
 
@@ -39,7 +36,6 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.AchievementDescription, opt => opt.MapFrom(src => src.Achievement.Description))
             .ForMember(dest => dest.BadgeImage, opt => opt.MapFrom(src => src.Achievement.BadgeImage));
 
-        // ========== Challenges Mapping ==========
         CreateMap<Challenge, ChallengeDto>()
             .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.Type.ToString()))
             .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive()))
@@ -49,7 +45,6 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.User.Username))
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
 
-        // ========== Commands Mapping ==========
         CreateMap<CreateGoalCommand, Goal>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(_ => Guid.NewGuid()))
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))

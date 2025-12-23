@@ -17,7 +17,6 @@ public class GetUserFriendsQueryHandler : IRequestHandler<GetUserFriendsQuery, L
 
     public async Task<List<UserDto>> Handle(GetUserFriendsQuery request, CancellationToken cancellationToken)
     {
-        // Загружаем друзей с их интересами через UserFriends
         var friendIds = await _context.UserFriends
             .AsNoTracking()
             .Where(uf => uf.UserId == request.UserId && uf.Status == FriendStatus.Accepted)
@@ -27,10 +26,9 @@ public class GetUserFriendsQueryHandler : IRequestHandler<GetUserFriendsQuery, L
         if (!friendIds.Any())
             return new List<UserDto>();
 
-        // Загружаем полную информацию о друзьях с их интересами
         var friends = await _context.Users
-            .Include(u => u.UserInterests)          // Включаем UserInterests
-            .ThenInclude(ui => ui.Interest)         // И связанные Interest
+            .Include(u => u.UserInterests)
+            .ThenInclude(ui => ui.Interest)
             .Where(u => friendIds.Contains(u.Id))
             .AsNoTracking()
             .ToListAsync(cancellationToken);
@@ -38,13 +36,12 @@ public class GetUserFriendsQueryHandler : IRequestHandler<GetUserFriendsQuery, L
         return friends.Select(MapToDto).ToList();
     }
 
-    // Альтернативный вариант с одним запросом (JOIN):
     public async Task<List<UserDto>> Handle_Alternative(GetUserFriendsQuery request, CancellationToken cancellationToken)
     {
         var friends = await _context.UserFriends
-            .Include(uf => uf.Friend)               // Включаем Friend
-            .ThenInclude(f => f.UserInterests)      // И его UserInterests
-            .ThenInclude(ui => ui.Interest)         // И связанные Interest
+            .Include(uf => uf.Friend)
+            .ThenInclude(f => f.UserInterests)
+            .ThenInclude(ui => ui.Interest)
             .Where(uf => uf.UserId == request.UserId && uf.Status == FriendStatus.Accepted)
             .Select(uf => uf.Friend)
             .AsNoTracking()
@@ -55,7 +52,6 @@ public class GetUserFriendsQueryHandler : IRequestHandler<GetUserFriendsQuery, L
 
     private UserDto MapToDto(User user)
     {
-        // Получаем имена интересов из UserInterests
         var interests = user.UserInterests
             .Where(ui => ui.Interest != null)
             .Select(ui => ui.Interest.Name)

@@ -1,5 +1,3 @@
-// SmartPlanner.Application/Goals/Dtos/GoalDto.cs
-
 using SmartPlanner.Application.Common.Dtos;
 
 namespace SmartPlanner.Application.Goals.Dtos;

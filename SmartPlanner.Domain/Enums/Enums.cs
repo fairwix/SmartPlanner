@@ -33,6 +33,7 @@ namespace SmartPlanner.Domain.Entities;
     {
         Pending,
         Accepted,
+        Rejected,
         Blocked
     }
 

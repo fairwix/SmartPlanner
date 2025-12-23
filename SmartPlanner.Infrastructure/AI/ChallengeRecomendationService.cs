@@ -6,7 +6,7 @@ namespace SmartPlanner.Infrastructure.AI;
 
 public class ChallengeRecommendationService
 {
-    private readonly IMediator _mediator; // ← Используем IMediator
+    private readonly IMediator _mediator;
 
     public ChallengeRecommendationService(IMediator mediator)
     {
@@ -19,6 +19,6 @@ public class ChallengeRecommendationService
         CancellationToken cancellationToken = default)
     {
         var query = new GeneratePersonalChallengesQuery { UserId = userId, Count = count };
-        return await _mediator.Send(query, cancellationToken); // ← Отправляем через MediatR
+        return await _mediator.Send(query, cancellationToken);
     }
 }

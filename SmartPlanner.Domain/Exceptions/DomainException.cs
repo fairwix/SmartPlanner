@@ -1,4 +1,3 @@
-// SmartPlanner.Domain/Exceptions/DomainException.cs
 namespace SmartPlanner.Domain.Exceptions;
 
     public class DomainException : Exception

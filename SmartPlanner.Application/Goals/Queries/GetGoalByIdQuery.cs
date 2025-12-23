@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Goals/Queries/GetGoalByIdQuery.cs
 using MediatR;
 using SmartPlanner.Application.Goals.Dtos;
 

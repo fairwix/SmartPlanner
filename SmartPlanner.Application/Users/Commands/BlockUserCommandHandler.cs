@@ -43,16 +43,13 @@ public class BlockUserCommandHandler : IRequestHandler<BlockUserCommand, Unit>
             return Unit.Value;
         }
 
-        // Блокируем
         user.IsActive = false;
         user.UpdatedAt = DateTime.UtcNow;
 
-        // 🔒 Отзываем все сессии (как при смене пароля)
         await _tokenService.RevokeUserSessionsAsync(user.Id, cancellationToken);
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        // 📝 Логируем событие безопасности
         await _auditService.LogSecurityEventAsync(
             SecurityEventType.UserBlocked,
             user.Id,

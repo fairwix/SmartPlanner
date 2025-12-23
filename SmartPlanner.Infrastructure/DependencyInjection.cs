@@ -20,11 +20,9 @@ namespace SmartPlanner.Infrastructure
             this IServiceCollection services,
             IConfiguration configuration)
         {
-            // Настройка DbContext с PostgreSQL
             var connectionString = configuration.GetConnectionString("PostgreSQL")
                                    ?? throw new InvalidOperationException("Connection string 'PostgreSQL' not found.");
 
-            // DbContext БЕЗ EF Core миграций
             services.AddDbContext<AppDbContext>(options =>
                 options.UseNpgsql(connectionString,
                     npgsqlOptions =>
@@ -35,11 +33,8 @@ namespace SmartPlanner.Infrastructure
                             errorCodesToAdd: null);
                     }));
 
-            // Регистрация DbContext как IApplicationDbContext
             services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
-            // КОНФИГУРАЦИЯ НАСТРОЕК - УПРОЩЕННЫЙ ВАРИАНТ
-            // Просто передаем IConfigurationSection - это работает в ASP.NET Core
 
             services.Configure<AppSettings>(configuration.GetSection("AppSettings"));
             services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
@@ -47,7 +42,6 @@ namespace SmartPlanner.Infrastructure
             services.Configure<CorsSettings>(configuration.GetSection("Cors"));
             services.Configure<RateLimitSettings>(configuration.GetSection("RateLimiting"));
 
-            // ✅ Регистрируем специализированные сервисы
             services.AddScoped<IAchievementCheckerService, AchievementCheckerService>();
             services.AddScoped<IConfirmationTokenService, ConfirmationTokenService>();
             services.AddScoped<IEmailService, EmailService>();
@@ -55,22 +49,20 @@ namespace SmartPlanner.Infrastructure
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IAuditService, AuditService>();
 
-            // Фоновые сервисы
+
             services.AddHostedService<AuditLogCleanupService>();
             services.AddHostedService<EmailTokenCleanupService>();
 
-            // IWebHostEnvironment (для EmailService)
             // services.AddSingleton<IHostEnvironment>(sp =>
             //     sp.GetRequiredService<IHostEnvironment>());
 
-            // ========== FLUENTMIGRATOR ==========
-            /*services.AddFluentMigratorCore()
+            services.AddFluentMigratorCore()
                 .ConfigureRunner(rb => rb
                     .AddPostgres()
                     .WithGlobalConnectionString(connectionString)
                     .ScanIn(typeof(DependencyInjection).Assembly).For.Migrations()
                     .ScanIn(typeof(DependencyInjection).Assembly).For.EmbeddedResources())
-                .AddLogging(lb => lb.AddFluentMigratorConsole());*/
+                .AddLogging(lb => lb.AddFluentMigratorConsole());
 
             return services;
         }

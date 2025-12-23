@@ -1,4 +1,3 @@
-// SmartPlanner.API/Middleware/CorsLoggingMiddleware.cs
 using Microsoft.Extensions.Logging;
 
 namespace SmartPlanner.API.Middleware;
@@ -20,7 +19,6 @@ public class CorsLoggingMiddleware
         var method = context.Request.Method;
         var path = context.Request.Path;
 
-        // Логируем только CORS запросы с Origin header
         if (!string.IsNullOrEmpty(origin))
         {
             var isPreflight = method == "OPTIONS" &&

@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Users/Commands/AddFriendCommandHandler.cs
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SmartPlanner.Application.Common.Interfaces;
@@ -17,7 +16,6 @@ namespace SmartPlanner.Application.Users.Commands;
 
         public async Task<bool> Handle(AddFriendCommand request, CancellationToken cancellationToken)
         {
-            // Check if both users exist
             var user = await _context.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
@@ -29,7 +27,6 @@ namespace SmartPlanner.Application.Users.Commands;
             if (user == null || friend == null)
                 return false;
 
-            // Check if not already friends
             var alreadyFriends = await _context.UserFriends
                 .AsNoTracking()
                 .AnyAsync(uf => uf.UserId == request.UserId && uf.FriendId == request.FriendId, cancellationToken);

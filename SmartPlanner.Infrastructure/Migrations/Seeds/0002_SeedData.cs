@@ -6,7 +6,6 @@ public class SeedData : Migration
 {
     public override void Up()
     {
-        // Seed default roles
         Insert.IntoTable("Roles")
             .Row(new
             {
@@ -23,15 +22,13 @@ public class SeedData : Migration
                 CreatedAt = DateTime.UtcNow
             });
 
-        // Seed test users
         Insert.IntoTable("Users")
             .Row(new
             {
                 Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
                 Username = "admin",
                 Email = "admin@smartplanner.com",
-                PasswordHash = "$2a$11$UzLiwMAWfVegWXiOD.XL4OSXKGzOaDFik8lsHgH9DGoeIEjlnIPwm", // hashed "admin123"
-                Interests = "[\"programming\", \"sports\", \"reading\"]",
+                PasswordHash = "$2a$11$UzLiwMAWfVegWXiOD.XL4OSXKGzOaDFik8lsHgH9DGoeIEjlnIPwm",
                 Balance = 1000,
                 StreakCount = 7,
                 LastLogin = DateTime.UtcNow,
@@ -44,7 +41,6 @@ public class SeedData : Migration
                 Username = "testuser",
                 Email = "user@example.com",
                 PasswordHash = "$2a$11$UzLiwMAWfVegWXiOD.XL4OSXKGzOaDFik8lsHgH9DGoeIEjlnIPwm", // hashed "user123"
-                Interests = "[\"music\", \"travel\", \"gaming\"]",
                 Balance = 500,
                 StreakCount = 3,
                 LastLogin = DateTime.UtcNow,
@@ -57,7 +53,6 @@ public class SeedData : Migration
                 Username = "john_doe",
                 Email = "john.doe@example.com",
                 PasswordHash = "$2a$11$UzLiwMAWfVegWXiOD.XL4OSXKGzOaDFik8lsHgH9DGoeIEjlnIPwm",
-                Interests = "[\"fitness\", \"cooking\", \"photography\"]",
                 Balance = 250,
                 StreakCount = 14,
                 LastLogin = DateTime.UtcNow,
@@ -65,28 +60,28 @@ public class SeedData : Migration
                 UpdatedAt = DateTime.UtcNow
             });
 
-        // Assign roles to users
+
         Insert.IntoTable("UserRoles")
             .Row(new
             {
                 UserId = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-                RoleId = 1, // Admin
+                RoleId = 1,
                 CreatedAt = DateTime.UtcNow
             })
             .Row(new
             {
                 UserId = Guid.Parse("00000000-0000-0000-0000-000000000002"),
-                RoleId = 2, // User
+                RoleId = 2,
                 CreatedAt = DateTime.UtcNow
             })
             .Row(new
             {
                 UserId = Guid.Parse("00000000-0000-0000-0000-000000000003"),
-                RoleId = 2, // User
+                RoleId = 2,
                 CreatedAt = DateTime.UtcNow
             });
 
-        // Seed achievements
+
         Insert.IntoTable("Achievements")
             .Row(new
             {
@@ -95,7 +90,7 @@ public class SeedData : Migration
                 Description = "Complete your first goal",
                 BadgeImage = "/badges/first-steps.png",
                 RewardAmount = 50,
-                Type = 1, // GoalsCompleted
+                Type = 1,
                 Condition = "goals_completed:1",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -107,7 +102,7 @@ public class SeedData : Migration
                 Description = "Maintain a 7-day streak",
                 BadgeImage = "/badges/week-streak.png",
                 RewardAmount = 100,
-                Type = 0, // Streak
+                Type = 0,
                 Condition = "streak:7",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -119,7 +114,7 @@ public class SeedData : Migration
                 Description = "Make 5 friends",
                 BadgeImage = "/badges/social-butterfly.png",
                 RewardAmount = 150,
-                Type = 2, // Friends
+                Type = 2,
                 Condition = "friends:5",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -131,13 +126,13 @@ public class SeedData : Migration
                 Description = "Complete 10 goals",
                 BadgeImage = "/badges/goal-master.png",
                 RewardAmount = 200,
-                Type = 1, // GoalsCompleted
+                Type = 1,
                 Condition = "goals_completed:10",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             });
 
-        // Seed some goals for test users
+
         Insert.IntoTable("Goals")
             .Row(new
             {
@@ -145,8 +140,8 @@ public class SeedData : Migration
                 Title = "Learn ASP.NET Core",
                 Description = "Complete ASP.NET Core Web API course",
                 UserId = Guid.Parse("00000000-0000-0000-0000-000000000002"),
-                Category = 1, // Education
-                Priority = 2, // High
+                Category = 1,
+                Priority = 2,
                 DueDate = DateTime.UtcNow.AddDays(30),
                 TargetValue = 100,
                 CurrentValue = 30,
@@ -162,8 +157,8 @@ public class SeedData : Migration
                 Title = "30-Day Fitness Challenge",
                 Description = "Exercise daily for 30 days",
                 UserId = Guid.Parse("00000000-0000-0000-0000-000000000003"),
-                Category = 0, // Sports
-                Priority = 1, // Medium
+                Category = 0,
+                Priority = 1,
                 DueDate = DateTime.UtcNow.AddDays(30),
                 TargetValue = 30,
                 CurrentValue = 15,
@@ -174,14 +169,13 @@ public class SeedData : Migration
                 UpdatedAt = DateTime.UtcNow
             });
 
-        // Seed challenges
         Insert.IntoTable("Challenges")
             .Row(new
             {
                 Id = Guid.Parse("30000000-0000-0000-0000-000000000001"),
                 Title = "Spring Fitness Marathon",
                 Description = "Complete 10,000 steps daily for 30 days",
-                Type = 0, // StepCount
+                Type = 0,
                 StartDate = DateTime.UtcNow.AddDays(-5),
                 EndDate = DateTime.UtcNow.AddDays(25),
                 IsGroupChallenge = true,
@@ -194,11 +188,11 @@ public class SeedData : Migration
             .Row(new
             {
                 Id = Guid.Parse("30000000-0000-0000-0000-000000000002"),
-                Title = "Reading Challenge 2025", // Изменили год
+                Title = "Reading Challenge 2025",
                 Description = "Read 12 books in 2025",
-                Type = 1, // Reading
-                StartDate = new DateTime(2025, 1, 1), // Начало года
-                EndDate = new DateTime(2025, 12, 31), // Конец года
+                Type = 1,
+                StartDate = new DateTime(2025, 1, 1),
+                EndDate = new DateTime(2025, 12, 31),
                 IsGroupChallenge = false,
                 TargetValue = 12,
                 CurrentValue = 3,
@@ -207,13 +201,12 @@ public class SeedData : Migration
                 UpdatedAt = DateTime.UtcNow
             });
 
-        // Seed challenge participants
         Insert.IntoTable("ChallengeParticipants")
             .Row(new
             {
                 ChallengeId = Guid.Parse("30000000-0000-0000-0000-000000000001"),
                 UserId = Guid.Parse("00000000-0000-0000-0000-000000000002"),
-                Status = 1, // Joined
+                Status = 1,
                 JoinedAt = DateTime.UtcNow,
                 PersonalContribution = 25000,
                 CreatedAt = DateTime.UtcNow
@@ -222,30 +215,28 @@ public class SeedData : Migration
             {
                 ChallengeId = Guid.Parse("30000000-0000-0000-0000-000000000001"),
                 UserId = Guid.Parse("00000000-0000-0000-0000-000000000003"),
-                Status = 1, // Joined
+                Status = 1,
                 JoinedAt = DateTime.UtcNow,
                 PersonalContribution = 25000,
                 CreatedAt = DateTime.UtcNow
             });
 
-        // Seed user friendships
         Insert.IntoTable("UserFriends")
             .Row(new
             {
                 UserId = Guid.Parse("00000000-0000-0000-0000-000000000002"),
                 FriendId = Guid.Parse("00000000-0000-0000-0000-000000000003"),
-                Status = 1, // Accepted
+                Status = 1,
                 CreatedAt = DateTime.UtcNow
             })
             .Row(new
             {
                 UserId = Guid.Parse("00000000-0000-0000-0000-000000000003"),
                 FriendId = Guid.Parse("00000000-0000-0000-0000-000000000002"),
-                Status = 1, // Accepted
+                Status = 1,
                 CreatedAt = DateTime.UtcNow
             });
 
-        // Seed user achievements
         Insert.IntoTable("UserAchievements")
             .Row(new
             {
@@ -265,7 +256,6 @@ public class SeedData : Migration
 
     public override void Down()
     {
-        // Delete seed data in reverse order
         Delete.FromTable("UserAchievements").AllRows();
         Delete.FromTable("UserFriends").AllRows();
         Delete.FromTable("ChallengeParticipants").AllRows();

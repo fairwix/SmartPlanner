@@ -71,22 +71,26 @@ namespace SmartPlanner.Tests.Domain.Entities
             var user = new User
             {
                 Username = "testuser",
-                Email = "test@example.com"
+                Email = "test@example.com",
+                Goals = new List<Goal>()
             };
 
-            var goals = Enumerable.Range(1, 7).Select(i => new Goal
+            // Добавляем завершенные цели пользователю
+            for (int i = 0; i < 7; i++)
             {
-                Title = $"Goal {i}",
-                UserId = user.Id,
-                IsCompleted = true
-            }).ToList();
+                user.Goals.Add(new Goal
+                {
+                    Title = $"Goal {i}",
+                    UserId = user.Id,
+                    IsCompleted = true
+                });
+            }
 
             // Act
             var canBeAwarded = achievement.CanBeAwarded(user);
 
             // Assert
-            // Note: This test requires goals to be associated with user
-            // In real scenario, user.Goals would contain completed goals
+            Assert.True(canBeAwarded);
         }
 
         [Fact]

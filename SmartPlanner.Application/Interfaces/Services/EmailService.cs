@@ -1,4 +1,3 @@
-// Infrastructure/Services/EmailService.cs
 using System.Net;
 using System.Net.Mail;
 using Microsoft.Extensions.Configuration;
@@ -52,7 +51,6 @@ namespace SmartPlanner.Application.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send email to {To}", to);
-                // В production можно добавить в очередь для повторной отправки
                 throw;
             }
         }
@@ -84,7 +82,6 @@ namespace SmartPlanner.Application.Services
 
             mailMessage.To.Add(to);
 
-            // Добавляем заголовки для трекинга (как в книге, глава 15)
             mailMessage.Headers.Add("X-SmartPlanner-Email-Type", "Transactional");
             mailMessage.Headers.Add("X-SmartPlanner-App-Version", GetType().Assembly.GetName().Version?.ToString() ?? "1.0");
 
@@ -286,7 +283,6 @@ namespace SmartPlanner.Application.Services
             await SendEmailAsync(email, subject, body);
         }
 
-        // Дополнительные методы как в книге, глава 17
         public async Task SendAccountLockedNotificationAsync(string email, string userName, DateTime lockoutEnd)
         {
             var subject = "⚠️ Account Locked - Smart Planner";

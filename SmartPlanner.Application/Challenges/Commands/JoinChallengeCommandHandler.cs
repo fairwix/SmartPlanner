@@ -44,14 +44,12 @@ namespace SmartPlanner.Application.Challenges.Commands
             if (challenge == null)
                 throw new ArgumentException($"Challenge with ID {request.ChallengeId} not found");
 
-            // Проверяем, не участвует ли уже
             var alreadyParticipating = challenge.Participants
                 .Any(p => p.UserId == request.UserId);
 
             if (alreadyParticipating)
                 throw new InvalidOperationException("User already participating in challenge");
 
-            // Добавляем участника
             var participant = new ChallengeParticipant
             {
                 ChallengeId = request.ChallengeId,

@@ -9,11 +9,9 @@ namespace SmartPlanner.Application.Auth.Interfaces
 {
     public interface ITokenService
     {
-        // Генерация токенов
         Task<string> GenerateAccessTokenAsync(User user, CancellationToken cancellationToken = default);
         (string RefreshToken, string RefreshTokenHash) GenerateRefreshToken();
 
-        // Управление сессиями
         Task<UserSession> CreateUserSessionAsync(
             Guid userId,
             string refreshTokenHash,
@@ -26,11 +24,9 @@ namespace SmartPlanner.Application.Auth.Interfaces
         Task RevokeUserSessionsAsync(Guid userId, CancellationToken cancellationToken = default);
         Task RevokeSessionAsync(string refreshToken, CancellationToken cancellationToken = default);
 
-        // Получение сессий
         Task<UserSession?> GetSessionByRefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default);
         Task<List<UserSession>> GetUserSessionsAsync(Guid userId, CancellationToken cancellationToken = default);
 
-        // Валидация и работа с access token
         bool ValidateAccessToken(string token, out ClaimsPrincipal? principal);
         ClaimsPrincipal? GetPrincipalFromExpiredToken(string token);
     }

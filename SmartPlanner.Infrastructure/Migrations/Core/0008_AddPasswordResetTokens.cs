@@ -1,4 +1,3 @@
-// SmartPlanner.Infrastructure/Migrations/0008_AddPasswordResetTokens.cs
 using FluentMigrator;
 
 [Migration(0008)]
@@ -6,7 +5,6 @@ public class AddPasswordResetTokens : Migration
 {
     public override void Up()
     {
-        // Таблица PasswordResetTokens
         Create.Table("PasswordResetTokens")
             .WithColumn("Id").AsGuid().PrimaryKey().NotNullable()
             .WithColumn("UserId").AsGuid().NotNullable()
@@ -17,7 +15,6 @@ public class AddPasswordResetTokens : Migration
             .WithColumn("CreatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime)
             .WithColumn("UpdatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
 
-        // Таблица EmailConfirmationTokens
         Create.Table("EmailConfirmationTokens")
             .WithColumn("Id").AsGuid().PrimaryKey().NotNullable()
             .WithColumn("UserId").AsGuid().NotNullable()
@@ -28,7 +25,6 @@ public class AddPasswordResetTokens : Migration
             .WithColumn("CreatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime)
             .WithColumn("UpdatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
 
-        // Foreign Keys
         Create.ForeignKey("FK_PasswordResetTokens_Users")
             .FromTable("PasswordResetTokens").ForeignColumn("UserId")
             .ToTable("Users").PrimaryColumn("Id")
@@ -39,7 +35,6 @@ public class AddPasswordResetTokens : Migration
             .ToTable("Users").PrimaryColumn("Id")
             .OnDelete(System.Data.Rule.Cascade);
 
-        // Индексы
         Create.Index("IX_PasswordResetTokens_TokenHash")
             .OnTable("PasswordResetTokens")
             .OnColumn("TokenHash")
@@ -58,7 +53,6 @@ public class AddPasswordResetTokens : Migration
             .OnTable("EmailConfirmationTokens")
             .OnColumn("ExpiresAt");
 
-        // Индексы для запросов по пользователю
         Create.Index("IX_PasswordResetTokens_UserId_IsUsed")
             .OnTable("PasswordResetTokens")
             .OnColumn("UserId")
@@ -73,7 +67,6 @@ public class AddPasswordResetTokens : Migration
             .OnColumn("IsUsed")
             .Ascending();
 
-        // ✅ ДОБАВЛЯЕМ CONSTRAINTS ДЛЯ БИЗНЕС-ЛОГИКИ
         Execute.Sql(@"
             -- PasswordResetTokens constraints
             ALTER TABLE ""PasswordResetTokens""
@@ -108,7 +101,6 @@ public class AddPasswordResetTokens : Migration
 
     public override void Down()
     {
-        // Удаляем constraints
         Execute.Sql(@"
             ALTER TABLE ""PasswordResetTokens""
             DROP CONSTRAINT IF EXISTS ""CK_PasswordResetTokens_ExpiresAt_Future"";
@@ -129,7 +121,6 @@ public class AddPasswordResetTokens : Migration
             DROP CONSTRAINT IF EXISTS ""CK_EmailConfirmationTokens_UsedConsistency"";
         ");
 
-        // Удаляем индексы
         Delete.Index("IX_EmailConfirmationTokens_UserId_IsUsed").OnTable("EmailConfirmationTokens");
         Delete.Index("IX_PasswordResetTokens_UserId_IsUsed").OnTable("PasswordResetTokens");
         Delete.Index("IX_EmailConfirmationTokens_ExpiresAt").OnTable("EmailConfirmationTokens");
@@ -137,11 +128,9 @@ public class AddPasswordResetTokens : Migration
         Delete.Index("IX_EmailConfirmationTokens_TokenHash").OnTable("EmailConfirmationTokens");
         Delete.Index("IX_PasswordResetTokens_TokenHash").OnTable("PasswordResetTokens");
 
-        // Удаляем foreign keys
         Delete.ForeignKey("FK_EmailConfirmationTokens_Users").OnTable("EmailConfirmationTokens");
         Delete.ForeignKey("FK_PasswordResetTokens_Users").OnTable("PasswordResetTokens");
 
-        // Удаляем таблицы
         Delete.Table("EmailConfirmationTokens");
         Delete.Table("PasswordResetTokens");
     }

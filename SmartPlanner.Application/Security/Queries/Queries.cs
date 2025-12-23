@@ -1,4 +1,3 @@
-// Application/Security/Queries/
 using MediatR;
 using SmartPlanner.Application.Common.Dtos;
 using SmartPlanner.Application.Security.Dtos;

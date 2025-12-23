@@ -13,7 +13,7 @@ public class AchievementCheckerService : IAchievementCheckerService
         IApplicationDbContext context,
         CancellationToken cancellationToken)
     {
-        // ✅ Оптимизированный запрос: собираем всю статистику за ОДИН запрос
+
         var userStats = await context.Users
             .Where(u => u.Id == userId)
             .Select(u => new
@@ -35,11 +35,9 @@ public class AchievementCheckerService : IAchievementCheckerService
 
         foreach (var achievement in allAchievements)
         {
-            // Проверяем, не получено ли уже
             if (userStats.UserAchievementIds.Contains(achievement.Id))
                 continue;
 
-            // Проверяем условие
             if (MeetsAchievementCondition(achievement, userStats.User,
                 userStats.CompletedGoalsCount, userStats.FriendsCount))
             {

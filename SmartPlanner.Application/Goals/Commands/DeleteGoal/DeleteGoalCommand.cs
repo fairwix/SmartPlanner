@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Goals/Commands/DeleteGoalCommand.cs
 using MediatR;
 
 namespace SmartPlanner.Application.Goals.Commands;

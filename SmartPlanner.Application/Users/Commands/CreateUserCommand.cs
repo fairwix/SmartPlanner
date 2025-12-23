@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Users/Commands/CreateUserCommand.cs
 using MediatR;
 using SmartPlanner.Application.Users.Dtos;
 

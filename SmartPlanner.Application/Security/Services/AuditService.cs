@@ -27,7 +27,7 @@ namespace SmartPlanner.Application.Security.Services
     {
         private readonly IApplicationDbContext _context;
         private readonly ILogger<AuditService> _logger;
-        private readonly IServiceProvider _serviceProvider; // Для фоновых задач
+        private readonly IServiceProvider _serviceProvider;
 
         public AuditService(
             IApplicationDbContext context,
@@ -51,7 +51,6 @@ namespace SmartPlanner.Application.Security.Services
         {
             try
             {
-                // Создаем запись лога
                 var auditLog = new SecurityAuditLog
                 {
                     EventType = eventType,
@@ -64,8 +63,6 @@ namespace SmartPlanner.Application.Security.Services
                     Details = details != null ? JsonSerializer.Serialize(details) : null
                 };
 
-                // Асинхронное сохранение (не блокируем основной поток)
-                // Используем фоновую задачу как в книге, глава 17
                 _ = Task.Run(async () =>
                 {
                     try
@@ -81,13 +78,13 @@ namespace SmartPlanner.Application.Security.Services
                     }
                     catch (Exception ex)
                     {
-                        // Не прерываем основной поток из-за ошибки логирования
+
                         _logger.LogError(ex, "Failed to save security audit log for event {EventType}",
                             eventType);
                     }
                 }, cancellationToken);
 
-                // Дополнительная логика для подозрительной активности
+
                 if (!success && eventType == SecurityEventType.FailedLogin)
                 {
                     await CheckForSuspiciousActivityAsync(ipAddress, userId, cancellationToken);
@@ -96,7 +93,7 @@ namespace SmartPlanner.Application.Security.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error logging security event {EventType}", eventType);
-                // НЕ пробрасываем исключение - логирование не должно ломать основной поток
+
             }
         }
 
@@ -114,7 +111,6 @@ namespace SmartPlanner.Application.Security.Services
         {
             var fiveMinutesAgo = DateTime.UtcNow.AddMinutes(-5);
 
-            // Множественные неудачные попытки входа
             var failedLoginCount = await GetFailedLoginCountAsync(ipAddress, fiveMinutesAgo, cancellationToken);
 
             if (failedLoginCount >= 5)
@@ -130,7 +126,6 @@ namespace SmartPlanner.Application.Security.Services
                 return true;
             }
 
-            // Дополнительные проверки можно добавить здесь
             return false;
         }
 

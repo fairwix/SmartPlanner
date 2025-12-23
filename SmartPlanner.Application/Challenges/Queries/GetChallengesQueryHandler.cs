@@ -28,7 +28,6 @@ namespace SmartPlanner.Application.Challenges.Queries
                 .Include(c => c.Participants)
                 .AsNoTracking();
 
-            // Фильтры
             if (request.ActiveOnly)
             {
                 var now = DateTime.UtcNow;

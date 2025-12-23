@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Goals/Commands/BulkGoalsValidators.cs
 using FluentValidation;
 using SmartPlanner.Application.Goals.Commands;
 

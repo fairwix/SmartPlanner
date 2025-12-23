@@ -11,7 +11,6 @@ public class Achievement : BaseEntity
         public AchievementType Type { get; init; }
         public string Condition { get; init; } = string.Empty;
 
-        // Navigation properties
         public virtual ICollection<UserAchievement> UserAchievements { get; init; } = new List<UserAchievement>();
 
         public bool CanBeAwarded(User user)

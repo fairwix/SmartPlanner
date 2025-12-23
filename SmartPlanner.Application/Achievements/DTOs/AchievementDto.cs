@@ -1,5 +1,3 @@
-// SmartPlanner.Application/Achievements/Dtos/AchievementDto.cs
-
 using SmartPlanner.Application.Common.Dtos;
 
 namespace SmartPlanner.Application.Achievements.Dtos;

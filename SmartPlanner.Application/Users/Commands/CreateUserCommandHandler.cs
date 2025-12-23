@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Users/Commands/CreateUserCommandHandler.cs
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SmartPlanner.Domain.Entities;
@@ -18,7 +17,6 @@ namespace SmartPlanner.Application.Users.Commands;
 
         public async Task<UserDto> Handle(CreateUserCommand request, CancellationToken cancellationToken)
         {
-            // Check if user already exists by email
             var existingByEmail = await _context.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Email == request.Email, cancellationToken);
@@ -26,7 +24,6 @@ namespace SmartPlanner.Application.Users.Commands;
             if (existingByEmail != null)
                 return MapToDto(existingByEmail);
 
-            // Check if user already exists by username
             var existingByUsername = await _context.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Username == request.Username, cancellationToken);
@@ -34,7 +31,6 @@ namespace SmartPlanner.Application.Users.Commands;
             if (existingByUsername != null)
                 return MapToDto(existingByUsername);
 
-            // Create user entity
             var user = new User
             {
                 Username = request.Username,

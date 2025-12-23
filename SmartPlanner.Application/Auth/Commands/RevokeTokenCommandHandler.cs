@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Auth/Commands/RevokeTokenCommandHandler.cs
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -29,7 +28,6 @@ public class RevokeTokenCommandHandler : IRequestHandler<RevokeTokenCommand, boo
 
         try
         {
-            // 1. Проверяем, что пользователь существует и активен
             var userExists = await _context.Users
                 .AnyAsync(u => u.Id == request.UserId && u.IsActive && !u.IsDeleted,
                     cancellationToken);
@@ -41,7 +39,6 @@ public class RevokeTokenCommandHandler : IRequestHandler<RevokeTokenCommand, boo
                 return false;
             }
 
-            // 2. Получаем сессию по refresh token
             var session = await _tokenService.GetSessionByRefreshTokenAsync(
                 request.RefreshToken, cancellationToken);
 
@@ -51,7 +48,6 @@ public class RevokeTokenCommandHandler : IRequestHandler<RevokeTokenCommand, boo
                 return false;
             }
 
-            // 3. Проверяем, что пользователь отзывает СВОЙ токен
             if (session.UserId != request.UserId)
             {
                 _logger.LogWarning(
@@ -60,7 +56,6 @@ public class RevokeTokenCommandHandler : IRequestHandler<RevokeTokenCommand, boo
                 return false;
             }
 
-            // 4. Отзываем токен
             await _tokenService.RevokeSessionAsync(request.RefreshToken, cancellationToken);
 
             _logger.LogInformation("Token revoked successfully for user {UserId}", request.UserId);

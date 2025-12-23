@@ -63,7 +63,7 @@ public class ConfirmationTokenService : IConfirmationTokenService
     public async Task<string> GenerateEmailConfirmationTokenAsync(Guid userId, CancellationToken cancellationToken)
     {
         var token = GenerateSecureToken();
-        var expiresAt = DateTime.UtcNow.AddDays(7); // 7 дней для подтверждения email
+        var expiresAt = DateTime.UtcNow.AddDays(7);
 
         var emailConfirmationToken = new EmailConfirmationToken
         {
@@ -153,14 +153,12 @@ public class ConfirmationTokenService : IConfirmationTokenService
     {
         var tokenHash = ComputeSha256Hash(token);
 
-        // Сначала ищем в PasswordResetTokens
         var resetToken = await _context.PasswordResetTokens
             .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken);
 
         if (resetToken != null)
             return resetToken.UserId;
 
-        // Если не нашли, ищем в EmailConfirmationTokens
         var emailToken = await _context.EmailConfirmationTokens
             .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken);
 

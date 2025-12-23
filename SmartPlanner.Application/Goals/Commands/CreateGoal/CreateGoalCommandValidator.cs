@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Goals/Commands/CreateGoalCommandValidator.cs
 using FluentValidation;
 using SmartPlanner.Domain.Entities;
 

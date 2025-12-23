@@ -5,5 +5,5 @@ namespace SmartPlanner.Application.Users.Commands;
 public record BlockUserCommand : IRequest<Unit>
 {
     public Guid UserId { get; init; }
-    public Guid BlockedBy { get; init; } // Админ, который блокирует
+    public Guid BlockedBy { get; init; }
 }

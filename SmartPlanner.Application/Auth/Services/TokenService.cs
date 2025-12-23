@@ -29,7 +29,6 @@ namespace SmartPlanner.Application.Auth.Services
         private readonly SigningCredentials _signingCredentials;
         private readonly IAuditService _auditService;
 
-        // Константы для названий claims
         private const string UserIdClaim = "userId";
         private const string EmailClaim = "email";
         private const string UsernameClaim = "username";
@@ -67,16 +66,12 @@ namespace SmartPlanner.Application.Auth.Services
             {
                 _logger.LogDebug("Generating access token for user {UserId}", user.Id);
 
-                // Загружаем полную информацию о пользователе с ролями и permissions
                 var userWithClaims = await GetUserWithClaimsAsync(user.Id, cancellationToken);
 
-                // Создаем claims
                 var claims = BuildClaimsIdentity(userWithClaims);
 
-                // Создаем token descriptor
                 var tokenDescriptor = CreateTokenDescriptor(claims);
 
-                // Генерируем токен
                 var token = _tokenHandler.CreateToken(tokenDescriptor);
                 var tokenString = _tokenHandler.WriteToken(token);
 
@@ -103,7 +98,6 @@ namespace SmartPlanner.Application.Auth.Services
         {
             try
             {
-                // Генерация криптографически стойкого токена
                 var randomBytes = new byte[32];
                 using var rng = RandomNumberGenerator.Create();
                 rng.GetBytes(randomBytes);
@@ -131,14 +125,12 @@ namespace SmartPlanner.Application.Auth.Services
         {
             try
             {
-                // Проверяем существование пользователя
                 var userExists = await _context.Users
                     .AnyAsync(u => u.Id == userId && u.IsActive && !u.IsDeleted, cancellationToken);
 
                 if (!userExists)
                     throw new ArgumentException($"User {userId} not found or inactive");
 
-                // Создаем сессию
                 var session = new UserSession
                 {
                     Id = Guid.NewGuid(),
@@ -151,7 +143,6 @@ namespace SmartPlanner.Application.Auth.Services
                     IsRevoked = false
                 };
 
-                // Сохраняем в БД
                 await _context.UserSessions.AddAsync(session, cancellationToken);
                 await _context.SaveChangesAsync(cancellationToken);
 
@@ -327,7 +318,7 @@ namespace SmartPlanner.Application.Auth.Services
                     ValidIssuer = _configuration["JwtSettings:Issuer"],
                     ValidateAudience = true,
                     ValidAudience = _configuration["JwtSettings:Audience"],
-                    ValidateLifetime = false, // Игнорируем expiry для refresh
+                    ValidateLifetime = false,
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = _signingKey
                 };

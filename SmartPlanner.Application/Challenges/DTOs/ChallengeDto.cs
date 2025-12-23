@@ -1,5 +1,3 @@
-// SmartPlanner.Application/Challenges/Dtos/ChallengeDto.cs
-
 using SmartPlanner.Application.Common.Dtos;
 
 namespace SmartPlanner.Application.Challenges.Dtos;

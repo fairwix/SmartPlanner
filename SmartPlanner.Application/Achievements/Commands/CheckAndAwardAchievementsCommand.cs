@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Achievements/Commands/CheckAndAwardAchievementsCommand.cs
 using MediatR;
 
 namespace SmartPlanner.Application.Achievements.Commands;

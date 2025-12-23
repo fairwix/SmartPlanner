@@ -14,7 +14,6 @@ public class User : BaseEntity
     public virtual List<UserInterest> UserInterests { get; set; } = new List<UserInterest>();
 
 
-    // ПЕРЕНЕСЕНО ИЗ ProjectState.UserBalance
     public int Balance { get; set; } = 0;
 
     public DateTime? LastLoginAt { get; set; }
@@ -26,12 +25,10 @@ public class User : BaseEntity
     public DateTime? DateOfBirth { get; set; }
     public string? PhoneNumber { get; set; }
 
-    //флаги состояния
     public bool IsEmailConfirmed { get; set; } = false;
     public bool IsActive { get; set; } = true;
     public bool IsDeleted { get; set; } = false;
 
-    // навигационные свойства
     public virtual List<Goal> Goals { get; init; } = new List<Goal>();
     public virtual List<UserFriend> Friends { get; init; } = new List<UserFriend>();
     public virtual List<UserAchievement> Achievements { get; init; } = new List<UserAchievement>();
@@ -40,14 +37,13 @@ public class User : BaseEntity
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
     public virtual ICollection<UserClaim> UserClaims { get; set; } = new List<UserClaim>();
-    //логика начисления баллов
+
     public void AddReward(int amount)
     {
         Balance += amount;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    // НОВАЯ БИЗНЕС-ЛОГИКА
     public bool CanAfford(int price) => Balance >= price;
 
     public void UpdateStreak()

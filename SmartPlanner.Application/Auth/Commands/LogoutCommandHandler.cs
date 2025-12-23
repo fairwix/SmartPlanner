@@ -26,13 +26,11 @@ namespace SmartPlanner.Application.Auth.Commands
         {
             _logger.LogInformation("Logging out user {UserId}", request.UserId);
 
-            // Отзыв всех сессий пользователя
             await _tokenService.RevokeUserSessionsAsync(request.UserId, cancellationToken);
-            // Логируем выход
             await _auditService.LogSecurityEventAsync(
                 SecurityEventType.Logout,
                 request.UserId,
-                ipAddress: null, // Можно получить из HttpContext
+                ipAddress: null,
                 success: true,
                 cancellationToken: cancellationToken);
 

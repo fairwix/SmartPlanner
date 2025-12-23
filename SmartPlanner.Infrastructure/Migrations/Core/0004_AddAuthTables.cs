@@ -7,7 +7,6 @@ public class AddAuthTables : Migration
 {
     public override void Up()
     {
-        // 1. Добавляем новые колонки к существующей таблице Users
         Alter.Table("Users")
             .AddColumn("FirstName").AsString(100).Nullable()
             .AddColumn("LastName").AsString(100).Nullable()
@@ -18,7 +17,6 @@ public class AddAuthTables : Migration
             .AddColumn("IsActive").AsBoolean().NotNullable().WithDefaultValue(true)
             .AddColumn("IsDeleted").AsBoolean().NotNullable().WithDefaultValue(false);
 
-        // 2. Создаем таблицу Permissions (для детального контроля доступа)
         Create.Table("Permissions")
             .WithColumn("Id").AsGuid().PrimaryKey().NotNullable()
             .WithColumn("Name").AsString(100).NotNullable()
@@ -31,7 +29,6 @@ public class AddAuthTables : Migration
             .OnColumn("Name")
             .Unique();
 
-        // 3. Создаем таблицу UserClaims (для кастомных claims пользователей)
         Create.Table("UserClaims")
             .WithColumn("Id").AsGuid().PrimaryKey().NotNullable()
             .WithColumn("UserId").AsGuid().NotNullable()
@@ -51,7 +48,6 @@ public class AddAuthTables : Migration
             .OnColumn("ClaimType")
             .Ascending();
 
-        // 4. Создаем таблицу UserSessions (для refresh токенов и управления сессиями)
         Create.Table("UserSessions")
             .WithColumn("Id").AsGuid().PrimaryKey().NotNullable()
             .WithColumn("UserId").AsGuid().NotNullable()
@@ -79,7 +75,6 @@ public class AddAuthTables : Migration
             .OnTable("UserSessions")
             .OnColumn("RefreshTokenHash");
 
-        // 5. Создаем таблицу RolePermissions (составной ключ для связи ролей и прав)
         Create.Table("RolePermissions")
             .WithColumn("RoleId").AsInt32().NotNullable()
             .WithColumn("PermissionId").AsGuid().NotNullable()
@@ -100,7 +95,6 @@ public class AddAuthTables : Migration
             .ToTable("Permissions").PrimaryColumn("Id")
             .OnDeleteOrUpdate(Rule.Cascade);
 
-        // 6. Добавляем constraints для бизнес-правил (как в книге, глава 14)
         Execute.Sql(@"
             -- EmailConfirmedAt должен быть после или в момент создания
             ALTER TABLE ""Users""
@@ -118,7 +112,6 @@ public class AddAuthTables : Migration
             CHECK (""ExpiresAt"" > ""CreatedAt"");
         ");
 
-        // 7. Seed данные для Permissions (минимальный набор согласно ТЗ)
         Execute.Sql(@"
             -- Добавляем основные permissions (минимум 5-7 согласно ТЗ)
             INSERT INTO ""Permissions"" (""Id"", ""Name"", ""Description"", ""Category"", ""CreatedAt"") VALUES
@@ -144,7 +137,6 @@ public class AddAuthTables : Migration
             ON CONFLICT (""Name"") DO NOTHING;
         ");
 
-        // 8. Назначаем permissions ролям
         Execute.Sql(@"
             -- Admin role получает все permissions (ТЗ требует роль Admin)
             INSERT INTO ""RolePermissions"" (""RoleId"", ""PermissionId"", ""AssignedAt"")
@@ -166,37 +158,30 @@ public class AddAuthTables : Migration
 
     public override void Down()
     {
-        // Обратный порядок удаления (важно для целостности БД)
 
-        // 1. Удаляем данные из RolePermissions
         Execute.Sql("DELETE FROM \"RolePermissions\";");
 
-        // 2. Удаляем constraints
         Execute.Sql(@"
             ALTER TABLE ""Users"" DROP CONSTRAINT IF EXISTS ""CK_Users_EmailConfirmedAt_Valid"";
             ALTER TABLE ""Users"" DROP CONSTRAINT IF EXISTS ""CK_Users_Status_Valid"";
             ALTER TABLE ""UserSessions"" DROP CONSTRAINT IF EXISTS ""CK_UserSessions_ExpiresAt_Valid"";
         ");
 
-        // 3. Удаляем индексы
         Delete.Index("IX_UserSessions_UserId_ExpiresAt").OnTable("UserSessions");
         Delete.Index("IX_UserSessions_RefreshTokenHash").OnTable("UserSessions");
         Delete.Index("IX_UserClaims_UserId_ClaimType").OnTable("UserClaims");
         Delete.Index("IX_Permissions_Name").OnTable("Permissions");
 
-        // 4. Удаляем foreign keys
         Delete.ForeignKey("FK_RolePermissions_Permissions").OnTable("RolePermissions");
         Delete.ForeignKey("FK_RolePermissions_Roles").OnTable("RolePermissions");
         Delete.ForeignKey("FK_UserClaims_Users").OnTable("UserClaims");
         Delete.ForeignKey("FK_UserSessions_Users").OnTable("UserSessions");
 
-        // 5. Удаляем таблицы (обратный порядок создания)
         Delete.Table("RolePermissions");
         Delete.Table("UserClaims");
         Delete.Table("UserSessions");
         Delete.Table("Permissions");
 
-        // 6. Удаляем колонки из Users
         Delete.Column("FirstName").FromTable("Users");
         Delete.Column("LastName").FromTable("Users");
         Delete.Column("DateOfBirth").FromTable("Users");

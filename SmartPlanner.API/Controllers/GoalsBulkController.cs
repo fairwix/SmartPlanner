@@ -1,4 +1,3 @@
-// SmartPlanner.API/Controllers/GoalsBulkController.cs
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Users/Queries/GetUserByIdQuery.cs
 using MediatR;
 using SmartPlanner.Application.Users.Dtos;
 

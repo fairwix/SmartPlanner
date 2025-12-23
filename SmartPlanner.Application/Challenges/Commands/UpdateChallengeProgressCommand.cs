@@ -7,5 +7,5 @@ namespace SmartPlanner.Application.Challenges.Commands;
     {
         public Guid ChallengeId { get; init; }
         public int Progress { get; init; }
-        public Guid UserId { get; init; } // Кто обновляет прогресс
+        public Guid UserId { get; init; }
     }

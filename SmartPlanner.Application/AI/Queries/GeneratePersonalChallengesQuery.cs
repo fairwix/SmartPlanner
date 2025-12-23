@@ -1,4 +1,3 @@
-// SmartPlanner.Application/AI/Queries/GeneratePersonalChallengesQuery.cs
 using MediatR;
 using SmartPlanner.Application.Challenges.Dtos;
 

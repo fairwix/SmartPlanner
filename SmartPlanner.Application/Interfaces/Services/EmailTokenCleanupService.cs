@@ -1,4 +1,3 @@
-// Infrastructure/Services/EmailTokenCleanupService.cs
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -36,7 +35,6 @@ namespace SmartPlanner.Application.Services
 
                     var now = DateTime.UtcNow;
 
-                    // Очистка истёкших email confirmation tokens
                     var expiredEmailTokens = await context.EmailConfirmationTokens
                         .Where(t => t.ExpiresAt < now || t.IsUsed)
                         .ToListAsync(stoppingToken);
@@ -48,7 +46,6 @@ namespace SmartPlanner.Application.Services
                         _logger.LogInformation("Cleaned up {Count} expired email confirmation tokens", expiredEmailTokens.Count);
                     }
 
-                    // Очистка истёкших password reset tokens
                     var expiredPasswordTokens = await context.PasswordResetTokens
                         .Where(t => t.ExpiresAt < now || t.IsUsed)
                         .ToListAsync(stoppingToken);

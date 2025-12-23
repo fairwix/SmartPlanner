@@ -6,7 +6,7 @@ public class CorrectAuthModels : Migration
 {
     public override void Up()
     {
-        // 1. Изменяем тип Role.Id с int на Guid
+
         Execute.Sql(@"
             -- Временная таблица для маппинга старых ID на новые GUID
             CREATE TEMP TABLE role_id_mapping (
@@ -41,7 +41,6 @@ public class CorrectAuthModels : Migration
             DROP TABLE role_id_mapping;
         ");
 
-        // 2. Изменяем структуру таблицы Roles (меняем тип Id на UUID)
         Execute.Sql(@"
             -- Создаем временную таблицу с новой структурой
             CREATE TABLE ""Roles_New"" (
@@ -65,19 +64,16 @@ public class CorrectAuthModels : Migration
             DROP TABLE ""Roles_Old"";
         ");
 
-        // 3. Добавляем PasswordSalt в Users
         Alter.Table("Users")
             .AddColumn("PasswordSalt").AsString().NotNullable().WithDefaultValue("")
             .AddColumn("LastLoginAt").AsDateTime().Nullable();
 
-        // 4. Обновляем существующие записи - генерируем соли
         Execute.Sql(@"
             UPDATE ""Users""
             SET ""PasswordSalt"" = substring(md5(random()::text || clock_timestamp()::text) from 1 for 32)
             WHERE ""PasswordSalt"" = '';
         ");
 
-        // 5. Изменяем UserRole.RoleId на UUID и добавляем AssignedBy
         Execute.Sql(@"
             -- Создаем новую таблицу UserRoles
             CREATE TABLE ""UserRoles_New"" (
@@ -116,7 +112,6 @@ public class CorrectAuthModels : Migration
             ON DELETE CASCADE;
         ");
 
-        // 6. Обновляем RolePermissions.RoleId на UUID
         Execute.Sql(@"
             -- Изменяем тип RoleId в RolePermissions
             ALTER TABLE ""RolePermissions""
@@ -129,7 +124,6 @@ public class CorrectAuthModels : Migration
             ON DELETE CASCADE;
         ");
 
-        // 7. Обновляем Description для существующих ролей
         Execute.Sql(@"
             UPDATE ""Roles""
             SET ""Description"" = CASE ""Name""
@@ -139,14 +133,12 @@ public class CorrectAuthModels : Migration
             END;
         ");
 
-        // 8. Устанавливаем AssignedBy для существующих UserRoles (назначаем администратора)
         Execute.Sql(@"
             UPDATE ""UserRoles""
             SET ""AssignedBy"" = '00000000-0000-0000-0000-000000000001' -- admin user ID
             WHERE ""AssignedBy"" IS NULL;
         ");
 
-        // 9. Создаем индексы для улучшения производительности
         Create.Index("IX_UserRoles_RoleId")
             .OnTable("UserRoles")
             .OnColumn("RoleId");
@@ -162,26 +154,21 @@ public class CorrectAuthModels : Migration
 
     public override void Down()
     {
-        // Откат изменений (для безопасности, но желательно не использовать в production)
 
-        // Удаляем индексы
         Delete.Index("IX_Users_LastLoginAt").OnTable("Users");
         Delete.Index("IX_RolePermissions_RoleId").OnTable("RolePermissions");
         Delete.Index("IX_UserRoles_RoleId").OnTable("UserRoles");
 
-        // Возвращаем RolePermissions.RoleId обратно в int
         Execute.Sql(@"
             ALTER TABLE ""RolePermissions""
-            ALTER COLUMN ""RoleId"" TYPE INTEGER USING 1; -- временное решение
+            ALTER COLUMN ""RoleId"" TYPE INTEGER USING 1;
         ");
 
-        // Удаляем новые поля
+
         Delete.Column("PasswordSalt").FromTable("Users");
         Delete.Column("LastLoginAt").FromTable("Users");
         Delete.Column("AssignedBy").FromTable("UserRoles");
         Delete.Column("Description").FromTable("Roles");
 
-        // Возвращаем Roles.Id в int (сложная операция, лучше не откатывать)
-        // Возвращаем UserRole.RoleId в int (сложная операция)
     }
 }

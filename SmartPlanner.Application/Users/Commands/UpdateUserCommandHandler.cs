@@ -17,10 +17,9 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
 
     public async Task<UserDto?> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
     {
-        // Загружаем пользователя с его текущими интересами
         var user = await _context.Users
-            .Include(u => u.UserInterests)  // Включаем UserInterests
-            .ThenInclude(ui => ui.Interest) // И связанные Interest
+            .Include(u => u.UserInterests)
+            .ThenInclude(ui => ui.Interest)
             .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
         if (user == null)
@@ -28,10 +27,8 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
 
         bool hasChanges = false;
 
-        // Обновляем username, если он указан и изменился
         if (!string.IsNullOrWhiteSpace(request.Username) && request.Username != user.Username)
         {
-            // Проверяем уникальность username
             var usernameExists = await _context.Users
                 .AnyAsync(u => u.Username == request.Username && u.Id != request.UserId,
                          cancellationToken);
@@ -43,32 +40,25 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
             hasChanges = true;
         }
 
-        // Обновляем интересы, если они указаны
         if (request.Interests is not null)
         {
-            // Получаем текущие интересы как список имен
             var currentInterestNames = user.UserInterests
                 .Select(ui => ui.Interest.Name)
                 .ToList();
 
-            // Сравниваем с новыми интересами
             var newInterestNames = request.Interests
                 .Where(i => !string.IsNullOrWhiteSpace(i))
                 .Distinct()
                 .ToList();
 
-            // Если интересы изменились
             if (!currentInterestNames.SequenceEqual(newInterestNames))
             {
-                // Удаляем все существующие связи UserInterest
                 var existingUserInterests = _context.UserInterests
                     .Where(ui => ui.UserId == request.UserId);
                 _context.UserInterests.RemoveRange(existingUserInterests);
 
-                // Добавляем новые связи
                 foreach (var interestName in newInterestNames)
                 {
-                    // Находим или создаем интерес
                     var interest = await _context.Interests
                         .FirstOrDefaultAsync(i => i.Name.ToLower() == interestName.ToLower(),
                             cancellationToken);
@@ -84,11 +74,9 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, UserD
                         };
                         await _context.Interests.AddAsync(interest, cancellationToken);
 
-                        // Нужно сохранить, чтобы получить Id
                         await _context.SaveChangesAsync(cancellationToken);
                     }
 
-                    // Создаем связь пользователя с интересом
                     var userInterest = new UserInterest
                     {
                         UserId = user.Id,

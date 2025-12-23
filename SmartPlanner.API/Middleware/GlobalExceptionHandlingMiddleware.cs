@@ -64,7 +64,6 @@ namespace SmartPlanner.API.Filters;
         }
     }
 
-    // Фильтр для обработки исключений
     public class GlobalExceptionFilter : IExceptionFilter
     {
         private readonly ILogger<GlobalExceptionFilter> _logger;

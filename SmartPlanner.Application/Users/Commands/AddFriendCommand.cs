@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Users/Commands/AddFriendCommand.cs
 using MediatR;
 
 namespace SmartPlanner.Application.Users.Commands;

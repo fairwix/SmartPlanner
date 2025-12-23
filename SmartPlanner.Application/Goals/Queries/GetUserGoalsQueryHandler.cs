@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AutoMapper;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SmartPlanner.Application.Common.Dtos;
 using SmartPlanner.Application.Common.Interfaces;
 using SmartPlanner.Application.Goals.Dtos;
@@ -19,7 +20,8 @@ namespace SmartPlanner.Application.Goals.Queries
         private readonly IApplicationDbContext _context;
         private readonly IMapper _mapper;
 
-        public GetUserGoalsQueryHandler(IApplicationDbContext context, IMapper mapper)
+        public GetUserGoalsQueryHandler(IApplicationDbContext context, IMapper mapper,
+            ILogger<GetUserGoalsQueryHandler> mockLoggerObject)
         {
             _context = context;
             _mapper = mapper;
@@ -31,7 +33,6 @@ namespace SmartPlanner.Application.Goals.Queries
                 .Where(g => g.UserId == request.UserId)
                 .AsNoTracking();
 
-            // ✅ ИСПРАВЛЕНО: Используем string.IsNullOrEmpty вместо HasValue
             if (!string.IsNullOrEmpty(request.Category))
             {
                 if (Enum.TryParse<GoalCategory>(request.Category, true, out var category))
@@ -40,7 +41,6 @@ namespace SmartPlanner.Application.Goals.Queries
                 }
             }
 
-            // ✅ ИСПРАВЛЕНО: Используем string.IsNullOrEmpty вместо HasValue
             if (!string.IsNullOrEmpty(request.Priority))
             {
                 if (Enum.TryParse<GoalPriority>(request.Priority, true, out var priority))
@@ -49,18 +49,15 @@ namespace SmartPlanner.Application.Goals.Queries
                 }
             }
 
-            // ✅ Completed - это bool?, так что HasValue работает
             if (request.Completed.HasValue)
                 query = query.Where(g => g.IsCompleted == request.Completed.Value);
 
-            // ✅ Поиск по тексту
             if (!string.IsNullOrEmpty(request.Search))
                 query = query.Where(g => g.Title.Contains(request.Search) ||
                                        (g.Description != null && g.Description.Contains(request.Search)));
 
             var totalCount = await query.CountAsync(cancellationToken);
 
-            // ✅ Применяем сортировку
             var orderedQuery = ApplySorting(query, request.SortBy, request.SortOrder);
 
             var goals = await orderedQuery

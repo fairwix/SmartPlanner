@@ -17,11 +17,10 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
 
     public async Task<UserDto?> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
     {
-        // Загружаем пользователя с его интересами
         var user = await _context.Users
-            .Include(u => u.UserInterests)          // Включаем UserInterests
-            .ThenInclude(ui => ui.Interest)         // И связанные Interest
-            .AsNoTracking()                         // Только для чтения
+            .Include(u => u.UserInterests)
+            .ThenInclude(ui => ui.Interest)
+            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
         if (user == null)
@@ -32,7 +31,6 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
 
     private UserDto MapToDto(User user)
     {
-        // Получаем имена интересов из UserInterests
         var interests = user.UserInterests
             .Where(ui => ui.Interest != null)
             .Select(ui => ui.Interest.Name)

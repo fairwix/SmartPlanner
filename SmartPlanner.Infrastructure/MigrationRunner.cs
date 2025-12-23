@@ -18,7 +18,7 @@ public static class MigrationRunner
         using var scope = serviceProvider.CreateScope();
         var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
         var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
-        var logger = loggerFactory.CreateLogger("MigrationRunner"); // ← ИСПРАВЛЕНО
+        var logger = loggerFactory.CreateLogger("MigrationRunner");
 
         var hasPendingMigrations = runner.HasMigrationsToApplyUp();
 

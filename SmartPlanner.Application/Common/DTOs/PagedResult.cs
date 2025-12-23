@@ -1,4 +1,3 @@
-// Application/Common/Dtos/PagedResult.cs
 namespace SmartPlanner.Application.Common.Dtos;
 
     public record PagedResult<T>(
@@ -15,7 +14,6 @@ namespace SmartPlanner.Application.Common.Dtos;
             => new PagedResult<T>(items, totalCount, pageNumber, pageSize);
     }
 
-    // ✅ DTO для запроса пагинации (стандартизированный)
     public record PaginationRequest(
         int PageNumber = 1,
         int PageSize = 10)

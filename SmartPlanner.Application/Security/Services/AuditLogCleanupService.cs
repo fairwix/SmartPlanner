@@ -1,5 +1,3 @@
-// Application/Security/Services/AuditLogCleanupService.cs (ПЕРЕМЕСТИТЕ в Application!)
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -28,13 +26,11 @@ namespace SmartPlanner.Application.Security.Services
             {
                 try
                 {
-                    // Ждем 24 часа
                     await Task.Delay(TimeSpan.FromHours(24), stoppingToken);
 
                     using var scope = _serviceProvider.CreateScope();
                     var context = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
 
-                    // Удаляем логи старше 90 дней
                     var cutoffDate = DateTime.UtcNow.AddDays(-90);
                     var oldLogs = await context.SecurityAuditLogs
                         .Where(log => log.Timestamp < cutoffDate)
@@ -51,7 +47,6 @@ namespace SmartPlanner.Application.Security.Services
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     _logger.LogError(ex, "Error cleaning up audit logs");
-                    // Ждем 1 час перед повторной попыткой
                     await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
                 }
             }

@@ -9,7 +9,7 @@ namespace SmartPlanner.API.Controllers.Admin
 {
     [ApiController]
     [Route("api/admin/[controller]")]
-    [Authorize(Policy = "AdminOnly")] // ✅ Только для админов!
+    [Authorize(Policy = "AdminOnly")]
     public class AdminAchievementsController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -58,10 +58,10 @@ namespace SmartPlanner.API.Controllers.Admin
     }
 }
 
-// Публичный контроллер для обычных пользователей
+
 [ApiController]
 [Route("api/[controller]")]
-[Authorize] // ✅ Требуется аутентификация
+[Authorize]
 public class AchievementsController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -74,7 +74,7 @@ public class AchievementsController : ControllerBase
     }
 
     [HttpGet]
-    [AllowAnonymous] // ✅ Достижения может видеть любой
+    [AllowAnonymous]
     [ProducesResponseType(typeof(List<AchievementDto>), 200)]
     public async Task<ActionResult<List<AchievementDto>>> GetAchievements(
         [FromQuery] string? type = null,
@@ -95,7 +95,6 @@ public class AchievementsController : ControllerBase
     {
         _logger.LogDebug("Getting achievements for user {UserId}", userId);
 
-        // ✅ Проверяем права: пользователь может видеть только свои достижения
         var currentUserId = User.FindFirst("userId")?.Value;
         var isAdmin = User.IsInRole("Admin");
 
@@ -118,7 +117,6 @@ public class AchievementsController : ControllerBase
     public async Task<ActionResult> CheckAndAwardAchievements(
         CancellationToken cancellationToken = default)
     {
-        // ✅ Берем UserId из JWT токена
         var userIdClaim = User.FindFirst("userId")?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var currentUserId))
         {

@@ -10,7 +10,7 @@ public class CheckAndAwardAchievementsCommandHandler :
     IRequestHandler<CheckAndAwardAchievementsCommand>
 {
     private readonly IApplicationDbContext _context;
-    private readonly IAchievementCheckerService _achievementChecker; // ✅ Специализированный сервис
+    private readonly IAchievementCheckerService _achievementChecker;
     private readonly IMediator _mediator;
 
     public CheckAndAwardAchievementsCommandHandler(
@@ -27,11 +27,10 @@ public class CheckAndAwardAchievementsCommandHandler :
         CheckAndAwardAchievementsCommand request,
         CancellationToken cancellationToken)
     {
-        // Используем специализированный сервис для проверки
+
         var eligibleAchievements = await _achievementChecker
             .CheckAndAwardEligibleAchievementsAsync(request.UserId, _context, cancellationToken);
 
-        // Награждаем за каждое подходящее достижение
         foreach (var achievement in eligibleAchievements)
         {
             await _mediator.Send(new AwardAchievementCommand

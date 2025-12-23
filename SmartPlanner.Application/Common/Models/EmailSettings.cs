@@ -11,7 +11,7 @@ namespace SmartPlanner.Application.Common.Models
         public string? Username { get; set; }
         public string? Password { get; set; }
 
-        // Для development без реального SMTP
+
         public bool UseFileSystem { get; set; } = true;
         public string FileSystemPath { get; set; } = "Emails";
     }

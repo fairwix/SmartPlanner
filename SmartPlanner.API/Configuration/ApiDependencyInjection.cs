@@ -7,7 +7,6 @@ public static class ApiDependencyInjection
 {
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
     {
-        // 1. Контроллеры
         services.AddControllers()
             .AddJsonOptions(options =>
             {
@@ -20,7 +19,6 @@ public static class ApiDependencyInjection
                 options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
             });
 
-        // 2. CORS
         services.AddCors(options =>
         {
             options.AddPolicy("AllowAll", policy =>

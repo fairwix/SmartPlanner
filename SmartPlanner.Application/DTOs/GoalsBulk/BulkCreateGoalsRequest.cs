@@ -1,4 +1,3 @@
-// Dtos/GoalsBulk/BulkCreateGoalsRequest.cs
 namespace SmartPlanner.API.Dtos.GoalsBulk;
 
 public class BulkCreateGoalsRequest

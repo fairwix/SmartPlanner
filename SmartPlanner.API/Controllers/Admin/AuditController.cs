@@ -1,4 +1,3 @@
-// API/Controllers/Admin/AuditController.cs
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

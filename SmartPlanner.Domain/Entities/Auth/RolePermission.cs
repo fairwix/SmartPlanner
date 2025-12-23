@@ -7,7 +7,6 @@ namespace SmartPlanner.Domain.Entities
         public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
         public Guid? AssignedBy { get; set; }
 
-        // Навигационные свойства
         public virtual Role Role { get; set; } = null!;
         public virtual Permission Permission { get; set; } = null!;
     }

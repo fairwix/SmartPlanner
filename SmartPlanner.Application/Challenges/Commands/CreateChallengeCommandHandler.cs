@@ -32,7 +32,6 @@ namespace SmartPlanner.Application.Challenges.Commands
             _logger.LogInformation("Creating challenge: {Title} for user {UserId}",
                 request.Title, request.CreatedBy);
 
-            // Проверяем пользователя
             var userExists = await _context.Users
                 .AnyAsync(u => u.Id == request.CreatedBy, cancellationToken);
 

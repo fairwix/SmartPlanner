@@ -10,6 +10,7 @@ using SmartPlanner.Application.Common.Interfaces;
 using SmartPlanner.Application.Security.Services;
 using SmartPlanner.Infrastructure;
 using System.Text;
+using FluentMigrator.Runner;
 using SmartPlanner.Application.Authorization.Requirements;
 using SmartPlanner.Infrastructure.Data;
 
@@ -29,17 +30,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
 
 // 2. MediatR + FluentValidation
-builder.Services.AddApplication(); // Предполагается, что у тебя есть метод AddApplication() в Application layer
-builder.Services.AddInfrastructure(builder.Configuration); // Предполагается, что у тебя есть AddInfrastructure()
-
-// Если нет — замени на:
-//builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
-// builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // 3. Контроллеры + JSON
 builder.Services.AddControllers(options =>
 {
-    options.Filters.Add<GlobalExceptionFilter>(); // Глобальный фильтр исключений
+    options.Filters.Add<GlobalExceptionFilter>();
 })
 .AddJsonOptions(options =>
 {
@@ -54,7 +51,6 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "SmartPlanner API", Version = "v1" });
 
-    // Добавляем поддержку JWT в Swagger UI
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -95,21 +91,16 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
     options.AddPolicy("CanManageUsers", policy => policy.RequireRole("Admin"));
-    // Добавь Resource-based policy, если используешь AuthorizeAsync с "ResourceOwner"
 
-    // 2. Требуется подтверждённый email
     options.AddPolicy("RequireEmailConfirmed", policy =>
         policy.RequireClaim("emailConfirmed", "True"));
 
-    // 3. Премиум подписка
     options.AddPolicy("RequirePremiumSubscription", policy =>
         policy.RequireClaim("SubscriptionLevel", "Premium", "Enterprise"));
 
-    // 4. Минимум 18 лет (через custom requirement)
     options.AddPolicy("RequireMinimumAge18", policy =>
         policy.Requirements.Add(new MinimumAgeRequirement(18)));
 
-    // 5. Permissions через claims (из JWT)
     options.AddPolicy("CanEditGoal", policy =>
         policy.RequireClaim("permission", "Goal.Edit"));
 
@@ -136,16 +127,12 @@ builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
 
 // 10. Кастомные сервисы
-builder.Services.AddScoped<IAuditService, AuditService>(); // Убедись, что AuditService существует
-// Добавь другие сервисы по необходимости
+builder.Services.AddScoped<IAuditService, AuditService>();
 
-// -------------------
-// Сборка приложения
-// -------------------
 var app = builder.Build();
 
 // Middleware pipeline
-app.UseMiddleware<GlobalExceptionHandlingMiddleware>(); // Глобальный middleware для ошибок
+app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 app.UseMiddleware<CorsLoggingMiddleware>();
 app.UseMiddleware<AuditLoggingMiddleware>();
 
@@ -167,5 +154,36 @@ if (app.Environment.IsDevelopment())
 // Health checks (опционально)
 app.MapGet("/", () => "SmartPlanner API работает!");
 app.MapGet("/health", () => "OK");
+
+// // Применение миграций при запуске (только для Development)
+// if (app.Environment.IsDevelopment())
+// {
+//     using var scope = app.Services.CreateScope();
+//     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+//     await context.Database.MigrateAsync();
+// }
+
+
+// // Применение миграций при запуске
+// using var scope = app.Services.CreateScope();
+// var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
+// try
+// {
+//     if (runner.HasMigrationsToApplyUp())
+//     {
+//         Console.WriteLine("Applying database migrations...");
+//         runner.MigrateUp();
+//         Console.WriteLine("Database migrations applied successfully");
+//     }
+//     else
+//     {
+//         Console.WriteLine("No pending migrations to apply");
+//     }
+// }
+// catch (Exception ex)
+// {
+//     Console.WriteLine($"Error applying migrations: {ex.Message}");
+//     throw;
+// }
 
 await app.RunAsync();

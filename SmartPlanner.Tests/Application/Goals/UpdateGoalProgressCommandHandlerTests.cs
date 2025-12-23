@@ -1,106 +1,63 @@
-using FluentAssertions;
+// SmartPlanner.Tests/Application/Goals/Commands/UpdateGoalProgressCommandHandlerTests.cs
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using SmartPlanner.Application.Common.Interfaces;
 using SmartPlanner.Application.Goals.Commands;
+using SmartPlanner.Application.Services;
 using SmartPlanner.Domain.Entities;
 using Xunit;
+using FluentAssertions;
+using SmartPlanner.Application.Interfaces.Services;
 
-using Microsoft.EntityFrameworkCore;
-
-namespace SmartPlanner.Tests.Application.Goals
+namespace SmartPlanner.Tests.Application.Goals.Commands
 {
     public class UpdateGoalProgressCommandHandlerTests
     {
         private readonly Mock<IApplicationDbContext> _mockContext;
         private readonly Mock<ILogger<UpdateGoalProgressCommandHandler>> _mockLogger;
         private readonly UpdateGoalProgressCommandHandler _handler;
+        private readonly Guid _testUserId;
+        private readonly Guid _testGoalId;
 
         public UpdateGoalProgressCommandHandlerTests()
         {
             _mockContext = new Mock<IApplicationDbContext>();
             _mockLogger = new Mock<ILogger<UpdateGoalProgressCommandHandler>>();
-            _handler = new UpdateGoalProgressCommandHandler(_mockContext.Object, _mockLogger.Object);
+
+            _testUserId = Guid.NewGuid();
+            _testGoalId = Guid.NewGuid();
+
+            _handler = new UpdateGoalProgressCommandHandler(
+                _mockContext.Object,
+                _mockLogger.Object
+            );
         }
 
         [Fact]
-        public async Task Handle_GoalNotFound_ShouldReturnNull()
+        public async Task Handle_ValidProgress_UpdatesGoal()
         {
             // Arrange
             var command = new UpdateGoalProgressCommand
             {
-                GoalId = Guid.NewGuid(),
+                GoalId = _testGoalId,
                 Value = 50
-            };
-
-            var mockGoals = Helpers.MockDbSetHelper.CreateMockDbSet<Goal>(new List<Goal>());
-            _mockContext.Setup(c => c.Goals).Returns(mockGoals.Object);
-
-            // Act
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            // Assert
-            result.Should().BeNull();
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Warning,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Goal with ID")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
-        }
-
-        [Fact]
-        public async Task Handle_ValidProgressUpdate_ShouldUpdateGoalAndReturnDto()
-        {
-            // Arrange
-            var goalId = Guid.NewGuid();
-            var userId = Guid.NewGuid();
-
-            var user = new User
-            {
-                Id = userId,
-                Balance = 100,
-                Username = "testuser",
-                Email = "test@example.com",
-                PasswordHash = "hash",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
             };
 
             var goal = new Goal
             {
-                Id = goalId,
-                Title = "Test Goal",
+                Id = _testGoalId,
+                UserId = _testUserId,
                 TargetValue = 100,
-                CurrentValue = 30,
-                UserId = userId,
-                User = user,
-                RewardAmount = 50,
-                Category = GoalCategory.Sports,
-                Priority = GoalPriority.Medium,
-                DueDate = DateTime.UtcNow.AddDays(7),
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                IsAiGenerated = false,
-                IsCompleted = false,
-                Description = "Test Description"
+                CurrentValue = 0,
+                Title = "Test Goal"
             };
 
-            var command = new UpdateGoalProgressCommand
-            {
-                GoalId = goalId,
-                Value = 80
-            };
-
-            var mockGoals = Helpers.MockDbSetHelper.CreateMockDbSet(new List<Goal> { goal });
-
-            // Настраиваем Include
-            mockGoals.Setup(m => m.Include(It.IsAny<string>()))
-                .Returns(mockGoals.Object)
-                .Verifiable();
-
+            var mockGoals = MockDbSetHelper.CreateMockDbSet<Goal>(new List<Goal> { goal });
             _mockContext.Setup(c => c.Goals).Returns(mockGoals.Object);
 
             _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
@@ -111,8 +68,106 @@ namespace SmartPlanner.Tests.Application.Goals
 
             // Assert
             result.Should().NotBeNull();
-            result!.CurrentValue.Should().Be(80);
-            _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+            result.CurrentValue.Should().Be(50);
+            goal.UpdatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
+        }
+
+        [Fact]
+        public async Task Handle_GoalNotFound_ThrowsArgumentException()
+        {
+            // Arrange
+            var command = new UpdateGoalProgressCommand
+            {
+                GoalId = Guid.NewGuid(), // non-existent goal
+                Value = 50
+            };
+
+            var mockGoals = MockDbSetHelper.CreateMockDbSet<Goal>(new List<Goal>());
+            _mockContext.Setup(c => c.Goals).Returns(mockGoals.Object);
+
+            // Act & Assert
+            var act = async () => await _handler.Handle(command, CancellationToken.None);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage("Goal not found");
+        }
+
+        [Fact]
+        public async Task Handle_GoalBelongsToAnotherUser_ThrowsUnauthorizedAccessException()
+        {
+            // Arrange
+            var command = new UpdateGoalProgressCommand
+            {
+                GoalId = _testGoalId,
+                Value = 50
+            };
+
+            var goal = new Goal
+            {
+                Id = _testGoalId,
+                UserId = Guid.NewGuid(), // different user owns the goal
+                TargetValue = 100
+            };
+
+            var mockGoals = MockDbSetHelper.CreateMockDbSet<Goal>(new List<Goal> { goal });
+            _mockContext.Setup(c => c.Goals).Returns(mockGoals.Object);
+
+            // Act & Assert
+            var act = async () => await _handler.Handle(command, CancellationToken.None);
+            await act.Should().ThrowAsync<UnauthorizedAccessException>()
+                .WithMessage("You can only update your own goals");
+        }
+
+        [Fact]
+        public async Task Handle_ProgressExceedsTarget_ThrowsArgumentException()
+        {
+            // Arrange
+            var command = new UpdateGoalProgressCommand
+            {
+                GoalId = _testGoalId,
+                Value = 150 // exceeds target of 100
+            };
+
+            var goal = new Goal
+            {
+                Id = _testGoalId,
+                UserId = _testUserId,
+                TargetValue = 100,
+                CurrentValue = 0
+            };
+
+            var mockGoals = MockDbSetHelper.CreateMockDbSet<Goal>(new List<Goal> { goal });
+            _mockContext.Setup(c => c.Goals).Returns(mockGoals.Object);
+
+            // Act & Assert
+            var act = async () => await _handler.Handle(command, CancellationToken.None);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage("Current value cannot exceed target value");
+        }
+
+        [Fact]
+        public async Task Handle_NegativeProgress_ThrowsArgumentException()
+        {
+            // Arrange
+            var command = new UpdateGoalProgressCommand
+            {
+                GoalId = _testGoalId,
+                Value = -10
+            };
+
+            var goal = new Goal
+            {
+                Id = _testGoalId,
+                UserId = _testUserId,
+                TargetValue = 100
+            };
+
+            var mockGoals = MockDbSetHelper.CreateMockDbSet<Goal>(new List<Goal> { goal });
+            _mockContext.Setup(c => c.Goals).Returns(mockGoals.Object);
+
+            // Act & Assert
+            var act = async () => await _handler.Handle(command, CancellationToken.None);
+            await act.Should().ThrowAsync<ArgumentException>()
+                .WithMessage("Current value cannot be negative");
         }
     }
 }

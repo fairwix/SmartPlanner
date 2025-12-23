@@ -1,4 +1,3 @@
-// Infrastructure/Migrations/0009_CreateSecurityAuditLog.cs
 using FluentMigrator;
 
 [Migration(0009)]
@@ -19,13 +18,11 @@ public class CreateSecurityAuditLog : Migration
             .WithColumn("CreatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime)
             .WithColumn("UpdatedAt").AsDateTime().NotNullable().WithDefault(SystemMethods.CurrentUTCDateTime);
 
-        // Foreign key к Users (каскадное удаление если пользователь удален)
         Create.ForeignKey("FK_SecurityAuditLogs_Users")
             .FromTable("SecurityAuditLogs").ForeignColumn("UserId")
             .ToTable("Users").PrimaryColumn("Id")
-            .OnDelete(System.Data.Rule.SetNull); // SET NULL если пользователь удален
+            .OnDelete(System.Data.Rule.SetNull);
 
-        // Индексы для быстрого поиска
         Create.Index("IX_SecurityAuditLogs_EventType")
             .OnTable("SecurityAuditLogs")
             .OnColumn("EventType");
@@ -47,7 +44,6 @@ public class CreateSecurityAuditLog : Migration
             .OnTable("SecurityAuditLogs")
             .OnColumn("Success");
 
-        // Создаем job для очистки старых логов (через 90 дней)
         Execute.Sql(@"
             -- Создаем функцию для автоматической очистки
             CREATE OR REPLACE FUNCTION cleanup_old_security_logs()
@@ -66,20 +62,17 @@ public class CreateSecurityAuditLog : Migration
 
     public override void Down()
     {
-        // Удаляем foreign key
+
         Delete.ForeignKey("FK_SecurityAuditLogs_Users").OnTable("SecurityAuditLogs");
 
-        // Удаляем индексы
         Delete.Index("IX_SecurityAuditLogs_EventType").OnTable("SecurityAuditLogs");
         Delete.Index("IX_SecurityAuditLogs_UserId_Timestamp").OnTable("SecurityAuditLogs");
         Delete.Index("IX_SecurityAuditLogs_Timestamp").OnTable("SecurityAuditLogs");
         Delete.Index("IX_SecurityAuditLogs_IpAddress").OnTable("SecurityAuditLogs");
         Delete.Index("IX_SecurityAuditLogs_Success").OnTable("SecurityAuditLogs");
 
-        // Удаляем таблицу
         Delete.Table("SecurityAuditLogs");
 
-        // Удаляем функцию
         Execute.Sql("DROP FUNCTION IF EXISTS cleanup_old_security_logs();");
     }
 }

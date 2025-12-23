@@ -1,41 +1,28 @@
+// SmartPlanner.Tests/Infrastructure/Services/AchievementCheckerServiceTests.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Logging;
 using Moq;
 using SmartPlanner.Application.Common.Interfaces;
 using SmartPlanner.Domain.Entities;
-using SmartPlanner.Infrastructure.Data;
-using SmartPlanner.Infrastructure.Services;
 using Xunit;
+using FluentAssertions;
+using SmartPlanner.Application.Services;
 
 namespace SmartPlanner.Tests.Infrastructure.Services
 {
-    public class AchievementCheckerServiceTests : IDisposable
+    public class AchievementCheckerServiceTests
     {
-        private readonly AppDbContext _context;
         private readonly AchievementCheckerService _service;
+        private readonly Mock<IApplicationDbContext> _mockContext;
 
         public AchievementCheckerServiceTests()
         {
-            // Configure in-memory database for testing
-            var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .ConfigureWarnings(x => x.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-                .Options;
-
-            _context = new AppDbContext(options);
             _service = new AchievementCheckerService();
-        }
-
-        public void Dispose()
-        {
-            _context.Database.EnsureDeleted();
-            _context.Dispose();
+            _mockContext = new Mock<IApplicationDbContext>();
         }
 
         [Fact]
@@ -70,18 +57,130 @@ namespace SmartPlanner.Tests.Infrastructure.Services
                 }
             };
 
-            // Add test data to in-memory database
-            _context.Users.Add(user);
-            _context.Achievements.AddRange(achievements);
-            await _context.SaveChangesAsync();
+            var userAchievements = new List<UserAchievement>();
+            var mockUsers = MockDbSetHelper.CreateMockDbSet(new List<User> { user });
+            var mockAchievements = MockDbSetHelper.CreateMockDbSet(achievements);
+            var mockUserAchievements = MockDbSetHelper.CreateMockDbSet(userAchievements);
+
+            _mockContext.Setup(c => c.Users).Returns(mockUsers.Object);
+            _mockContext.Setup(c => c.Achievements).Returns(mockAchievements.Object);
+            _mockContext.Setup(c => c.UserAchievements).Returns(mockUserAchievements.Object);
 
             // Act
             var result = await _service.CheckAndAwardEligibleAchievementsAsync(
-                userId, _context, CancellationToken.None);
+                userId, _mockContext.Object, CancellationToken.None);
 
             // Assert
-            Assert.NotEmpty(result);
-            Assert.Contains(result, a => a.Name == "Week Streak");
+            result.Should().NotBeEmpty();
+            result.Should().Contain(a => a.Name == "Week Streak");
+            result.Should().NotContain(a => a.Name == "Month Streak"); // Not eligible yet
+        }
+
+        [Fact]
+        public async Task CheckAndAwardEligibleAchievementsAsync_UserWithCompletedGoals_ReturnsGoalAchievements()
+        {
+            // Arrange
+            var userId = Guid.NewGuid();
+            var user = new User
+            {
+                Id = userId,
+                Username = "testuser"
+            };
+
+            var goals = new List<Goal>
+            {
+                new Goal { Id = Guid.NewGuid(), UserId = userId, IsCompleted = true },
+                new Goal { Id = Guid.NewGuid(), UserId = userId, IsCompleted = true },
+                new Goal { Id = Guid.NewGuid(), UserId = userId, IsCompleted = false }
+            };
+
+            var achievements = new List<Achievement>
+            {
+                new Achievement
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "First Goal",
+                    Type = AchievementType.GoalsCompleted,
+                    Condition = "goals_completed:1",
+                    RewardAmount = 50
+                },
+                new Achievement
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Three Goals",
+                    Type = AchievementType.GoalsCompleted,
+                    Condition = "goals_completed:3",
+                    RewardAmount = 150
+                }
+            };
+
+            var userAchievements = new List<UserAchievement>();
+            var mockUsers = MockDbSetHelper.CreateMockDbSet(new List<User> { user });
+            var mockGoals = MockDbSetHelper.CreateMockDbSet(goals);
+            var mockAchievements = MockDbSetHelper.CreateMockDbSet(achievements);
+            var mockUserAchievements = MockDbSetHelper.CreateMockDbSet(userAchievements);
+
+            _mockContext.Setup(c => c.Users).Returns(mockUsers.Object);
+            _mockContext.Setup(c => c.Goals).Returns(mockGoals.Object);
+            _mockContext.Setup(c => c.Achievements).Returns(mockAchievements.Object);
+            _mockContext.Setup(c => c.UserAchievements).Returns(mockUserAchievements.Object);
+
+            // Act
+            var result = await _service.CheckAndAwardEligibleAchievementsAsync(
+                userId, _mockContext.Object, CancellationToken.None);
+
+            // Assert
+            result.Should().Contain(a => a.Name == "First Goal");
+            result.Should().NotContain(a => a.Name == "Three Goals"); // Only 2 completed
+        }
+
+        [Fact]
+        public async Task CheckAndAwardEligibleAchievementsAsync_UserWithAchievements_ReturnsNoAchievements()
+        {
+            // Arrange
+            var userId = Guid.NewGuid();
+            var user = new User
+            {
+                Id = userId,
+                Username = "testuser"
+            };
+
+            var achievements = new List<Achievement>
+            {
+                new Achievement
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Week Streak",
+                    Type = AchievementType.Streak,
+                    Condition = "streak:7",
+                    RewardAmount = 100
+                }
+            };
+
+            var userAchievements = new List<UserAchievement>
+            {
+                new UserAchievement
+                {
+                    UserId = userId,
+                    AchievementId = achievements[0].Id,
+                    AwardedAt = DateTime.UtcNow
+                }
+            };
+
+            var mockUsers = MockDbSetHelper.CreateMockDbSet(new List<User> { user });
+            var mockAchievements = MockDbSetHelper.CreateMockDbSet(achievements);
+            var mockUserAchievements = MockDbSetHelper.CreateMockDbSet(userAchievements);
+
+            _mockContext.Setup(c => c.Users).Returns(mockUsers.Object);
+            _mockContext.Setup(c => c.Achievements).Returns(mockAchievements.Object);
+            _mockContext.Setup(c => c.UserAchievements).Returns(mockUserAchievements.Object);
+
+            // Act
+            var result = await _service.CheckAndAwardEligibleAchievementsAsync(
+                userId, _mockContext.Object, CancellationToken.None);
+
+            // Assert
+            result.Should().BeEmpty(); // Already has this achievement
         }
 
         [Fact]
@@ -94,7 +193,6 @@ namespace SmartPlanner.Tests.Infrastructure.Services
                 Type = AchievementType.Streak,
                 Condition = "streak:7"
             };
-
             var user = new User
             {
                 Username = "testuser",
@@ -106,7 +204,7 @@ namespace SmartPlanner.Tests.Infrastructure.Services
                 achievement, user, 0, 0);
 
             // Assert
-            Assert.True(meetsCondition);
+            meetsCondition.Should().BeTrue();
         }
 
         [Fact]
@@ -119,7 +217,6 @@ namespace SmartPlanner.Tests.Infrastructure.Services
                 Type = AchievementType.Streak,
                 Condition = "streak:7"
             };
-
             var user = new User
             {
                 Username = "testuser",
@@ -131,7 +228,7 @@ namespace SmartPlanner.Tests.Infrastructure.Services
                 achievement, user, 0, 0);
 
             // Assert
-            Assert.False(meetsCondition);
+            meetsCondition.Should().BeFalse();
         }
 
         [Fact]
@@ -144,7 +241,6 @@ namespace SmartPlanner.Tests.Infrastructure.Services
                 Type = AchievementType.GoalsCompleted,
                 Condition = "goals_completed:5"
             };
-
             var user = new User
             {
                 Username = "testuser"
@@ -155,7 +251,7 @@ namespace SmartPlanner.Tests.Infrastructure.Services
                 achievement, user, 7, 0);
 
             // Assert
-            Assert.True(meetsCondition);
+            meetsCondition.Should().BeTrue();
         }
 
         [Fact]
@@ -168,7 +264,6 @@ namespace SmartPlanner.Tests.Infrastructure.Services
                 Type = AchievementType.Friends,
                 Condition = "friends:3"
             };
-
             var user = new User
             {
                 Username = "testuser"
@@ -179,7 +274,31 @@ namespace SmartPlanner.Tests.Infrastructure.Services
                 achievement, user, 0, 5);
 
             // Assert
-            Assert.True(meetsCondition);
+            meetsCondition.Should().BeTrue();
+        }
+
+        [Fact]
+        public void MeetsAchievementCondition_InvalidConditionFormat_ReturnsFalse()
+        {
+            // Arrange
+            var achievement = new Achievement
+            {
+                Name = "Test Achievement",
+                Type = AchievementType.Streak,
+                Condition = "invalid_format"
+            };
+            var user = new User
+            {
+                Username = "testuser",
+                StreakCount = 10
+            };
+
+            // Act
+            var meetsCondition = _service.MeetsAchievementCondition(
+                achievement, user, 0, 0);
+
+            // Assert
+            meetsCondition.Should().BeFalse();
         }
     }
 }

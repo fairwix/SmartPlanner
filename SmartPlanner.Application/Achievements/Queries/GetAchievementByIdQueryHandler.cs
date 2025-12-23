@@ -9,7 +9,7 @@ namespace SmartPlanner.Application.Achievements.Queries;
 
 public class GetAchievementByIdQueryHandler : IRequestHandler<GetAchievementByIdQuery, AchievementDto?>
 {
-    private readonly IApplicationDbContext _context; // ✅ Прямой доступ вместо сервиса
+    private readonly IApplicationDbContext _context;
     private readonly IMapper _mapper;
 
     public GetAchievementByIdQueryHandler(

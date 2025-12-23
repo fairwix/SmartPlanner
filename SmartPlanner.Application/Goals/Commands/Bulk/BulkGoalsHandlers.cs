@@ -39,7 +39,6 @@ namespace SmartPlanner.Application.Goals.Commands
                 TotalCount = request.Goals.Count
             };
 
-            // Проверяем пользователя
             var userExists = await _context.Users
                 .AnyAsync(u => u.Id == request.UserId, cancellationToken);
 
@@ -68,7 +67,6 @@ namespace SmartPlanner.Application.Goals.Commands
             {
                 try
                 {
-                    // Проверяем уникальность названия
                     var isTitleUnique = !await _context.Goals
                         .AnyAsync(g => g.UserId == request.UserId &&
                                       g.Title == goalDto.Title,
@@ -108,14 +106,12 @@ namespace SmartPlanner.Application.Goals.Commands
                 }
             }
 
-            // ✅ ИСПРАВЛЕНО: ОДИН SaveChanges для всех целей
             if (goalsToAdd.Any())
             {
                 await _context.Goals.AddRangeAsync(goalsToAdd, cancellationToken);
                 await _context.SaveChangesAsync(cancellationToken);
             }
 
-            // Формируем финальные результаты
             foreach (var result in goalResults)
             {
                 results.Items.Add(new BulkOperationItem<GoalDto>

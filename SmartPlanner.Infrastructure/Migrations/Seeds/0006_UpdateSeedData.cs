@@ -6,7 +6,6 @@ public class UpdateSeedData : Migration
 {
     public override void Up()
     {
-        // 1. Обновляем данные пользователей с PasswordSalt
         Execute.Sql(@"
             -- Обновляем администратора
             UPDATE ""Users""
@@ -36,7 +35,6 @@ public class UpdateSeedData : Migration
             WHERE ""Id"" = '00000000-0000-0000-0000-000000000003';
         ");
 
-        // 2. Добавляем дополнительные роли (если нужно)
         Execute.Sql(@"
             INSERT INTO ""Roles"" (""Id"", ""Name"", ""NormalizedName"", ""Description"", ""CreatedAt"") VALUES
             ('44444444-4444-4444-4444-444444444444', 'Moderator', 'MODERATOR', 'Content moderator with limited admin rights', NOW()),
@@ -44,7 +42,6 @@ public class UpdateSeedData : Migration
             ON CONFLICT (""Name"") DO NOTHING;
         ");
 
-        // 3. Обновляем описания существующих ролей
         Execute.Sql(@"
             UPDATE ""Roles""
             SET ""Description"" =
@@ -55,7 +52,6 @@ public class UpdateSeedData : Migration
                 END;
         ");
 
-        // 4. Назначаем дополнительные permissions для новых ролей
         Execute.Sql(@"
             -- Moderator получает права на модерацию
             INSERT INTO ""RolePermissions"" (""RoleId"", ""PermissionId"", ""AssignedAt"", ""AssignedBy"")
@@ -80,7 +76,6 @@ public class UpdateSeedData : Migration
             ON CONFLICT (""RoleId"", ""PermissionId"") DO NOTHING;
         ");
 
-        // 5. Добавляем дополнительные permissions (если нужно)
         Execute.Sql(@"
             INSERT INTO ""Permissions"" (""Id"", ""Name"", ""Description"", ""Category"", ""CreatedAt"") VALUES
             ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'Moderation.Content', 'Moderate user content', 'Moderation', NOW()),
@@ -89,7 +84,6 @@ public class UpdateSeedData : Migration
             ON CONFLICT (""Name"") DO NOTHING;
         ");
 
-        // 6. Добавляем тестовые UserClaims
         Execute.Sql(@"
             INSERT INTO ""UserClaims"" (""Id"", ""UserId"", ""ClaimType"", ""ClaimValue"", ""CreatedAt"") VALUES
             (gen_random_uuid(), '00000000-0000-0000-0000-000000000001', 'SubscriptionLevel', 'Enterprise', NOW()),
@@ -100,7 +94,6 @@ public class UpdateSeedData : Migration
             ON CONFLICT DO NOTHING;
         ");
 
-        // 7. Добавляем тестовые UserSessions
         Execute.Sql(@"
             INSERT INTO ""UserSessions"" (""Id"", ""UserId"", ""RefreshTokenHash"", ""CreatedAt"", ""ExpiresAt"", ""DeviceInfo"", ""IpAddress"", ""IsRevoked"") VALUES
             (gen_random_uuid(), '00000000-0000-0000-0000-000000000001',
@@ -118,7 +111,6 @@ public class UpdateSeedData : Migration
 
     public override void Down()
     {
-        // Откат seed данных
         Execute.Sql(@"DELETE FROM ""UserSessions"" WHERE ""UserId"" IN (
             '00000000-0000-0000-0000-000000000001',
             '00000000-0000-0000-0000-000000000002',
@@ -142,7 +134,6 @@ public class UpdateSeedData : Migration
 
         Execute.Sql(@"DELETE FROM ""Roles"" WHERE ""Name"" IN ('Moderator', 'Premium')");
 
-        // Восстанавливаем старые значения соли
         Execute.Sql(@"
             UPDATE ""Users"" SET ""PasswordSalt"" = '' WHERE ""Id"" IN (
                 '00000000-0000-0000-0000-000000000001',

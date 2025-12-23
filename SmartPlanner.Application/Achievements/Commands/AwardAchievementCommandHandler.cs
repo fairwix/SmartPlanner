@@ -6,7 +6,7 @@ using SmartPlanner.Application.Common.Interfaces;
 
 public class AwardAchievementCommandHandler : IRequestHandler<AwardAchievementCommand, bool>
 {
-    private readonly IApplicationDbContext _context; // ✅ Прямой доступ
+    private readonly IApplicationDbContext _context;
 
     public AwardAchievementCommandHandler(IApplicationDbContext context)
     {
@@ -15,7 +15,6 @@ public class AwardAchievementCommandHandler : IRequestHandler<AwardAchievementCo
 
     public async Task<bool> Handle(AwardAchievementCommand request, CancellationToken cancellationToken)
     {
-        // ✅ Все через DbContext напрямую
         var achievement = await _context.Achievements
             .FirstOrDefaultAsync(a => a.Id == request.AchievementId, cancellationToken);
 
@@ -25,7 +24,6 @@ public class AwardAchievementCommandHandler : IRequestHandler<AwardAchievementCo
         if (achievement == null || user == null)
             return false;
 
-        // Проверяем, не получено ли уже достижение
         var alreadyExists = await _context.UserAchievements
             .AnyAsync(ua => ua.UserId == request.UserId &&
                             ua.AchievementId == request.AchievementId,
@@ -34,7 +32,6 @@ public class AwardAchievementCommandHandler : IRequestHandler<AwardAchievementCo
         if (alreadyExists)
             return false;
 
-        // Создаем запись о достижении
         var userAchievement = new UserAchievement
         {
             UserId = request.UserId,
@@ -44,7 +41,6 @@ public class AwardAchievementCommandHandler : IRequestHandler<AwardAchievementCo
 
         await _context.UserAchievements.AddAsync(userAchievement, cancellationToken);
 
-        // Награждаем пользователя
         user.AddReward(achievement.RewardAmount);
         _context.Users.Update(user);
 

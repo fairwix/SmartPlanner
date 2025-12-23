@@ -13,7 +13,7 @@ namespace SmartPlanner.API.Controllers;
 [Route("api/[controller]")]
 [Consumes("application/json")]
 [Produces("application/json")]
-[Authorize] // ✅ Весь контроллер защищен
+[Authorize]
 public class GoalsController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -52,7 +52,6 @@ public class GoalsController : ControllerBase
             return NotFound();
         }
 
-        // ✅ Проверяем права на просмотр
         var authResult = await _authorizationService.AuthorizeAsync(
             User, goal, "ResourceOwner");
 
@@ -78,7 +77,6 @@ public class GoalsController : ControllerBase
     {
         _logger.LogInformation("Creating new goal");
 
-        // ✅ Берем UserId из JWT токена, НЕ из DTO!
         var userIdClaim = User.FindFirst("userId")?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var currentUserId))
         {
@@ -94,7 +92,7 @@ public class GoalsController : ControllerBase
             Priority = request.Priority,
             DueDate = request.DueDate,
             TargetValue = request.TargetValue,
-            UserId = currentUserId // ✅ Только из токена!
+            UserId = currentUserId
         };
 
         var result = await _mediator.Send(command, cancellationToken);
@@ -116,7 +114,6 @@ public class GoalsController : ControllerBase
     {
         _logger.LogDebug("Updating goal {GoalId}", id);
 
-        // ✅ Загружаем цель для проверки прав
         var goal = await _context.Goals
             .FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
 
@@ -126,14 +123,13 @@ public class GoalsController : ControllerBase
             return NotFound();
         }
 
-        // ✅ IMPERATIVE AUTHORIZATION - проверяем права перед действием
         var authResult = await _authorizationService.AuthorizeAsync(
             User, goal, "ResourceOwner");
 
         if (!authResult.Succeeded)
         {
             _logger.LogWarning("User not authorized to update goal {GoalId}", id);
-            return Forbid(); // 403 Forbidden
+            return Forbid();
         }
 
         var command = new UpdateGoalCommand
@@ -163,7 +159,6 @@ public class GoalsController : ControllerBase
     {
         _logger.LogInformation("Deleting goal {GoalId}", id);
 
-        // ✅ Загружаем цель для проверки прав
         var goal = await _context.Goals
             .FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
 
@@ -173,7 +168,6 @@ public class GoalsController : ControllerBase
             return NotFound();
         }
 
-        // ✅ IMPERATIVE AUTHORIZATION
         var authResult = await _authorizationService.AuthorizeAsync(
             User, goal, "ResourceOwner");
 
@@ -207,7 +201,6 @@ public class GoalsController : ControllerBase
     {
         _logger.LogDebug("Updating progress for goal {GoalId}", id);
 
-        // ✅ Загружаем цель для проверки прав
         var goal = await _context.Goals
             .FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
 
@@ -217,7 +210,6 @@ public class GoalsController : ControllerBase
             return NotFound();
         }
 
-        // ✅ IMPERATIVE AUTHORIZATION
         var authResult = await _authorizationService.AuthorizeAsync(
             User, goal, "ResourceOwner");
 
@@ -248,7 +240,6 @@ public class GoalsController : ControllerBase
     }
 }
 
-// ✅ УДАЛИЛИ UserId из DTO - теперь берем только из токена
 public record CreateGoalRequest(
     string Title,
     string? Description,

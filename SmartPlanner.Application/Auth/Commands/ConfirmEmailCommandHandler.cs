@@ -1,4 +1,3 @@
-// Application/Auth/Commands/ConfirmEmailCommandHandler.cs
 using System.Security.Cryptography;
 using System.Text;
 using MediatR;
@@ -46,7 +45,6 @@ namespace SmartPlanner.Application.Auth.Commands
         {
             _logger.LogInformation("Email confirmation attempt for user {UserId}", request.UserId);
 
-            // 1. Find user with tracking for update
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Id == request.UserId && u.IsActive && !u.IsDeleted,
                     cancellationToken);
@@ -64,7 +62,6 @@ namespace SmartPlanner.Application.Auth.Commands
                 return new EmailConfirmationResponseDto(false, "User not found or account is inactive");
             }
 
-            // 2. Check if already confirmed
             if (user.IsEmailConfirmed)
             {
                 _logger.LogInformation("Email already confirmed for user {UserId}", user.Id);
@@ -74,7 +71,6 @@ namespace SmartPlanner.Application.Auth.Commands
                     _appSettings.FrontendUrls?.LoginUrl ?? "/login");
             }
 
-            // 3. Validate token
             var isValid = await _tokenService.ValidateEmailConfirmationTokenAsync(
                 request.Token, user.Id, cancellationToken);
 
@@ -95,20 +91,16 @@ namespace SmartPlanner.Application.Auth.Commands
                     "Invalid or expired confirmation token. Please request a new one.");
             }
 
-            // 4. Mark token as used (вызываем метод из сервиса)
             await MarkEmailTokenAsUsedAsync(request.Token, cancellationToken);
 
-            // 5. Confirm email
             user.IsEmailConfirmed = true;
             user.EmailConfirmedAt = DateTime.UtcNow;
             user.UpdatedAt = DateTime.UtcNow;
 
-            // 6. Save changes
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Email successfully confirmed for user {UserId}", user.Id);
 
-            // 7. Log security event
             await _auditService.LogSecurityEventAsync(
                 SecurityEventType.EmailConfirmed,
                 user.Id,
@@ -116,7 +108,6 @@ namespace SmartPlanner.Application.Auth.Commands
                 success: true,
                 cancellationToken: cancellationToken);
 
-            // 8. Send welcome email in background (не блокируем ответ)
             _ = Task.Run(async () =>
             {
                 try
@@ -130,14 +121,12 @@ namespace SmartPlanner.Application.Auth.Commands
                 }
             }, cancellationToken);
 
-            // 9. Return success response with redirect URL
             return new EmailConfirmationResponseDto(
                 true,
                 "Email successfully confirmed! You can now log in.",
                 _appSettings.FrontendUrls?.DashboardUrl ?? "/dashboard");
         }
 
-        // Добавляем недостающий метод
         private async Task MarkEmailTokenAsUsedAsync(string token, CancellationToken cancellationToken)
         {
             var tokenHash = ComputeSha256Hash(token);
@@ -149,7 +138,6 @@ namespace SmartPlanner.Application.Auth.Commands
             {
                 confirmationToken.IsUsed = true;
                 confirmationToken.UsedAt = DateTime.UtcNow;
-                // Не сохраняем здесь - сохраним вместе с user в основном методе
             }
         }
 

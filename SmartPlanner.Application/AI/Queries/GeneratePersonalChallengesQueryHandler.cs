@@ -20,10 +20,9 @@ namespace SmartPlanner.Application.AI.Queries
             GeneratePersonalChallengesQuery request,
             CancellationToken cancellationToken)
         {
-            // Загружаем пользователя с его интересами
             var user = await _context.Users
-                .Include(u => u.UserInterests)          // Включаем UserInterests
-                .ThenInclude(ui => ui.Interest)         // И связанные Interest
+                .Include(u => u.UserInterests)
+                .ThenInclude(ui => ui.Interest)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
@@ -33,20 +32,18 @@ namespace SmartPlanner.Application.AI.Queries
             var challenges = new List<ChallengeDto>();
             var random = new Random();
 
-            // Получаем интересы пользователя из UserInterests
             var interests = user.UserInterests
                 .Where(ui => ui.Interest != null)
                 .Select(ui => ui.Interest.Name)
                 .Take(request.Count)
                 .ToList();
 
-            // Если у пользователя нет интересов, используем дефолтные
             if (!interests.Any())
             {
                 interests = new List<string> { "fitness", "reading", "learning" };
             }
 
-            // Генерируем челленджи на основе интересов
+
             foreach (var interest in interests)
             {
                 var challenge = GenerateSmartChallenge(interest, user.Id, random);
@@ -91,19 +88,19 @@ namespace SmartPlanner.Application.AI.Queries
             var endDate = startDate.AddDays(random.Next(7, 30));
 
             return new ChallengeDto(
-                Guid.NewGuid(),                     // Id будет сгенерирован при сохранении
-                startDate,                          // CreatedAt
-                startDate,                          // UpdatedAt
+                Guid.NewGuid(),
+                startDate,
+                startDate,
                 title,
                 description,
                 GetChallengeType(interest),
                 startDate,
                 endDate,
-                random.Next(0, 2) == 1,            // IsGroupChallenge
+                random.Next(0, 2) == 1,
                 targetValue,
-                0,                                  // CurrentValue
-                0.0,                               // GroupProgressPercentage
-                true,                              // IsActive
+                0,
+                0.0,
+                true,
                 userId,
                 new List<ChallengeParticipantDto>());
         }

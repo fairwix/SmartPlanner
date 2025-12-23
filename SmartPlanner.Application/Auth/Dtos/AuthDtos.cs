@@ -1,5 +1,3 @@
-// В SmartPlanner.Application/Auth/Dtos/AuthDtos.cs
-
 using System.ComponentModel.DataAnnotations;
 
 namespace SmartPlanner.Application.Auth.Dtos

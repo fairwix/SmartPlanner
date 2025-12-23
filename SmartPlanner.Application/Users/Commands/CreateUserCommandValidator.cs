@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Users/Commands/CreateUserCommandValidator.cs
 using FluentValidation;
 
 namespace SmartPlanner.Application.Users.Commands;

@@ -78,7 +78,7 @@ namespace SmartPlanner.API.Controllers
         }
 
         [HttpPost("logout")]
-        [Authorize] // ✅ Требуется аутентификация
+        [Authorize]
         [ProducesResponseType(200)]
         [ProducesResponseType(401)]
         public async Task<IActionResult> Logout(CancellationToken cancellationToken)
@@ -184,7 +184,6 @@ namespace SmartPlanner.API.Controllers
                 UserAgent = userAgent
             };
 
-            // Всегда возвращаем 200 даже если email не найден (security best practice)
             await _mediator.Send(command, cancellationToken);
             return Ok(new { message = "If your email exists in our system, you will receive a password reset link." });
         }
@@ -253,7 +252,7 @@ namespace SmartPlanner.API.Controllers
 
 
         [HttpGet("profile")]
-        [Authorize] // ✅ Требуется аутентификация
+        [Authorize]
         [ProducesResponseType(typeof(UserProfileDto), 200)]
         [ProducesResponseType(401)]
         public async Task<ActionResult<UserProfileDto>> GetProfile(
@@ -264,10 +263,6 @@ namespace SmartPlanner.API.Controllers
             {
                 return Unauthorized();
             }
-
-            // ✅ Можно добавить загрузку полного профиля из БД
-            // var query = new GetUserProfileQuery { UserId = Guid.Parse(userIdClaim) };
-            // var profile = await _mediator.Send(query, cancellationToken);
 
             return Ok(new UserProfileDto(
                 Guid.Parse(userIdClaim),

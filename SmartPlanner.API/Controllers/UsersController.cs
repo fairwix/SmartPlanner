@@ -48,8 +48,6 @@ public class UsersController : ControllerBase
             return NotFound();
         }
 
-        // ✅ Проверяем права: пользователь может видеть только свой профиль
-        // Или админ может видеть все профили
         var userIdClaim = User.FindFirst("userId")?.Value;
         var isAdmin = User.IsInRole("Admin");
 
@@ -65,7 +63,6 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
-   // [Authorize(Policy = "CanManageUsers")] // ✅ Только админы могут создавать пользователей
     [ProducesResponseType(typeof(UserDto), 201)]
     [ProducesResponseType(403)]
     public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserRequest request)
@@ -97,7 +94,6 @@ public class UsersController : ControllerBase
     {
         _logger.LogInformation("Updating user {UserId}", id);
 
-        // ✅ Загружаем пользователя для проверки прав
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == id);
 
@@ -107,7 +103,6 @@ public class UsersController : ControllerBase
             return NotFound();
         }
 
-        // ✅ Проверяем права: пользователь может редактировать только себя
         var authResult = await _authorizationService.AuthorizeAsync(
             User, user, "ResourceOwner");
 
@@ -174,7 +169,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [Authorize(Policy = "CanManageUsers")] // ✅ Только админы могут удалять пользователей
+    [Authorize(Policy = "CanManageUsers")]
     [ProducesResponseType(200)]
     [ProducesResponseType(403)]
     [ProducesResponseType(404)]
@@ -182,7 +177,6 @@ public class UsersController : ControllerBase
     {
         _logger.LogInformation("Admin deleting user {UserId}", id);
 
-        // ✅ Проверяем, что пользователь существует
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == id);
 
@@ -192,16 +186,12 @@ public class UsersController : ControllerBase
             return NotFound();
         }
 
-        // ✅ Нельзя удалить самого себя (админ)
         var currentUserId = User.FindFirst("userId")?.Value;
         if (currentUserId == id.ToString())
         {
             _logger.LogWarning("Admin attempted to delete own account");
             return BadRequest("Cannot delete your own account");
         }
-
-        // Выполняем удаление через команду (если есть)
-        // Или напрямую через контекст
 
         return Ok(new { message = "User deleted successfully" });
     }

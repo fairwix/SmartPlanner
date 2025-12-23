@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Common/Behaviors/ValidationBehavior.cs
 using FluentValidation;
 using MediatR;
 

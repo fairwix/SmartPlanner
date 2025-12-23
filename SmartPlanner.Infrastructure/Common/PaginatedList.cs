@@ -1,4 +1,3 @@
-// SmartPlanner.Infrastructure/Common/PaginatedList.cs
 using Microsoft.EntityFrameworkCore;
 
 namespace SmartPlanner.Infrastructure.Common;

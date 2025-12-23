@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Common/Dtos/BulkOperations.cs
 namespace SmartPlanner.Application.Common.Dtos;
 
     public class BulkOperationResult<T>

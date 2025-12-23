@@ -1,4 +1,3 @@
-// SmartPlanner.Application/Users/Queries/GetUserFriendsQuery.cs
 using MediatR;
 using SmartPlanner.Application.Users.Dtos;
 

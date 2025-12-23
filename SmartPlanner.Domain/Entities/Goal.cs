@@ -43,7 +43,6 @@ public class Goal : BaseEntity, IUserOwnedResource
     public virtual User User { get; init; } = null!;
     public virtual List<GoalProgress> ProgressHistory { get; init; } = new List<GoalProgress>();
 
-    // ЗАМЕНА вычисляемого свойства на метод
     public double GetProgressPercentage() =>
         TargetValue > 0 ? (CurrentValue * 100.0) / TargetValue : 0;
 

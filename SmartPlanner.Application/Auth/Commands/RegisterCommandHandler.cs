@@ -1,4 +1,3 @@
-// Application/Auth/Commands/RegisterCommandHandler.cs (дополняем)
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -48,7 +47,6 @@ namespace SmartPlanner.Application.Auth.Commands
         {
             _logger.LogInformation("Registering new user: {Email}", request.Email);
 
-            // 1. Проверяем уникальность email и username (уже есть в валидаторе, но для безопасности)
             var emailExists = await _context.Users
                 .AnyAsync(u => u.Email == request.Email, cancellationToken);
 
@@ -65,10 +63,8 @@ namespace SmartPlanner.Application.Auth.Commands
                 throw new ArgumentException($"Username {request.Username} is already taken");
             }
 
-            // 2. Хеширование пароля
             var (passwordHash, passwordSalt) = _passwordHasher.HashPassword(request.Password);
 
-            // 3. Создание пользователя
             var user = new User
             {
                 Email = request.Email,
@@ -79,12 +75,12 @@ namespace SmartPlanner.Application.Auth.Commands
                 LastName = request.LastName,
                 DateOfBirth = request.DateOfBirth,
                 PhoneNumber = request.PhoneNumber,
-                IsEmailConfirmed = false, // Будет подтверждено позже
+                IsEmailConfirmed = false,
                 IsActive = true,
                 LastLoginAt = DateTime.UtcNow
             };
 
-            // 4. Назначение роли "User"
+
             var userRole = await _context.Roles
                 .FirstOrDefaultAsync(r => r.Name == "User", cancellationToken);
 
@@ -95,18 +91,15 @@ namespace SmartPlanner.Application.Auth.Commands
                     UserId = user.Id,
                     RoleId = userRole.Id,
                     AssignedAt = DateTime.UtcNow,
-                    AssignedBy = null // System assigned
+                    AssignedBy = null
                 };
 
-                // Используем коллекцию UserRoles вместо User.UserRoles.Add()
                 _context.UserRoles.Add(userRoleEntity);
             }
 
-            // 5. Сохранение пользователя
             await _context.Users.AddAsync(user, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
 
-            // 6. Генерация email confirmation token
             var confirmationToken = await _confirmationTokenService.GenerateEmailConfirmationTokenAsync(
                 user.Id, cancellationToken);
 
@@ -114,7 +107,6 @@ namespace SmartPlanner.Application.Auth.Commands
                                   $"userId={user.Id}&token={Uri.EscapeDataString(confirmationToken)}";
             var accessToken = await _tokenService.GenerateAccessTokenAsync(user, cancellationToken);
 
-            // 7. Отправка confirmation email в фоне
             _ = Task.Run(async () =>
             {
                 try
@@ -129,26 +121,23 @@ namespace SmartPlanner.Application.Auth.Commands
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to send confirmation email to {Email}", user.Email);
-                    // Логируем, но не прерываем регистрацию
                 }
             }, cancellationToken);
 
-            // 8. Генерация токенов для немедленного входа
             var accesToken = await _tokenService.GenerateAccessTokenAsync(user, cancellationToken);
             var (refreshToken, refreshTokenHash) = _tokenService.GenerateRefreshToken();
 
-            // 9. Создание сессии
+
             var refreshTokenExpiry = DateTime.UtcNow.AddDays(_appSettings.Jwt.RefreshTokenExpirationDays);
 
             await _tokenService.CreateUserSessionAsync(
                 user.Id,
                 refreshTokenHash,
                 refreshTokenExpiry,
-                null, // device info
-                null, // IP
+                null,
+                null,
                 cancellationToken);
 
-            // 10. Логирование события безопасности
             await _auditService.LogSecurityEventAsync(
                 SecurityEventType.Register,
                 user.Id,
@@ -161,7 +150,6 @@ namespace SmartPlanner.Application.Auth.Commands
                 },
                 cancellationToken: cancellationToken);
 
-            // 11. Формирование ответа
             var response = new AuthResponseDto(
                 accessToken,
                 refreshToken,
