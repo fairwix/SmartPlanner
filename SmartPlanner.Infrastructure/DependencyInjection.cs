@@ -56,13 +56,13 @@ namespace SmartPlanner.Infrastructure
             // services.AddSingleton<IHostEnvironment>(sp =>
             //     sp.GetRequiredService<IHostEnvironment>());
 
-            services.AddFluentMigratorCore()
-                .ConfigureRunner(rb => rb
-                    .AddPostgres()
-                    .WithGlobalConnectionString(connectionString)
-                    .ScanIn(typeof(DependencyInjection).Assembly).For.Migrations()
-                    .ScanIn(typeof(DependencyInjection).Assembly).For.EmbeddedResources())
-                .AddLogging(lb => lb.AddFluentMigratorConsole());
+            // services.AddFluentMigratorCore()
+            //     .ConfigureRunner(rb => rb
+            //         .AddPostgres()
+            //         .WithGlobalConnectionString(connectionString)
+            //         .ScanIn(typeof(DependencyInjection).Assembly).For.Migrations()
+            //         .ScanIn(typeof(DependencyInjection).Assembly).For.EmbeddedResources())
+            //     .AddLogging(lb => lb.AddFluentMigratorConsole());
 
             return services;
         }

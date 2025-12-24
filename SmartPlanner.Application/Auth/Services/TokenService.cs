@@ -51,8 +51,7 @@ namespace SmartPlanner.Application.Auth.Services
             _tokenHandler = new JwtSecurityTokenHandler();
 
             var secretKey = _configuration["JwtSettings:Secret"]
-                ?? throw new InvalidOperationException("JWT Secret is not configured");
-
+                            ?? "dev-secret-key-123456789012345678901234567890";
             _signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             _signingCredentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256);
         }

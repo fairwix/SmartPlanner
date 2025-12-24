@@ -81,8 +81,20 @@ namespace SmartPlanner.Application.Auth.Commands
             };
 
 
-            var userRole = await _context.Roles
-                .FirstOrDefaultAsync(r => r.Name == "User", cancellationToken);
+            // Временно создаем роль если ее нет
+            var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
+            if (userRole == null)
+            {
+                userRole = new Role
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "User",
+                    NormalizedName = "USER",
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Roles.Add(userRole);
+                await _context.SaveChangesAsync();
+            }
 
             if (userRole != null)
             {

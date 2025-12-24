@@ -11,6 +11,7 @@ using SmartPlanner.Application.Security.Services;
 using SmartPlanner.Infrastructure;
 using System.Text;
 using FluentMigrator.Runner;
+using Microsoft.AspNetCore.Authorization;
 using SmartPlanner.Application.Authorization.Requirements;
 using SmartPlanner.Infrastructure.Data;
 
@@ -76,19 +77,34 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        // Получаем настройки из конфига
+        var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+        var secret = jwtSettings["Secret"]
+                     ?? "dev-secret-key-123456789012345678901234567890";
+        var issuer = jwtSettings["Issuer"] ?? "smartplanner-dev";
+        var audience = jwtSettings["Audience"] ?? "smartplanner-dev-clients";
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = false,
-            ValidateAudience = false,
+            ValidateIssuer = true,          // ← ВКЛЮЧИ!
+            ValidIssuer = issuer,
+
+            ValidateAudience = true,       // ← ВКЛЮЧИ!
+            ValidAudience = audience,
+
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("12345678901234567890123456789012"))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+            ClockSkew = TimeSpan.Zero  // ← Убери запас времени для тестов
         };
     });
 
 // 6. Авторизация + политики
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy("ResourceOwner", policy =>
+        policy.Requirements.Add(new ResourceOwnerRequirement()));
+
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
     options.AddPolicy("CanManageUsers", policy => policy.RequireRole("Admin"));
 
@@ -109,6 +125,7 @@ builder.Services.AddAuthorization(options =>
 
 });
 
+builder.Services.AddScoped<IAuthorizationHandler, ResourceOwnerRequirementHandler>();
 // 7. CORS
 builder.Services.AddCors(options =>
 {

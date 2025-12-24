@@ -27,7 +27,8 @@ public class ConfirmationTokenService : IConfirmationTokenService
 
     public async Task MarkEmailTokenAsUsedAsync(string token, CancellationToken cancellationToken)
     {
-        var tokenHash = ComputeSha256Hash(token);
+        var normalizedToken = NormalizeTokenForHashing(token);
+        var tokenHash = ComputeSha256Hash(normalizedToken);
 
         var confirmationToken = await _context.EmailConfirmationTokens
             .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken);
@@ -39,16 +40,20 @@ public class ConfirmationTokenService : IConfirmationTokenService
             await _context.SaveChangesAsync(cancellationToken);
         }
     }
+
     public async Task<string> GeneratePasswordResetTokenAsync(Guid userId, CancellationToken cancellationToken)
     {
         var token = GenerateSecureToken();
+        var normalizedToken = NormalizeTokenForHashing(token);
+        var tokenHash = ComputeSha256Hash(normalizedToken);
+
         var expiresAt = DateTime.UtcNow.AddHours(24); // 24 часа как в ТЗ
 
         var passwordResetToken = new PasswordResetToken
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            TokenHash = ComputeSha256Hash(token),
+            TokenHash = tokenHash,
             ExpiresAt = expiresAt,
             IsUsed = false
         };
@@ -62,15 +67,18 @@ public class ConfirmationTokenService : IConfirmationTokenService
 
     public async Task<string> GenerateEmailConfirmationTokenAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var token = GenerateSecureToken();
-        var expiresAt = DateTime.UtcNow.AddDays(7);
+        var token = GenerateSecureToken(); // URL-safe токен
+
+        // Для хэширования используем нормализованную версию
+        var normalizedToken = NormalizeTokenForHashing(token);
+        var tokenHash = ComputeSha256Hash(normalizedToken);
 
         var emailConfirmationToken = new EmailConfirmationToken
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            TokenHash = ComputeSha256Hash(token),
-            ExpiresAt = expiresAt,
+            TokenHash = tokenHash, // Хэш от нормализованного токена
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
             IsUsed = false
         };
 
@@ -78,12 +86,13 @@ public class ConfirmationTokenService : IConfirmationTokenService
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Generated email confirmation token for user {UserId}", userId);
-        return token;
+        return token; // Возвращаем URL-safe версию
     }
 
     public async Task<bool> ValidatePasswordResetTokenAsync(string token, Guid userId, CancellationToken cancellationToken)
     {
-        var tokenHash = ComputeSha256Hash(token);
+        var normalizedToken = NormalizeTokenForHashing(token);
+        var tokenHash = ComputeSha256Hash(normalizedToken);
 
         var resetToken = await _context.PasswordResetTokens
             .AsNoTracking()
@@ -99,7 +108,9 @@ public class ConfirmationTokenService : IConfirmationTokenService
 
     public async Task<bool> ValidateEmailConfirmationTokenAsync(string token, Guid userId, CancellationToken cancellationToken)
     {
-        var tokenHash = ComputeSha256Hash(token);
+        // Нормализуем токен так же как при генерации
+        var normalizedToken = NormalizeTokenForHashing(token);
+        var tokenHash = ComputeSha256Hash(normalizedToken);
 
         var confirmationToken = await _context.EmailConfirmationTokens
             .AsNoTracking()
@@ -115,7 +126,8 @@ public class ConfirmationTokenService : IConfirmationTokenService
 
     public async Task RevokePasswordResetTokenAsync(string token, CancellationToken cancellationToken)
     {
-        var tokenHash = ComputeSha256Hash(token);
+        var normalizedToken = NormalizeTokenForHashing(token);
+        var tokenHash = ComputeSha256Hash(normalizedToken);
 
         var resetToken = await _context.PasswordResetTokens
             .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken);
@@ -128,7 +140,6 @@ public class ConfirmationTokenService : IConfirmationTokenService
             _logger.LogInformation("Password reset token revoked for user {UserId}", resetToken.UserId);
         }
     }
-
 
     private static string GenerateSecureToken()
     {
@@ -149,9 +160,27 @@ public class ConfirmationTokenService : IConfirmationTokenService
         return Convert.ToBase64String(hash);
     }
 
+    private static string NormalizeTokenForHashing(string urlSafeToken)
+    {
+        // Конвертируем URL-safe Base64 обратно в обычный Base64
+        var base64 = urlSafeToken
+            .Replace('-', '+')
+            .Replace('_', '/');
+
+        // Добавляем padding если нужно
+        switch (base64.Length % 4)
+        {
+            case 2: base64 += "=="; break;
+            case 3: base64 += "="; break;
+        }
+
+        return base64;
+    }
+
     private async Task<Guid?> ExtractUserIdFromTokenAsync(string token, CancellationToken cancellationToken)
     {
-        var tokenHash = ComputeSha256Hash(token);
+        var normalizedToken = NormalizeTokenForHashing(token);
+        var tokenHash = ComputeSha256Hash(normalizedToken);
 
         var resetToken = await _context.PasswordResetTokens
             .FirstOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken);

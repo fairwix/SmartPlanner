@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -77,7 +78,11 @@ public class GoalsController : ControllerBase
     {
         _logger.LogInformation("Creating new goal");
 
-        var userIdClaim = User.FindFirst("userId")?.Value;
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                          ?? User.FindFirst("userId")?.Value
+                          ?? User.FindFirst("sub")?.Value;
+
+        _logger.LogDebug("Found userId claim: {UserIdClaim}", userIdClaim);
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var currentUserId))
         {
             _logger.LogWarning("Invalid userId claim in token");
