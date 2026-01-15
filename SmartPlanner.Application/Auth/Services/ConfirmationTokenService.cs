@@ -85,7 +85,28 @@ public class ConfirmationTokenService : IConfirmationTokenService
         await _context.EmailConfirmationTokens.AddAsync(emailConfirmationToken, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
+        // Получаем пользователя для email
+        var user = await _context.Users.FindAsync(new object[] { userId }, cancellationToken);
+        var email = user?.Email ?? "unknown";
+
         _logger.LogInformation("Generated email confirmation token for user {UserId}", userId);
+
+        // Выводим подробную информацию в консоль
+        var confirmationUrl = $"/api/Auth/confirm-email?userId={userId}&token={Uri.EscapeDataString(token)}";
+        var baseUrl = _configuration["AppSettings:BaseUrl"] ?? "http://localhost:5047";
+        var fullUrl = $"{baseUrl}{confirmationUrl}";
+
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("\n" + new string('=', 60));
+        Console.WriteLine("📧 EMAIL CONFIRMATION TOKEN GENERATED");
+        Console.WriteLine(new string('=', 60));
+        Console.WriteLine($"👤 User ID: {userId}");
+        Console.WriteLine($"📧 Email: {email}");
+        Console.WriteLine($"🔑 Token: {token}");
+        Console.WriteLine($"🔗 Confirmation URL: {fullUrl}");
+        Console.WriteLine(new string('=', 60) + "\n");
+        Console.ResetColor();
+
         return token; // Возвращаем URL-safe версию
     }
 

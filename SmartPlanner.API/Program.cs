@@ -10,9 +10,10 @@ using SmartPlanner.Application.Common.Interfaces;
 using SmartPlanner.Application.Security.Services;
 using SmartPlanner.Infrastructure;
 using System.Text;
-using FluentMigrator.Runner;
 using Microsoft.AspNetCore.Authorization;
 using SmartPlanner.Application.Authorization.Requirements;
+using SmartPlanner.Application.Interfaces.Services;
+using SmartPlanner.Application.Services;
 using SmartPlanner.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -52,6 +53,7 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "SmartPlanner API", Version = "v1" });
 
+    // Определение схемы авторизации
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -61,6 +63,8 @@ builder.Services.AddSwaggerGen(c =>
         In = ParameterLocation.Header,
         Description = "Enter 'Bearer [token]'"
     });
+
+    // Глобальное требование авторизации для всех эндпоинтов (опционально)
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -77,25 +81,23 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        // Получаем настройки из конфига
         var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-        var secret = jwtSettings["Secret"]
-                     ?? "dev-secret-key-123456789012345678901234567890";
+        var secret = jwtSettings["Secret"] ?? "dev-secret-key-123456789012345678901234567890";
         var issuer = jwtSettings["Issuer"] ?? "smartplanner-dev";
         var audience = jwtSettings["Audience"] ?? "smartplanner-dev-clients";
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,          // ← ВКЛЮЧИ!
+            ValidateIssuer = true,
             ValidIssuer = issuer,
 
-            ValidateAudience = true,       // ← ВКЛЮЧИ!
+            ValidateAudience = true,
             ValidAudience = audience,
 
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
-            ClockSkew = TimeSpan.Zero  // ← Убери запас времени для тестов
+            ClockSkew = TimeSpan.Zero
         };
     });
 
@@ -122,10 +124,11 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy("CanDeleteUser", policy =>
         policy.RequireClaim("permission", "User.Delete"));
-
 });
 
 builder.Services.AddScoped<IAuthorizationHandler, ResourceOwnerRequirementHandler>();
+builder.Services.AddScoped<IFileService, FileService>();
+
 // 7. CORS
 builder.Services.AddCors(options =>
 {
@@ -137,7 +140,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 8. MemoryCache (для RateLimit)
+// 8. MemoryCache (для RateLimit и других нужд)
 builder.Services.AddMemoryCache();
 
 // 9. HttpContextAccessor
@@ -145,6 +148,11 @@ builder.Services.AddHttpContextAccessor();
 
 // 10. Кастомные сервисы
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IImageService, ImageService>();
+builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 
 var app = builder.Build();
 
@@ -161,46 +169,34 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Swagger
+// Swagger — только в Development
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "SmartPlanner API v1");
+        c.ConfigObject.AdditionalItems["persistAuthorization"] = true;
+    });
 }
 
-// Health checks (опционально)
+// Health checks
 app.MapGet("/", () => "SmartPlanner API работает!");
 app.MapGet("/health", () => "OK");
 
-// // Применение миграций при запуске (только для Development)
-// if (app.Environment.IsDevelopment())
-// {
-//     using var scope = app.Services.CreateScope();
-//     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-//     await context.Database.MigrateAsync();
-// }
-
-
-// // Применение миграций при запуске
-// using var scope = app.Services.CreateScope();
-// var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
-// try
-// {
-//     if (runner.HasMigrationsToApplyUp())
-//     {
-//         Console.WriteLine("Applying database migrations...");
-//         runner.MigrateUp();
-//         Console.WriteLine("Database migrations applied successfully");
-//     }
-//     else
-//     {
-//         Console.WriteLine("No pending migrations to apply");
-//     }
-// }
-// catch (Exception ex)
-// {
-//     Console.WriteLine($"Error applying migrations: {ex.Message}");
-//     throw;
-// }
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    try
+    {
+        await context.Database.MigrateAsync();
+        Console.WriteLine("✅ Миграции применены успешно.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Ошибка применения миграций: {ex.Message}");
+    }
+}
 
 await app.RunAsync();

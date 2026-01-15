@@ -34,6 +34,17 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
     public virtual DbSet<SecurityAuditLog> SecurityAuditLogs { get; set; } = null!;
 
+    public virtual DbSet<FileMetadata> FileMetadata { get; set; } = null!;
+
+    public virtual DbSet<Message> Messages { get; set; } = null!;
+    public virtual DbSet<Post> Posts { get; set; } = null!;
+    public virtual DbSet<Product> Products { get; set; } = null!;
+    public virtual DbSet<MessageAttachment> MessageAttachments { get; set; } = null!;
+    public virtual DbSet<PostAttachment> PostAttachments { get; set; } = null!;
+    public virtual DbSet<ProductImage> ProductImages { get; set; } = null!;
+
+    public DbSet<UploadProgress> UploadProgresses { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -295,6 +306,187 @@ public class AppDbContext : DbContext, IApplicationDbContext
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
+        modelBuilder.Entity<FileMetadata>(entity =>
+{
+    entity.HasKey(f => f.Id);
+
+
+    entity.Property(f => f.Id)
+        .HasColumnType("uuid")
+        .HasDefaultValueSql("gen_random_uuid()");
+
+    entity.Property(f => f.FileName)
+        .IsRequired()
+        .HasColumnType("text");
+
+    entity.Property(f => f.OriginalFileName)
+        .IsRequired()
+        .HasColumnType("text");
+
+    entity.Property(f => f.ContentType)
+        .IsRequired()
+        .HasColumnType("text");
+
+    entity.Property(f => f.Size)
+        .IsRequired()
+        .HasColumnType("bigint");
+
+    entity.Property(f => f.Path)
+        .IsRequired()
+        .HasColumnType("text");
+
+    entity.Property(f => f.Hash)
+        .HasColumnType("text");
+
+    entity.Property(f => f.IsPublic)
+        .IsRequired()
+        .HasColumnType("boolean")
+        .HasDefaultValue(false);
+
+    entity.Property(f => f.ExpiresAt)
+        .HasColumnType("timestamp with time zone");
+
+    entity.Property(f => f.DownloadCount)
+        .IsRequired()
+        .HasColumnType("integer")
+        .HasDefaultValue(0);
+
+    entity.Property(f => f.UploadedById)
+        .IsRequired()
+        .HasColumnType("uuid");
+
+    entity.Property(f => f.CreatedAt)
+        .IsRequired()
+        .HasColumnType("timestamp with time zone")
+        .HasDefaultValueSql("NOW()");
+
+
+    entity.HasOne(f => f.UploadedBy)
+        .WithMany()
+        .HasForeignKey(f => f.UploadedById)
+        .OnDelete(DeleteBehavior.Restrict);
+
+
+    entity.HasIndex(f => f.UploadedById);
+    entity.HasIndex(f => f.Hash);
+    entity.HasIndex(f => f.IsPublic);
+    entity.HasIndex(f => f.ExpiresAt);
+    entity.HasIndex(f => f.CreatedAt);
+    entity.HasIndex(f => f.CreatedAt);
+});
+
+        // Message связи
+            modelBuilder.Entity<Message>(entity =>
+            {
+                entity.HasKey(m => m.Id);
+
+                entity.HasOne(m => m.Sender)
+                    .WithMany()
+                    .HasForeignKey(m => m.SenderId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // MessageAttachment связи
+            modelBuilder.Entity<MessageAttachment>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.HasOne(e => e.Message)
+                    .WithMany(m => m.Attachments)
+                    .HasForeignKey(e => e.MessageId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.File)
+                    .WithMany(f => f.MessageAttachments)
+                    .HasForeignKey(e => e.FileId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Post связи
+            modelBuilder.Entity<Post>(entity =>
+            {
+                entity.HasKey(p => p.Id);
+
+                entity.HasOne(p => p.Author)
+                    .WithMany()
+                    .HasForeignKey(p => p.AuthorId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // PostAttachment связи
+            modelBuilder.Entity<PostAttachment>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.HasOne(e => e.Post)
+                    .WithMany(p => p.Attachments)
+                    .HasForeignKey(e => e.PostId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.File)
+                    .WithMany(f => f.PostAttachments)
+                    .HasForeignKey(e => e.FileId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Product связи
+            modelBuilder.Entity<Product>(entity =>
+            {
+                entity.HasKey(p => p.Id);
+
+                entity.HasOne(p => p.Owner)
+                    .WithMany()
+                    .HasForeignKey(p => p.OwnerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // ProductImage связи
+            modelBuilder.Entity<ProductImage>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.HasOne(e => e.Product)
+                    .WithMany(p => p.Images)
+                    .HasForeignKey(e => e.ProductId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.File)
+                    .WithMany(f => f.ProductImages)
+                    .HasForeignKey(e => e.FileId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<UploadProgress>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.UploadId)
+                    .IsRequired()
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.FileName)
+                    .IsRequired()
+                    .HasMaxLength(255);
+
+                entity.Property(e => e.FileHash)
+                    .HasMaxLength(64);
+
+                entity.Property(e => e.Status)
+                    .IsRequired()
+                    .HasMaxLength(20);
+
+                entity.Property(e => e.StartedAt)
+                    .IsRequired();
+
+                entity.Property(e => e.UpdatedAt)
+                    .IsRequired();
+
+                // Индексы для быстрого поиска
+                entity.HasIndex(e => e.UploadId).IsUnique();
+                entity.HasIndex(e => e.UserId);
+                entity.HasIndex(e => new { e.UserId, e.Status });
+            });
+
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -314,4 +506,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
 
         return await base.SaveChangesAsync(cancellationToken);
     }
+
+
 }

@@ -8,10 +8,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Moq;
 using SmartPlanner.Infrastructure;
-using SmartPlanner.Infrastructure.Common;
+
 using SmartPlanner.Infrastructure.Data;
 using Xunit;
 using FluentAssertions;
+using SmartPlanner.Application.Common;
+using SmartPlanner.Infrastructure.Common;
 
 namespace SmartPlanner.Tests.Infrastructure.Common
 {

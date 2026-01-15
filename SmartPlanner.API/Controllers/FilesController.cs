@@ -1,0 +1,1046 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using SmartPlanner.Application.Dtos.Files;
+using SmartPlanner.Application.Interfaces.Services;
+using System.Security.Claims;
+using SmartPlanner.Application.Common.Dtos;
+
+namespace SmartPlanner.API.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    [Authorize]
+    public class FilesController : ControllerBase
+    {
+        private readonly IFileService _fileService;
+        private readonly ILogger<FilesController> _logger;
+
+        public FilesController(
+            IFileService fileService,
+            ILogger<FilesController> logger)
+        {
+            _fileService = fileService;
+            _logger = logger;
+        }
+
+        #region Загрузка файлов
+
+        /// <summary>
+        /// Загрузить один файл
+        /// </summary>
+        /// <param name="file">Файл для загрузки</param>
+        /// <param name="isPublic">Публичный доступ</param>
+        /// <param name="expiresAt">Время истечения (необязательно)</param>
+        [HttpPost("upload")]
+        [RequestSizeLimit(50_000_000)] // 50MB
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(FileMetadataDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<FileMetadataDto>> UploadFile(
+            IFormFile file,
+            bool isPublic = false,
+            DateTime? expiresAt = null)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == Guid.Empty) return Unauthorized();
+
+                _logger.LogInformation("Пользователь {UserId} загружает файл: {FileName} ({Size} bytes), IsPublic: {IsPublic}",
+                    userId, file.FileName, file.Length, isPublic);
+
+                // Валидация происходит в FileService
+                var result = await _fileService.UploadFileAsync(
+                    file, userId, isPublic, expiresAt);
+
+                _logger.LogInformation("Файл {FileId} успешно загружен пользователем {UserId}",
+                    result.Id, userId);
+
+                // Возвращаем DTO с URL как в ТЗ
+                var response = new
+                {
+                    result.Id,
+                    OriginalFileName = result.OriginalFileName,
+                    Size = result.Size,
+                    Url = $"/api/files/{result.Id}",
+                    result.IsPublic,
+                    result.ExpiresAt,
+                    UploadedAt = result.CreatedAt
+                };
+
+                return CreatedAtAction(nameof(GetFileInfo), new { id = result.Id }, response);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Ошибка валидации файла");
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Ошибка доступа при загрузке файла");
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Неожиданная ошибка при загрузке файла");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { error = "Внутренняя ошибка сервера" });
+            }
+        }
+
+        /// <summary>
+        /// Загрузить несколько файлов
+        /// </summary>
+        /// <param name="files">Список файлов</param>
+        /// <param name="isPublic">Публичный доступ для всех файлов</param>
+        /// <param name="expiresAt">Время истечения для всех файлов (необязательно)</param>
+        [HttpPost("upload-multiple")]
+        [RequestSizeLimit(100_000_000)] // 100MB
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(List<object>), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<List<object>>> UploadMultipleFiles(
+            List<IFormFile> files,
+            bool isPublic = false,
+            DateTime? expiresAt = null)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == Guid.Empty) return Unauthorized();
+
+                // Проверка количества файлов
+                if (files == null || files.Count == 0)
+                    return BadRequest(new { error = "Не предоставлены файлы для загрузки" });
+
+                if (files.Count > 10)
+                    return BadRequest(new { error = "Максимальное количество файлов за раз: 10" });
+
+                _logger.LogInformation("Пользователь {UserId} загружает {Count} файлов",
+                    userId, files.Count);
+
+                // Транзакционная обработка (если один файл не проходит валидацию - отменяем все)
+                var results = await _fileService.UploadMultipleFilesAsync(
+                    files, userId, isPublic, expiresAt);
+
+                _logger.LogInformation("Успешно загружено {SuccessCount} из {TotalCount} файлов для пользователя {UserId}",
+                    results.Count, files.Count, userId);
+
+                // Формируем ответ как в ТЗ
+                var response = results.Select(result => new
+                {
+                    result.Id,
+                    OriginalFileName = result.OriginalFileName,
+                    Size = result.Size,
+                    Url = $"/api/files/{result.Id}",
+                    result.IsPublic,
+                    result.ExpiresAt,
+                    UploadedAt = result.CreatedAt
+                }).ToList();
+
+                return StatusCode(StatusCodes.Status201Created, response);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Ошибка валидации файлов при множественной загрузке");
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Ошибка доступа при множественной загрузке файлов");
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Неожиданная ошибка при множественной загрузке файлов");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { error = "Внутренняя ошибка сервера" });
+            }
+        }
+
+
+
+        // SmartPlanner.API/Controllers/FilesController.cs (ДОБАВЬТЕ К СУЩЕСТВУЮЩИМ МЕТОДАМ)
+[HttpPost("upload/chunked/start")]
+[Authorize]
+[RequestSizeLimit(1_000_000)] // 1MB для метаданных
+public async Task<ActionResult<ChunkedUploadProgressResponseDto>> StartChunkedUpload(
+    [FromBody] ChunkedUploadStartDto request)
+{
+    try
+    {
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty) return Unauthorized();
+
+        var result = await _fileService.StartChunkedUploadAsync(request, userId);
+
+        // Если найден дубликат - сразу возвращаем информацию о нем
+        if (result.IsDuplicate)
+        {
+            return Ok(new
+            {
+                result.UploadId,
+                result.Progress,
+                result.Status,
+                IsDuplicate = true,
+                ExistingFileId = result.ExistingFileId,
+                Message = result.Message,
+                Url = result.ExistingFileId.HasValue
+                    ? Url.Action("Download", "Files", new { id = result.ExistingFileId.Value }, Request.Scheme)
+                    : null
+            });
+        }
+
+        return Ok(result);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при начале чанковой загрузки");
+        return StatusCode(500, new { error = ex.Message });
+    }
+}
+
+[HttpGet("upload/{uploadId}/progress")]
+[Authorize]
+public async Task<ActionResult<ChunkedUploadProgressDto>> GetUploadProgress(string uploadId)
+{
+    try
+    {
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty) return Unauthorized();
+
+        var progress = await _fileService.GetUploadProgressAsync(uploadId, userId);
+
+        if (progress == null)
+            return NotFound(new { error = "Загрузка не найдена или завершена" });
+
+        return Ok(progress);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при получении прогресса загрузки {UploadId}", uploadId);
+        return StatusCode(500, new { error = ex.Message });
+    }
+}
+
+[HttpPost("check-duplicate")]
+[Authorize]
+public async Task<ActionResult<CheckDuplicateResponseDto>> CheckDuplicate(
+    [FromBody] CheckDuplicateRequestDto request)
+{
+    try
+    {
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty) return Unauthorized();
+
+        if (string.IsNullOrEmpty(request.FileHash))
+            return BadRequest(new { error = "Хеш файла обязателен" });
+
+        var result = await _fileService.CheckDuplicateAsync(request, userId);
+
+        return Ok(result);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при проверке дубликата файла");
+        return StatusCode(500, new { error = ex.Message });
+    }
+}
+
+// Модифицируем существующий UploadChunked метод
+[HttpPost("upload/chunked")]
+[Authorize]
+[RequestSizeLimit(50_000_000)]
+[Consumes("multipart/form-data")]
+public async Task<ActionResult> UploadChunked([FromForm] ChunkedUploadDto dto)
+{
+    try
+    {
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty) return Unauthorized();
+
+        // Проверяем, не является ли это дубликатной сессией
+        var progress = await _fileService.GetUploadProgressAsync(dto.UploadId, userId);
+        if (progress?.Status == "completed")
+        {
+            return Ok(new
+            {
+                IsComplete = true,
+                Progress = 100,
+                Message = "Файл уже загружен"
+            });
+        }
+
+        // Загружаем чанк
+        var result = await _fileService.UploadChunkAsync(
+            dto.Chunk,
+            dto.UploadId,
+            dto.ChunkIndex,
+            dto.TotalChunks,
+            dto.FileName,
+            userId,
+            dto.IsPublic ?? false,
+            dto.ExpiresAt);
+
+        // Если все чанки загружены
+        if (result.ChunksReceived == result.TotalChunks && result.Status == "assembling")
+        {
+            // Завершаем загрузку
+            var fileMetadata = await _fileService.CompleteChunkedUploadAsync(
+                dto.UploadId, userId);
+
+            return Ok(new
+            {
+                IsComplete = true,
+                FileId = fileMetadata.Id,
+                FileName = fileMetadata.OriginalFileName,
+                Size = fileMetadata.Size,
+                Hash = fileMetadata.Hash,
+                Url = Url.Action("Download", "Files", new { id = fileMetadata.Id }, Request.Scheme),
+                Message = "Файл успешно загружен"
+            });
+        }
+
+        return Ok(new
+        {
+            IsComplete = false,
+            Progress = result.Progress,
+            ChunksReceived = result.ChunksReceived,
+            TotalChunks = result.TotalChunks,
+            Status = result.Status,
+            Message = $"Загружено {result.ChunksReceived} из {result.TotalChunks} частей"
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при загрузке чанка для {UploadId}", dto.UploadId);
+        return StatusCode(500, new { error = ex.Message });
+    }
+}
+
+    /// <summary>
+/// Получить thumbnail изображения
+/// </summary>
+/// <param name="id">Идентификатор файла</param>
+/// <param name="size">Размер (small, medium, large)</param>
+/// <param name="width">Кастомная ширина (опционально)</param>
+/// <param name="height">Кастомная высота (опционально)</param>
+/// <param name="crop">Обрезать изображение</param>
+[HttpGet("{id}/thumbnail")]
+[AllowAnonymous]
+[ProducesResponseType(StatusCodes.Status200OK)]
+[ProducesResponseType(StatusCodes.Status404NotFound)]
+[ProducesResponseType(StatusCodes.Status400BadRequest)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
+public async Task<IActionResult> GetThumbnail(
+    Guid id,
+    [FromQuery] string size = "small",
+    [FromQuery] int? width = null,
+    [FromQuery] int? height = null,
+    [FromQuery] bool crop = false)
+{
+    try
+    {
+        _logger.LogInformation("Запрос thumbnail для файла {FileId}, size: {Size}", id, size);
+
+        // Получаем информацию о файле
+        var currentUserId = GetCurrentUserId();
+        Guid? userId = currentUserId != Guid.Empty ? currentUserId : null;
+
+        var fileInfo = await _fileService.GetFileMetadataAsync(id, userId);
+        if (fileInfo == null)
+            return NotFound(new { error = "Файл не найден" });
+
+        // Проверяем права доступа
+        var isOwner = fileInfo.UploadedById == currentUserId;
+        var isAdmin = User.IsInRole("Admin");
+        var isPublic = fileInfo.IsPublic;
+
+        if (!isPublic && !isOwner && !isAdmin)
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "Доступ запрещен" });
+
+        // Проверяем, что это изображение
+        var fullPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", fileInfo.Path);
+        if (!System.IO.File.Exists(fullPath))
+            return NotFound(new { error = "Файл не найден на диске" });
+
+        // Проверяем, что файл является изображением
+        var extension = Path.GetExtension(fileInfo.OriginalFileName).ToLowerInvariant();
+        var isImage = extension switch
+        {
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".bmp" => true,
+            _ => false
+        };
+
+        if (!isImage)
+            return BadRequest(new { error = "Файл не является изображением" });
+
+        // Определяем размер thumbnail
+        ThumbnailSize thumbnailSize = size.ToLower() switch
+        {
+            "small" => ThumbnailSize.Small,
+            "medium" => ThumbnailSize.Medium,
+            "large" => ThumbnailSize.Large,
+            _ => ThumbnailSize.Small
+        };
+
+        // Получаем или генерируем thumbnail
+        var thumbnailPath = await GetOrCreateThumbnailAsync(
+            fullPath, fileInfo, thumbnailSize, width, height, crop);
+
+        // Устанавливаем заголовки для кэширования
+        Response.Headers.Append("Cache-Control", "public, max-age=31536000"); // 1 год
+        Response.Headers.Append("ETag", $"\"{fileInfo.Hash}\"");
+        Response.Headers.Append("Last-Modified", fileInfo.CreatedAt.ToString("R"));
+
+        // Определяем Content-Type
+        var contentType = extension switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".bmp" => "image/bmp",
+            _ => "image/jpeg"
+        };
+
+        // Возвращаем thumbnail
+        var fileStream = new FileStream(thumbnailPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+        return File(fileStream, contentType, $"{Path.GetFileNameWithoutExtension(fileInfo.OriginalFileName)}_thumb{extension}");
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при получении thumbnail для файла {FileId}", id);
+        return StatusCode(StatusCodes.Status500InternalServerError,
+            new { error = "Внутренняя ошибка сервера" });
+    }
+}
+
+private async Task<string> GetOrCreateThumbnailAsync(
+    string sourceImagePath,
+    FileMetadataDto fileInfo,
+    ThumbnailSize size,
+    int? customWidth,
+    int? customHeight,
+    bool crop)
+{
+    var directory = Path.GetDirectoryName(sourceImagePath)!;
+    var fileName = Path.GetFileNameWithoutExtension(sourceImagePath);
+    var extension = Path.GetExtension(sourceImagePath);
+
+    // Формируем имя файла для thumbnail
+    string thumbnailFileName;
+    if (customWidth.HasValue || customHeight.HasValue)
+    {
+        var width = customWidth ?? (size == ThumbnailSize.Small ? 200 : 800);
+        var height = customHeight ?? (size == ThumbnailSize.Small ? 200 : 600);
+        thumbnailFileName = $"{fileName}_{width}x{height}{(crop ? "_crop" : "")}{extension}";
+    }
+    else
+    {
+        var (width, height) = size switch
+        {
+            ThumbnailSize.Small => (200, 200),
+            ThumbnailSize.Medium => (800, 600),
+            ThumbnailSize.Large => (fileInfo.Width ?? 1920, fileInfo.Height ?? 1080),
+            _ => (200, 200)
+        };
+        thumbnailFileName = $"{fileName}_{width}x{height}{(crop ? "_crop" : "")}{extension}";
+    }
+
+    var thumbnailPath = Path.Combine(directory, thumbnailFileName);
+
+    // // Если thumbnail уже существует - возвращаем его
+    // if (File.Exists(thumbnailPath))
+    //     return thumbnailPath;
+
+    // Иначе генерируем новый thumbnail
+    try
+    {
+        // Используем ImageService через рефлексию или добавим в контроллер
+        // Пока просто сгенерируем через статический вызов
+        var imageService = HttpContext.RequestServices.GetService<IImageService>();
+        if (imageService != null)
+        {
+            if (customWidth.HasValue || customHeight.HasValue)
+            {
+                var width = customWidth ?? 200;
+                var height = customHeight ?? 200;
+                thumbnailPath = await imageService.GenerateThumbnailAsync(
+                    sourceImagePath, directory, width, height, crop);
+            }
+            else
+            {
+                thumbnailPath = await imageService.GenerateThumbnailAsync(
+                    sourceImagePath, directory, size, crop);
+            }
+        }
+        else
+        {
+            // Fallback: возвращаем оригинал если сервис недоступен
+            thumbnailPath = sourceImagePath;
+        }
+
+        return thumbnailPath;
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при генерации thumbnail: {Path}", sourceImagePath);
+        // В случае ошибки возвращаем оригинал
+        return sourceImagePath;
+    }
+}
+
+
+
+        #endregion
+
+        #region Получение файлов
+
+        /// <summary>
+        /// Получить список файлов пользователя
+        /// </summary>
+        /// <param name="contentType">Фильтр по типу контента (image/*, application/pdf и т.д.)</param>
+        /// <param name="search">Поиск по имени файла</param>
+        /// <param name="sortBy">Поле для сортировки (createdAt, size, fileName)</param>
+        /// <param name="sortOrder">Порядок сортировки (asc, desc)</param>
+        /// <param name="page">Номер страницы (по умолчанию 1)</param>
+        /// <param name="pageSize">Размер страницы (по умолчанию 10, максимум 50)</param>
+        [HttpGet]
+        [ProducesResponseType(typeof(PagedResult<FileMetadataDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<PagedResult<FileMetadataDto>>> GetFiles(
+            [FromQuery] string? contentType = null,
+            [FromQuery] string? search = null,
+            [FromQuery] string? sortBy = "createdAt",
+            [FromQuery] string? sortOrder = "desc",
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == Guid.Empty) return Unauthorized();
+
+                var isAdmin = User.IsInRole("Admin");
+
+                _logger.LogDebug("Получение файлов пользователем {UserId} (Admin: {IsAdmin})",
+                    userId, isAdmin);
+
+                // TODO: Для администраторов нужно реализовать отдельный метод в сервисе
+                // который возвращает все файлы, а не только пользовательские
+
+                var parameters = new FileQueryParameters
+                {
+                    Page = Math.Max(1, page),
+                    PageSize = Math.Min(Math.Max(1, pageSize), 50), // Ограничиваем 50
+                    Search = search,
+                    ContentType = contentType,
+                    SortBy = sortBy,
+                    SortDescending = sortOrder?.ToLower() == "desc"
+                };
+
+                var result = await _fileService.GetUserFilesAsync(userId, parameters);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Ошибка доступа при получении списка файлов");
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении списка файлов");
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { error = "Внутренняя ошибка сервера" });
+            }
+        }
+
+        /// <summary>
+        /// Скачать файл
+        /// </summary>
+        /// <param name="id">Идентификатор файла</param>
+        [HttpGet("{id}")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status410Gone)]
+        public async Task<IActionResult> DownloadFile(Guid id)
+        {
+            try
+            {
+                _logger.LogInformation("Запрос на скачивание файла {FileId}", id);
+
+                // Получаем текущего пользователя (может быть null для анонимных)
+                var currentUserId = GetCurrentUserId();
+                Guid? userId = currentUserId != Guid.Empty ? currentUserId : null;
+
+                // Проверяем права доступа и получаем метаданные
+                var fileInfo = await _fileService.GetFileMetadataAsync(id, userId);
+                if (fileInfo == null)
+                {
+                    _logger.LogWarning("Файл {FileId} не найден", id);
+                    return NotFound(new { error = "Файл не найден" });
+                }
+
+                // Проверяем права доступа (IsPublic, владелец, админ)
+                var isOwner = fileInfo.UploadedById == currentUserId;
+                var isAdmin = User.IsInRole("Admin");
+                var isPublic = fileInfo.IsPublic;
+
+                if (!isPublic && !isOwner && !isAdmin)
+                {
+                    _logger.LogWarning("Доступ к файлу {FileId} запрещен для пользователя {UserId}",
+                        id, currentUserId);
+                    return StatusCode(StatusCodes.Status403Forbidden,
+                        new { error = "Доступ запрещен" });
+                }
+
+                // Проверяем срок действия
+                if (fileInfo.ExpiresAt.HasValue && fileInfo.ExpiresAt.Value < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Срок действия файла {FileId} истёк", id);
+                    return StatusCode(StatusCodes.Status410Gone,
+                        new { error = "Срок действия файла истёк" });
+                }
+
+                // Скачиваем файл (метод уже увеличивает DownloadCount)
+                var (stream, contentType, fileName) =
+                    await _fileService.DownloadFileAsync(id, userId);
+
+                _logger.LogInformation("Файл {FileId} скачивается, ContentType: {ContentType}",
+                    id, contentType);
+
+                // Определяем Content-Disposition
+                var isImage = contentType.StartsWith("image/");
+                var isPdf = contentType == "application/pdf";
+                var contentDisposition = isImage || isPdf ? "inline" : "attachment";
+
+                // Устанавливаем заголовки
+                Response.Headers.Append("Content-Disposition",
+                    $"{contentDisposition}; filename=\"{fileName}\"");
+                Response.Headers.Append("X-File-Id", id.ToString());
+                Response.Headers.Append("X-File-Name", fileName);
+
+                return File(stream, contentType);
+            }
+            catch (FileNotFoundException)
+            {
+                _logger.LogWarning("Файл {FileId} не найден при скачивании", id);
+                return NotFound(new { error = "Файл не найден" });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                _logger.LogWarning("Доступ к файлу {FileId} запрещен", id);
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { error = "Доступ запрещен" });
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("истёк"))
+            {
+                _logger.LogWarning("Срок действия файла {FileId} истёк", id);
+                return StatusCode(StatusCodes.Status410Gone,
+                    new { error = "Срок действия файла истёк" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при скачивании файла {FileId}", id);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { error = "Внутренняя ошибка сервера" });
+            }
+        }
+
+    /// <summary>
+    /// Потоковая отдача файла с поддержкой Range requests
+    /// </summary>
+    /// <param name="id">Идентификатор файла</param>
+    [HttpGet("{id}/stream")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status206PartialContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status410Gone)]
+    [ProducesResponseType(StatusCodes.Status416RequestedRangeNotSatisfiable)]
+    public async Task<IActionResult> StreamFile(Guid id)
+    {
+        try
+        {
+            _logger.LogInformation("Запрос на стриминг файла {FileId}", id);
+
+            // Используем существующую логику проверки прав
+            var currentUserId = GetCurrentUserId();
+            Guid? userId = currentUserId != Guid.Empty ? currentUserId : null;
+
+            var fileInfo = await _fileService.GetFileMetadataAsync(id, userId);
+            if (fileInfo == null)
+            {
+                _logger.LogWarning("Файл {FileId} не найден", id);
+                return NotFound(new { error = "Файл не найден" });
+            }
+
+            // Проверяем права доступа (копируем из DownloadFile)
+            var isOwner = fileInfo.UploadedById == currentUserId;
+            var isAdmin = User.IsInRole("Admin");
+            var isPublic = fileInfo.IsPublic;
+
+            if (!isPublic && !isOwner && !isAdmin)
+            {
+                _logger.LogWarning("Доступ к файлу {FileId} запрещен для пользователя {UserId}",
+                    id, currentUserId);
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { error = "Доступ запрещен" });
+            }
+
+            // Проверяем срок действия
+            if (fileInfo.ExpiresAt.HasValue && fileInfo.ExpiresAt.Value < DateTime.UtcNow)
+            {
+                _logger.LogWarning("Срок действия файла {FileId} истёк", id);
+                return StatusCode(StatusCodes.Status410Gone,
+                    new { error = "Срок действия файла истёк" });
+            }
+
+            // Получаем поток файла через новый метод
+            var (fileStream, contentType, fileName, fileSize) =
+                await _fileService.GetFileStreamAsync(id, userId);
+
+            try
+            {
+                // Обязательный заголовок для поддержки Range
+                Response.Headers.Append("Accept-Ranges", "bytes");
+
+                // Дополнительные информационные заголовки
+                Response.Headers.Append("X-File-Id", id.ToString());
+                Response.Headers.Append("X-File-Name", fileName);
+
+                // Проверяем Range header
+                if (Request.Headers.ContainsKey("Range") &&
+                    RangeHelper.TryParse(Request.Headers["Range"].ToString(), fileSize, out var range))
+                {
+                    _logger.LogInformation("Range request для файла {FileId}: {Start}-{End}/{Total}",
+                        id, range.Start, range.End, range.TotalLength);
+
+                    // Устанавливаем статус Partial Content (206)
+                    Response.StatusCode = StatusCodes.Status206PartialContent;
+
+                    // Обязательные заголовки для Range response
+                    Response.Headers.Append("Content-Range",
+                        $"bytes {range.Start}-{range.End}/{range.TotalLength}");
+                    Response.Headers.Append("Content-Length", range.Length.ToString());
+
+                    // Определяем Content-Disposition
+                    var isImage = contentType.StartsWith("image/");
+                    var isPdf = contentType == "application/pdf";
+                    var isVideo = contentType.StartsWith("video/");
+                    var isAudio = contentType.StartsWith("audio/");
+                    var contentDisposition = (isImage || isPdf || isVideo || isAudio) ? "inline" : "attachment";
+
+                    Response.Headers.Append("Content-Disposition",
+                        $"{contentDisposition}; filename=\"{fileName}\"");
+
+                    Response.ContentType = contentType;
+
+                    // Отправляем только запрошенный диапазон
+                    await CopyStreamRangeAsync(fileStream, Response.Body, range.Start, range.Length);
+
+                    return new EmptyResult();
+                }
+                else
+                {
+                    // Полный файл - увеличиваем счетчик скачиваний
+                    await IncreaseDownloadCountAsync(id);
+
+                    // Определяем Content-Disposition
+                    var isImage = contentType.StartsWith("image/");
+                    var isPdf = contentType == "application/pdf";
+                    var isVideo = contentType.StartsWith("video/");
+                    var isAudio = contentType.StartsWith("audio/");
+                    var contentDisposition = (isImage || isPdf || isVideo || isAudio) ? "inline" : "attachment";
+
+                    Response.Headers.Append("Content-Disposition",
+                        $"{contentDisposition}; filename=\"{fileName}\"");
+                    Response.Headers.Append("Content-Length", fileSize.ToString());
+
+                    Response.ContentType = contentType;
+
+                    // Отправляем весь файл
+                    await fileStream.CopyToAsync(Response.Body);
+
+                    return new EmptyResult();
+                }
+            }
+            finally
+            {
+                await fileStream.DisposeAsync();
+            }
+        }
+        catch (FileNotFoundException)
+        {
+            _logger.LogWarning("Файл {FileId} не найден при стриминге", id);
+            return NotFound(new { error = "Файл не найден" });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _logger.LogWarning("Доступ к файлу {FileId} запрещен", id);
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { error = "Доступ запрещен" });
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("истёк"))
+        {
+            _logger.LogWarning("Срок действия файла {FileId} истёк", id);
+            return StatusCode(StatusCodes.Status410Gone,
+                new { error = "Срок действия файла истёк" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при стриминге файла {FileId}", id);
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new { error = "Внутренняя ошибка сервера" });
+        }
+    }
+
+    // Добавить этот метод в конец класса FilesController, перед GetCurrentUserId()
+    private async Task IncreaseDownloadCountAsync(Guid fileId)
+    {
+        try
+        {
+            // Используем рефлексию или добавим метод в сервис
+            // Пока просто логируем - в streaming не всегда нужно увеличивать счетчик
+            _logger.LogDebug("Streaming файла {FileId} - счетчик не увеличен", fileId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Не удалось увеличить счетчик скачиваний для файла {FileId}", fileId);
+        }
+    }
+
+        /// <summary>
+        /// Получить метаданные файла без скачивания
+        /// </summary>
+        /// <param name="id">Идентификатор файла</param>
+        [HttpGet("{id}/info")]
+        [ProducesResponseType(typeof(FileMetadataDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<ActionResult<FileMetadataDto>> GetFileInfo(Guid id)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                Guid? userIdParam = userId != Guid.Empty ? userId : null;
+
+                var fileInfo = await _fileService.GetFileMetadataAsync(id, userIdParam);
+                if (fileInfo == null)
+                {
+                    _logger.LogWarning("Файл {FileId} не найден", id);
+                    return NotFound(new { error = "Файл не найден" });
+                }
+
+                // Проверяем права доступа
+                var isOwner = fileInfo.UploadedById == userId;
+                var isAdmin = User.IsInRole("Admin");
+                var isPublic = fileInfo.IsPublic;
+
+                if (!isPublic && !isOwner && !isAdmin)
+                {
+                    _logger.LogWarning("Доступ к метаданным файла {FileId} запрещен для пользователя {UserId}",
+                        id, userId);
+                    return StatusCode(StatusCodes.Status403Forbidden,
+                        new { error = "Доступ запрещен" });
+                }
+
+                return Ok(fileInfo);
+            }
+            catch (FileNotFoundException)
+            {
+                _logger.LogWarning("Файл {FileId} не найден", id);
+                return NotFound(new { error = "Файл не найден" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Доступ к метаданным файла {FileId} запрещен", id);
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { error = "Доступ запрещен" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при получении метаданных файла {FileId}", id);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { error = "Внутренняя ошибка сервера" });
+            }
+        }
+
+        #endregion
+
+        #region Управление файлами
+
+        /// <summary>
+        /// Удалить файл
+        /// </summary>
+        /// <param name="id">Идентификатор файла</param>
+        [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public async Task<IActionResult> DeleteFile(Guid id)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == Guid.Empty) return Unauthorized();
+
+                _logger.LogInformation("Запрос на удаление файла {FileId} пользователем {UserId}",
+                    id, userId);
+
+                // Получаем информацию о владельце файла
+                var fileOwnerId = await _fileService.GetFileOwnerAsync(id);
+                if (fileOwnerId == Guid.Empty)
+                {
+                    _logger.LogWarning("Файл {FileId} не найден", id);
+                    return NotFound(new { error = "Файл не найден" });
+                }
+
+                // Проверяем права: владелец или админ
+                var isAdmin = User.IsInRole("Admin");
+                var isOwner = fileOwnerId == userId;
+
+                if (!isOwner && !isAdmin)
+                {
+                    _logger.LogWarning("Пользователь {UserId} не имеет прав на удаление файла {FileId}",
+                        userId, id);
+                    return StatusCode(StatusCodes.Status403Forbidden,
+                        new { error = "Недостаточно прав для удаления файла" });
+                }
+
+                await _fileService.DeleteFileAsync(id, userId);
+
+                _logger.LogInformation("Файл {FileId} успешно удалён пользователем {UserId}",
+                    id, userId);
+
+                return NoContent();
+            }
+            catch (FileNotFoundException)
+            {
+                _logger.LogWarning("Файл {FileId} не найден", id);
+                return NotFound(new { error = "Файл не найден" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning(ex, "Ошибка доступа при удалении файла {FileId}", id);
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { error = "Доступ запрещен" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при удалении файла {FileId}", id);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new { error = "Внутренняя ошибка сервера" });
+            }
+        }
+
+        #endregion
+
+        #region Вспомогательные методы
+
+        private Guid GetCurrentUserId()
+        {
+            var userIdClaim = User.FindFirst("userId")?.Value
+                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+
+            return Guid.TryParse(userIdClaim, out var userId) ? userId : Guid.Empty;
+        }
+
+
+    #region Range Streaming Support
+
+    private class RangeHelper
+    {
+        public long Start { get; set; }
+        public long End { get; set; }
+        public long Length { get; set; }
+        public long TotalLength { get; set; }
+
+        public static bool TryParse(string rangeHeader, long totalLength, out RangeHelper range)
+        {
+            range = null;
+
+            if (string.IsNullOrEmpty(rangeHeader) || !rangeHeader.StartsWith("bytes="))
+                return false;
+
+            var rangeValue = rangeHeader.Substring("bytes=".Length);
+            var ranges = rangeValue.Split('-');
+
+            if (ranges.Length != 2)
+                return false;
+
+            long start, end;
+
+            if (string.IsNullOrEmpty(ranges[0]))
+            {
+                // Формат: bytes=-500 (последние 500 байт)
+                if (!long.TryParse(ranges[1], out var suffixLength))
+                    return false;
+
+                start = totalLength - suffixLength;
+                end = totalLength - 1;
+            }
+            else if (string.IsNullOrEmpty(ranges[1]))
+            {
+                // Формат: bytes=500- (с 500 байта до конца)
+                if (!long.TryParse(ranges[0], out start))
+                    return false;
+
+                end = totalLength - 1;
+            }
+            else
+            {
+                // Формат: bytes=0-1023 (конкретный диапазон)
+                if (!long.TryParse(ranges[0], out start) || !long.TryParse(ranges[1], out end))
+                    return false;
+            }
+
+            // Валидация
+            if (start < 0 || end >= totalLength || start > end)
+                return false;
+
+            range = new RangeHelper
+            {
+                Start = start,
+                End = end,
+                Length = end - start + 1,
+                TotalLength = totalLength
+            };
+
+            return true;
+        }
+    }
+
+    private async Task CopyStreamRangeAsync(Stream source, Stream destination, long start, long length)
+    {
+        var buffer = new byte[4096]; // 4KB chunks
+        long bytesCopied = 0;
+
+        source.Seek(start, SeekOrigin.Begin);
+
+        while (bytesCopied < length)
+        {
+            var bytesToRead = (int)Math.Min(buffer.Length, length - bytesCopied);
+            var bytesRead = await source.ReadAsync(buffer, 0, bytesToRead);
+
+            if (bytesRead == 0) break;
+
+            await destination.WriteAsync(buffer, 0, bytesRead);
+            bytesCopied += bytesRead;
+        }
+    }
+
+    #endregion
+
+        #endregion
+    }
+}

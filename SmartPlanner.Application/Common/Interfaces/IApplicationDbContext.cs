@@ -32,5 +32,15 @@ public interface IApplicationDbContext
     DbSet<EmailConfirmationToken> EmailConfirmationTokens { get; }
     DbSet<SecurityAuditLog> SecurityAuditLogs { get; }
 
+    DbSet<FileMetadata> FileMetadata { get; }
+    DbSet<Message> Messages { get; }
+    DbSet<MessageAttachment> MessageAttachments { get; }
+    DbSet<Post> Posts { get; }
+    DbSet<PostAttachment> PostAttachments { get; }
+    DbSet<Product> Products { get; }
+    DbSet<ProductImage> ProductImages { get; }
+    DbSet<UploadProgress> UploadProgresses { get; set; }
+
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
