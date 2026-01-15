@@ -64,7 +64,8 @@ namespace SmartPlanner.Application.Services
             var allowedExtensions = new[]
             {
                 ".jpg", ".jpeg", ".png", ".gif", ".webp",
-                ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt"
+                ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt",
+                ".bin", ".mp4", ".avi", ".mov", ".mp3", ".wav", ".zip", ".rar"
             };
             return allowedExtensions.Contains(extension);
         }
@@ -73,12 +74,28 @@ namespace SmartPlanner.Application.Services
         {
             var allowedMimeTypes = new[]
             {
-                "image/jpeg", "image/png", "image/gif", "image/webp",
+                // Изображения
+                "image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp",
+
+                // PDF и документы
                 "application/pdf", "application/msword",
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 "application/vnd.ms-excel",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                "text/plain"
+                "text/plain",
+
+                // Видео ← ДОБАВЬ ЭТО
+                "video/mp4", "video/mpeg", "video/quicktime", "video/x-msvideo",
+                "video/x-ms-wmv", "video/webm", "video/ogg",
+
+                // Аудио
+                "audio/mpeg", "audio/wav", "audio/ogg", "audio/webm",
+
+                // Архивы
+                "application/zip", "application/x-rar-compressed", "application/x-tar",
+
+                // Общие бинарные файлы
+                "application/octet-stream", "binary/octet-stream"
             };
             return allowedMimeTypes.Contains(contentType.ToLowerInvariant());
         }
@@ -236,6 +253,268 @@ namespace SmartPlanner.Application.Services
             throw;
         }
     }
+
+         public async Task<FileMetadataDto> UploadLargeFileAsync(
+    IFormFile file,
+    Guid userId,
+    bool isPublic = false,
+    DateTime? expiresAt = null,
+    CancellationToken cancellationToken = default)
+{
+    try
+    {
+        _logger.LogInformation("Начало загрузки БОЛЬШОГО файла: {FileName} пользователем {UserId}",
+            file.FileName, userId);
+
+        if (file.Length == 0)
+            throw new ArgumentException("Файл пустой");
+
+        // Увеличиваем лимит для больших файлов
+        long largeFileLimit = 2_000_000_000; // 2GB
+        if (file.Length > largeFileLimit)
+            throw new ArgumentException($"Размер файла превышает {largeFileLimit / 1024 / 1024 / 1024}GB");
+
+        if (!IsValidExtension(file.FileName))
+            throw new ArgumentException("Недопустимое расширение файла");
+        if (!IsValidMimeType(file.ContentType))
+            throw new ArgumentException("Недопустимый MIME-тип");
+
+        using var memoryStream = new MemoryStream();
+        await file.CopyToAsync(memoryStream, cancellationToken);
+        memoryStream.Position = 0;
+
+        if (!ValidateFileSignatureFromStream(memoryStream, Path.GetExtension(file.FileName)))
+            throw new ArgumentException("Сигнатура файла не соответствует расширению");
+        memoryStream.Position = 0;
+
+        var originalFileName = SanitizeFileName(file.FileName);
+        var safeFileName = $"{Guid.NewGuid()}{Path.GetExtension(originalFileName)}";
+        var now = DateTime.UtcNow;
+        var datePath = Path.Combine(now.Year.ToString(), now.Month.ToString("D2"), now.Day.ToString("D2"));
+        var userPath = Path.Combine("users", userId.ToString());
+        var relativePath = Path.Combine(userPath, datePath, safeFileName);
+
+        string fileHash;
+        using (var sha256 = SHA256.Create())
+        {
+            var hashBytes = await sha256.ComputeHashAsync(memoryStream);
+            fileHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+        }
+        memoryStream.Position = 0;
+
+        var existingFile = await _context.FileMetadata
+            .FirstOrDefaultAsync(f => f.Hash == fileHash && f.UploadedById == userId, cancellationToken);
+        if (existingFile != null)
+        {
+            _logger.LogInformation("Дубликат файла найден: {FileId}", existingFile.Id);
+            return MapToDto(existingFile);
+        }
+
+        var fileMetadata = new FileMetadata
+        {
+            Id = Guid.NewGuid(),
+            FileName = safeFileName,
+            OriginalFileName = originalFileName,
+            ContentType = file.ContentType,
+            Size = file.Length,
+            Path = relativePath,
+            Hash = fileHash,
+            IsPublic = isPublic,
+            ExpiresAt = expiresAt,
+            DownloadCount = 0,
+            UploadedById = userId,
+            CreatedAt = now,
+            UpdatedAt = now,
+            CameraModel = "",
+            Location = "",
+            ThumbnailPath = "",
+            MediumPath = ""
+        };
+
+        await _context.FileMetadata.AddAsync(fileMetadata, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var fullPath = Path.Combine(_uploadsPath, relativePath);
+        var directory = Path.GetDirectoryName(fullPath)!;
+        Directory.CreateDirectory(directory);
+
+        if (_imageService.IsImageFile(originalFileName))
+        {
+            await ProcessImageAsync(fileMetadata, fullPath);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
+        using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            await memoryStream.CopyToAsync(fileStream, cancellationToken);
+        }
+
+        _logger.LogInformation("БОЛЬШОЙ файл успешно загружен: {FileId}", fileMetadata.Id);
+        return MapToDto(fileMetadata);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при загрузке БОЛЬШОГО файла: {FileName}", file.FileName);
+        throw;
+    }
+}
+
+         public async Task<StreamUploadResultDto> UploadFileStreamAsync(
+    Stream fileStream,
+    StreamUploadDto uploadDto,
+    Guid userId,
+    CancellationToken cancellationToken = default)
+{
+    try
+    {
+        _logger.LogInformation("Начало потоковой загрузки файла: {FileName} пользователем {UserId}",
+            uploadDto.OriginalFileName, userId);
+
+        // Валидация DTO
+        if (string.IsNullOrEmpty(uploadDto.OriginalFileName))
+            throw new ArgumentException("Имя файла обязательно");
+
+        var fileExtension = Path.GetExtension(uploadDto.OriginalFileName)?.ToLowerInvariant();
+        if (!IsValidExtension(uploadDto.OriginalFileName))
+            throw new ArgumentException($"Недопустимое расширение файла: {fileExtension}");
+
+        if (!IsValidMimeType(uploadDto.ContentType))
+            throw new ArgumentException($"Недопустимый MIME-тип: {uploadDto.ContentType}");
+
+        // Создаем временный файл для обработки потока
+        var tempFileName = $"{Guid.NewGuid()}{fileExtension}";
+        var tempFilePath = Path.Combine(_tempPath, tempFileName);
+
+        // Создаем директорию для временных файлов если ее нет
+        Directory.CreateDirectory(_tempPath);
+
+        long fileSize = 0;
+
+        // 1. Пишем поток во временный файл
+        using (var tempFileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
+        {
+            await fileStream.CopyToAsync(tempFileStream, 81920, cancellationToken);
+            await tempFileStream.FlushAsync(cancellationToken);
+            fileSize = tempFileStream.Length;
+        }
+
+        // 2. Проверяем размер файла
+        if (fileSize == 0)
+            throw new ArgumentException("Файл пустой");
+
+        if (fileSize > _maxFileSize)
+            throw new ArgumentException($"Размер файла превышает {_maxFileSize / 1024 / 1024}MB");
+
+        // 3. Проверяем сигнатуру файла
+        using (var verifyStream = new FileStream(tempFilePath, FileMode.Open, FileAccess.Read))
+        {
+            if (!ValidateFileSignatureFromStream(verifyStream, fileExtension ?? ""))
+                throw new ArgumentException("Сигнатура файла не соответствует расширению");
+        }
+
+        // 4. Вычисляем хэш файла
+        string fileHash;
+        using (var sha256 = SHA256.Create())
+        using (var stream = File.OpenRead(tempFilePath))
+        {
+            var hashBytes = await sha256.ComputeHashAsync(stream);
+            fileHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+        }
+
+        // 5. Проверяем дубликат
+        var existingFile = await _context.FileMetadata
+            .FirstOrDefaultAsync(f => f.Hash == fileHash && f.UploadedById == userId, cancellationToken);
+
+        if (existingFile != null)
+        {
+            // Удаляем временный файл
+            File.Delete(tempFilePath);
+
+            _logger.LogInformation("Обнаружен дубликат файла: {FileId}", existingFile.Id);
+
+            return new StreamUploadResultDto
+            {
+                IsDuplicate = true,
+                ExistingFileId = existingFile.Id,
+                FileName = existingFile.FileName,
+                OriginalFileName = existingFile.OriginalFileName,
+                Size = existingFile.Size,
+                ContentType = existingFile.ContentType,
+                IsPublic = existingFile.IsPublic,
+                ExpiresAt = existingFile.ExpiresAt,
+                CreatedAt = existingFile.CreatedAt,
+                Message = "Файл уже существует"
+            };
+        }
+
+        // 6. Генерируем окончательное имя файла и путь
+        var safeFileName = $"{Guid.NewGuid()}{fileExtension}";
+        var now = DateTime.UtcNow;
+        var datePath = Path.Combine(now.Year.ToString(), now.Month.ToString("D2"), now.Day.ToString("D2"));
+        var userPath = Path.Combine("users", userId.ToString());
+        var relativePath = Path.Combine(userPath, datePath, safeFileName);
+        var fullPath = Path.Combine(_uploadsPath, relativePath);
+
+        // Создаем директорию
+        var directory = Path.GetDirectoryName(fullPath)!;
+        Directory.CreateDirectory(directory);
+
+        // 7. Перемещаем временный файл в окончательное место
+        File.Move(tempFilePath, fullPath);
+
+        // 8. Создаем запись в БД
+        var fileMetadata = new FileMetadata
+        {
+            Id = Guid.NewGuid(),
+            FileName = safeFileName,
+            OriginalFileName = SanitizeFileName(uploadDto.OriginalFileName),
+            ContentType = uploadDto.ContentType,
+            Size = fileSize,
+            Path = relativePath,
+            Hash = fileHash,
+            IsPublic = uploadDto.IsPublic,
+            ExpiresAt = uploadDto.ExpiresAt,
+            DownloadCount = 0,
+            UploadedById = userId,
+            CreatedAt = now,
+            UpdatedAt = now,
+            CameraModel = "",
+            Location = "",
+            ThumbnailPath = "",
+            MediumPath = ""
+        };
+
+        // 9. Если это изображение - обрабатываем
+        if (_imageService.IsImageFile(uploadDto.OriginalFileName))
+        {
+            await ProcessImageAsync(fileMetadata, fullPath);
+        }
+
+        await _context.FileMetadata.AddAsync(fileMetadata, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Потоковая загрузка завершена: {FileId}", fileMetadata.Id);
+
+        // 10. Возвращаем результат
+        return new StreamUploadResultDto
+        {
+            Id = fileMetadata.Id,
+            FileName = fileMetadata.FileName,
+            OriginalFileName = fileMetadata.OriginalFileName,
+            Size = fileMetadata.Size,
+            ContentType = fileMetadata.ContentType,
+            IsPublic = fileMetadata.IsPublic,
+            ExpiresAt = fileMetadata.ExpiresAt,
+            CreatedAt = fileMetadata.CreatedAt
+        };
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при потоковой загрузке файла {FileName} пользователем {UserId}",
+            uploadDto.OriginalFileName, userId);
+        throw;
+    }
+}
 
     public async Task<List<FileMetadataDto>> UploadMultipleFilesAsync(
         List<IFormFile> files,
@@ -1140,6 +1419,7 @@ private void CleanupTempFiles(string uploadPath)
             public DateTime StartedAt { get; set; }
             public DateTime? LastChunkAt { get; set; }
         }
+
         #endregion
     }
 }

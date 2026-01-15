@@ -4,7 +4,11 @@ using Microsoft.AspNetCore.Mvc;
 using SmartPlanner.Application.Dtos.Files;
 using SmartPlanner.Application.Interfaces.Services;
 using System.Security.Claims;
+using Microsoft.AspNetCore.WebUtilities;
 using SmartPlanner.Application.Common.Dtos;
+using SmartPlanner.API.Attributes;
+using SmartPlanner.API.Helpers;
+using Microsoft.Net.Http.Headers;
 
 namespace SmartPlanner.API.Controllers
 {
@@ -491,6 +495,73 @@ private async Task<string> GetOrCreateThumbnailAsync(
         _logger.LogError(ex, "Ошибка при генерации thumbnail: {Path}", sourceImagePath);
         // В случае ошибки возвращаем оригинал
         return sourceImagePath;
+    }
+
+}
+
+
+[HttpPost("upload-stream")]
+[Authorize]
+[RequestSizeLimit(2_000_000_000)] // 2GB
+[Consumes("multipart/form-data")]
+public async Task<IActionResult> UploadStream(
+    IFormFile file,
+    [FromQuery] bool isPublic = false,
+    [FromQuery] DateTime? expiresAt = null,
+    CancellationToken cancellationToken = default)
+{
+    try
+    {
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty) return Unauthorized();
+
+        _logger.LogInformation("Начало стриминговой загрузки файла пользователем {UserId}", userId);
+
+        // Используем новый метод для больших файлов
+        var result = await _fileService.UploadLargeFileAsync(
+            file, userId, isPublic, expiresAt, cancellationToken);
+
+        _logger.LogInformation("Стриминговая загрузка завершена: {FileId}", result.Id);
+
+        return CreatedAtAction(
+            nameof(GetFileInfo),
+            new { id = result.Id },
+            new
+            {
+                id = result.Id,
+                fileName = result.FileName,
+                originalFileName = result.OriginalFileName,
+                size = result.Size,
+                contentType = result.ContentType,
+                url = $"/api/Files/{result.Id}",
+                thumbnailUrl = result.ContentType.StartsWith("image/")
+                    ? $"/api/Files/{result.Id}/thumbnail?size=small"
+                    : null,
+                isPublic = result.IsPublic,
+                expiresAt = result.ExpiresAt,
+                uploadedAt = result.CreatedAt
+            });
+    }
+    catch (OperationCanceledException)
+    {
+        _logger.LogInformation("Загрузка отменена пользователем");
+        return StatusCode(499);
+    }
+    catch (ArgumentException ex)
+    {
+        _logger.LogWarning(ex, "Ошибка валидации файла");
+        return BadRequest(new { error = ex.Message });
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        _logger.LogWarning(ex, "Ошибка доступа");
+        return StatusCode(StatusCodes.Status403Forbidden, new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при стриминговой загрузке файла");
+        return StatusCode(StatusCodes.Status500InternalServerError,
+            new { error = "Внутренняя ошибка сервера" });
     }
 }
 

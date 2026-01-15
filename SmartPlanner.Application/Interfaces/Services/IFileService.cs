@@ -13,6 +13,13 @@ namespace SmartPlanner.Application.Interfaces.Services
             DateTime? expiresAt = null,
             CancellationToken cancellationToken = default);
 
+        Task<FileMetadataDto> UploadLargeFileAsync(
+            IFormFile file,
+            Guid userId,
+            bool isPublic = false,
+            DateTime? expiresAt = null,
+            CancellationToken cancellationToken = default);
+
         Task<List<FileMetadataDto>> UploadMultipleFilesAsync(
             List<IFormFile> files,
             Guid userId,
@@ -77,6 +84,15 @@ namespace SmartPlanner.Application.Interfaces.Services
 
         Task<CheckDuplicateResponseDto> CheckDuplicateAsync(
             CheckDuplicateRequestDto request,
+            Guid userId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Потоковая загрузка файла (для больших файлов)
+        /// </summary>
+        Task<StreamUploadResultDto> UploadFileStreamAsync(
+            Stream fileStream,
+            StreamUploadDto uploadDto,
             Guid userId,
             CancellationToken cancellationToken = default);
     }

@@ -15,11 +15,42 @@ using SmartPlanner.Application.Authorization.Requirements;
 using SmartPlanner.Application.Interfaces.Services;
 using SmartPlanner.Application.Services;
 using SmartPlanner.Infrastructure.Data;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Настройки
 builder.WebHost.UseUrls("http://localhost:5047");
+
+
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestBodySize = 2_000_000_000;
+});
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.ValueLengthLimit = int.MaxValue;
+    options.MultipartBodyLengthLimit = long.MaxValue;
+    options.MultipartBoundaryLengthLimit = int.MaxValue;
+    options.MultipartHeadersCountLimit = int.MaxValue;
+    options.MultipartHeadersLengthLimit = int.MaxValue;
+});
+
+builder.Services.Configure<KestrelServerOptions>(options =>
+{
+    options.Limits.MaxRequestBodySize = long.MaxValue;
+    options.Limits.MaxRequestBufferSize = null;
+    options.Limits.MaxRequestLineSize = 16 * 1024;
+    options.Limits.MaxRequestHeaderCount = 128;
+});
+
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = long.MaxValue;
+    options.AllowSynchronousIO = true;
+});
 
 // 1. DbContext (PostgreSQL)
 builder.Services.AddDbContext<AppDbContext>(options =>
