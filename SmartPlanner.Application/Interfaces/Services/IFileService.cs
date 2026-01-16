@@ -13,6 +13,8 @@ namespace SmartPlanner.Application.Interfaces.Services
             DateTime? expiresAt = null,
             CancellationToken cancellationToken = default);
 
+        Task IncrementDownloadCountAsync(Guid fileId, Guid? userId = null, CancellationToken cancellationToken = default);
+
         Task<FileMetadataDto> UploadLargeFileAsync(
             IFormFile file,
             Guid userId,

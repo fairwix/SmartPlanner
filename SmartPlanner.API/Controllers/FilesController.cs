@@ -724,154 +724,91 @@ public async Task<IActionResult> UploadStream(
             }
         }
 
-    /// <summary>
-    /// Потоковая отдача файла с поддержкой Range requests
-    /// </summary>
-    /// <param name="id">Идентификатор файла</param>
-    [HttpGet("{id}/stream")]
-    [AllowAnonymous]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status206PartialContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status410Gone)]
-    [ProducesResponseType(StatusCodes.Status416RequestedRangeNotSatisfiable)]
-    public async Task<IActionResult> StreamFile(Guid id)
+/// <summary>
+/// Скачать файл
+/// </summary>
+/// <param name="id">Идентификатор файла</param>
+[HttpGet("{id}/stream")]
+[AllowAnonymous]
+[ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
+[ProducesResponseType(StatusCodes.Status404NotFound)]
+[ProducesResponseType(StatusCodes.Status403Forbidden)]
+[ProducesResponseType(StatusCodes.Status410Gone)]
+public async Task<IActionResult> StreamFile(Guid id)
+{
+    try
     {
-        try
+        _logger.LogInformation("Скачивание файла {FileId}", id);
+
+        var currentUserId = GetCurrentUserId();
+        Guid? userId = currentUserId != Guid.Empty ? currentUserId : null;
+
+        var fileInfo = await _fileService.GetFileMetadataAsync(id, userId);
+        if (fileInfo == null)
         {
-            _logger.LogInformation("Запрос на стриминг файла {FileId}", id);
-
-            // Используем существующую логику проверки прав
-            var currentUserId = GetCurrentUserId();
-            Guid? userId = currentUserId != Guid.Empty ? currentUserId : null;
-
-            var fileInfo = await _fileService.GetFileMetadataAsync(id, userId);
-            if (fileInfo == null)
-            {
-                _logger.LogWarning("Файл {FileId} не найден", id);
-                return NotFound(new { error = "Файл не найден" });
-            }
-
-            // Проверяем права доступа (копируем из DownloadFile)
-            var isOwner = fileInfo.UploadedById == currentUserId;
-            var isAdmin = User.IsInRole("Admin");
-            var isPublic = fileInfo.IsPublic;
-
-            if (!isPublic && !isOwner && !isAdmin)
-            {
-                _logger.LogWarning("Доступ к файлу {FileId} запрещен для пользователя {UserId}",
-                    id, currentUserId);
-                return StatusCode(StatusCodes.Status403Forbidden,
-                    new { error = "Доступ запрещен" });
-            }
-
-            // Проверяем срок действия
-            if (fileInfo.ExpiresAt.HasValue && fileInfo.ExpiresAt.Value < DateTime.UtcNow)
-            {
-                _logger.LogWarning("Срок действия файла {FileId} истёк", id);
-                return StatusCode(StatusCodes.Status410Gone,
-                    new { error = "Срок действия файла истёк" });
-            }
-
-            // Получаем поток файла через новый метод
-            var (fileStream, contentType, fileName, fileSize) =
-                await _fileService.GetFileStreamAsync(id, userId);
-
-            try
-            {
-                // Обязательный заголовок для поддержки Range
-                Response.Headers.Append("Accept-Ranges", "bytes");
-
-                // Дополнительные информационные заголовки
-                Response.Headers.Append("X-File-Id", id.ToString());
-                Response.Headers.Append("X-File-Name", fileName);
-
-                // Проверяем Range header
-                if (Request.Headers.ContainsKey("Range") &&
-                    RangeHelper.TryParse(Request.Headers["Range"].ToString(), fileSize, out var range))
-                {
-                    _logger.LogInformation("Range request для файла {FileId}: {Start}-{End}/{Total}",
-                        id, range.Start, range.End, range.TotalLength);
-
-                    // Устанавливаем статус Partial Content (206)
-                    Response.StatusCode = StatusCodes.Status206PartialContent;
-
-                    // Обязательные заголовки для Range response
-                    Response.Headers.Append("Content-Range",
-                        $"bytes {range.Start}-{range.End}/{range.TotalLength}");
-                    Response.Headers.Append("Content-Length", range.Length.ToString());
-
-                    // Определяем Content-Disposition
-                    var isImage = contentType.StartsWith("image/");
-                    var isPdf = contentType == "application/pdf";
-                    var isVideo = contentType.StartsWith("video/");
-                    var isAudio = contentType.StartsWith("audio/");
-                    var contentDisposition = (isImage || isPdf || isVideo || isAudio) ? "inline" : "attachment";
-
-                    Response.Headers.Append("Content-Disposition",
-                        $"{contentDisposition}; filename=\"{fileName}\"");
-
-                    Response.ContentType = contentType;
-
-                    // Отправляем только запрошенный диапазон
-                    await CopyStreamRangeAsync(fileStream, Response.Body, range.Start, range.Length);
-
-                    return new EmptyResult();
-                }
-                else
-                {
-                    // Полный файл - увеличиваем счетчик скачиваний
-                    await IncreaseDownloadCountAsync(id);
-
-                    // Определяем Content-Disposition
-                    var isImage = contentType.StartsWith("image/");
-                    var isPdf = contentType == "application/pdf";
-                    var isVideo = contentType.StartsWith("video/");
-                    var isAudio = contentType.StartsWith("audio/");
-                    var contentDisposition = (isImage || isPdf || isVideo || isAudio) ? "inline" : "attachment";
-
-                    Response.Headers.Append("Content-Disposition",
-                        $"{contentDisposition}; filename=\"{fileName}\"");
-                    Response.Headers.Append("Content-Length", fileSize.ToString());
-
-                    Response.ContentType = contentType;
-
-                    // Отправляем весь файл
-                    await fileStream.CopyToAsync(Response.Body);
-
-                    return new EmptyResult();
-                }
-            }
-            finally
-            {
-                await fileStream.DisposeAsync();
-            }
-        }
-        catch (FileNotFoundException)
-        {
-            _logger.LogWarning("Файл {FileId} не найден при стриминге", id);
             return NotFound(new { error = "Файл не найден" });
         }
-        catch (UnauthorizedAccessException)
+
+        // Проверяем права доступа
+        var isOwner = fileInfo.UploadedById == currentUserId;
+        var isAdmin = User.IsInRole("Admin");
+        var isPublic = fileInfo.IsPublic;
+
+        if (!isPublic && !isOwner && !isAdmin)
         {
-            _logger.LogWarning("Доступ к файлу {FileId} запрещен", id);
             return StatusCode(StatusCodes.Status403Forbidden,
                 new { error = "Доступ запрещен" });
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("истёк"))
+
+        // Проверяем срок действия
+        if (fileInfo.ExpiresAt.HasValue && fileInfo.ExpiresAt.Value < DateTime.UtcNow)
         {
-            _logger.LogWarning("Срок действия файла {FileId} истёк", id);
             return StatusCode(StatusCodes.Status410Gone,
                 new { error = "Срок действия файла истёк" });
         }
-        catch (Exception ex)
+
+        // Получаем поток файла
+        var (fileStream, contentType, fileName, fileSize) =
+            await _fileService.GetFileStreamAsync(id, userId);
+
+        try
         {
-            _logger.LogError(ex, "Ошибка при стриминге файла {FileId}", id);
-            return StatusCode(StatusCodes.Status500InternalServerError,
-                new { error = "Внутренняя ошибка сервера" });
+            // Увеличиваем счетчик скачиваний
+            await _fileService.IncrementDownloadCountAsync(id, userId);
+
+            // ВАЖНО: Возвращаем FileStreamResult, а не EmptyResult
+            // Swagger UI покажет кнопку "Download file" для FileStreamResult
+            return File(fileStream, contentType, fileName);
+        }
+        catch
+        {
+            await fileStream.DisposeAsync();
+            throw;
         }
     }
+    catch (FileNotFoundException)
+    {
+        return NotFound(new { error = "Файл не найден" });
+    }
+    catch (UnauthorizedAccessException)
+    {
+        return StatusCode(StatusCodes.Status403Forbidden,
+            new { error = "Доступ запрещен" });
+    }
+    catch (InvalidOperationException ex) when (ex.Message.Contains("истёк"))
+    {
+        return StatusCode(StatusCodes.Status410Gone,
+            new { error = "Срок действия файла истёк" });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при скачивании файла {FileId}", id);
+        return StatusCode(StatusCodes.Status500InternalServerError,
+            new { error = "Внутренняя ошибка сервера" });
+    }
+}
+
+
 
     // Добавить этот метод в конец класса FilesController, перед GetCurrentUserId()
     private async Task IncreaseDownloadCountAsync(Guid fileId)

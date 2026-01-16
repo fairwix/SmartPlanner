@@ -99,6 +99,32 @@ namespace SmartPlanner.Application.Services
             };
             return allowedMimeTypes.Contains(contentType.ToLowerInvariant());
         }
+        public async Task IncrementDownloadCountAsync(
+            Guid fileId,
+            Guid? userId = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var file = await _context.FileMetadata
+                    .FirstOrDefaultAsync(f => f.Id == fileId, cancellationToken);
+
+                if (file != null)
+                {
+                    file.DownloadCount++;
+                    file.UpdatedAt = DateTime.UtcNow;
+                    await _context.SaveChangesAsync(cancellationToken);
+
+                    _logger.LogDebug("Счетчик скачиваний увеличен для файла {FileId}: {Count}",
+                        fileId, file.DownloadCount);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Не удалось увеличить счетчик скачиваний для файла {FileId}", fileId);
+                // Не прерываем выполнение из-за ошибки счетчика
+            }
+        }
 
         private bool ValidateFileSignature(IFormFile file)
         {
