@@ -9,6 +9,14 @@ using SmartPlanner.Application.Common.Dtos;
 using SmartPlanner.API.Attributes;
 using SmartPlanner.API.Helpers;
 using Microsoft.Net.Http.Headers;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SmartPlanner.API.Services;
+using System.Security.Claims;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.SignalR;
+using SmartPlanner.API.Filters;
+using SmartPlanner.API.Hubs;
 
 namespace SmartPlanner.API.Controllers
 {
@@ -19,12 +27,15 @@ namespace SmartPlanner.API.Controllers
     {
         private readonly IFileService _fileService;
         private readonly ILogger<FilesController> _logger;
+        private readonly IFileNotificationService _notificationService;
 
         public FilesController(
             IFileService fileService,
+            IFileNotificationService notificationService,
             ILogger<FilesController> logger)
         {
             _fileService = fileService;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -39,6 +50,7 @@ namespace SmartPlanner.API.Controllers
         [HttpPost("upload")]
         [RequestSizeLimit(50_000_000)] // 50MB
         [Consumes("multipart/form-data")]
+        [RateLimit("file:upload", limit: 10, seconds: 60)]
         [ProducesResponseType(typeof(FileMetadataDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -59,11 +71,51 @@ namespace SmartPlanner.API.Controllers
                 var result = await _fileService.UploadFileAsync(
                     file, userId, isPublic, expiresAt);
 
+                await _notificationService.NotifyFileUploadedAsync(
+                    userId.ToString(),
+                    result.OriginalFileName,
+                    result.Size,
+                    result.Id);
+
                 _logger.LogInformation("Файл {FileId} успешно загружен пользователем {UserId}",
                     result.Id, userId);
 
+                await _notificationService.NotifyFileUploadedAsync(
+                    userId.ToString(),
+                    result.OriginalFileName,
+                    result.Size,
+                    result.Id,
+                    false); // isDuplicate = false (можно определить из result)
+
                 // Возвращаем DTO с URL как в ТЗ
                 var response = new
+                {
+                    result.Id,
+                    OriginalFileName = result.OriginalFileName,
+                    Size = result.Size,
+                    Url = $"/api/files/{result.Id}",
+                    result.IsPublic,
+                    result.ExpiresAt,
+                    UploadedAt = result.CreatedAt
+                };
+
+                try
+                {
+                    await _notificationService.NotifyFileUploadedAsync(
+                        userId.ToString(),
+                        result.OriginalFileName,
+                        result.Size,
+                        result.Id,
+                        false); // isDuplicate = false
+                }
+                catch (Exception notifEx)
+                {
+                    _logger.LogWarning(notifEx, "Не удалось отправить уведомление о загрузке файла {FileId}", result.Id);
+                    // Не прерываем основной поток из-за уведомления
+                }
+
+                // Возвращаем DTO с URL как в ТЗ
+                var resp = new
                 {
                     result.Id,
                     OriginalFileName = result.OriginalFileName,
@@ -91,6 +143,41 @@ namespace SmartPlanner.API.Controllers
                 _logger.LogError(ex, "Неожиданная ошибка при загрузке файла");
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     new { error = "Внутренняя ошибка сервера" });
+            }
+        }
+        [HttpPost("test-notification-simple")]
+        [Authorize]
+        public async Task<ActionResult> TestNotificationSimple()
+        {
+            try
+            {
+                var userId = GetCurrentUserId().ToString();
+
+                // 1. Проверяем подключения
+                var hubContext = HttpContext.RequestServices.GetRequiredService<IHubContext<NotificationHub>>();
+
+                // 2. Отправляем тестовое уведомление
+                await hubContext.Clients.Group($"user_{userId}").SendAsync("ReceiveNotification", new
+                {
+                    Id = Guid.NewGuid(),
+                    Title = "ТЕСТ из контроллера",
+                    Message = "Если видишь это - SignalR работает! 🎉",
+                    Type = "success",
+                    Timestamp = DateTime.UtcNow
+                });
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Тестовое уведомление отправлено",
+                    userId = userId,
+                    group = $"user_{userId}"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка теста уведомлений");
+                return StatusCode(500, new { error = ex.Message });
             }
         }
 
@@ -133,7 +220,26 @@ namespace SmartPlanner.API.Controllers
                 _logger.LogInformation("Успешно загружено {SuccessCount} из {TotalCount} файлов для пользователя {UserId}",
                     results.Count, files.Count, userId);
 
-                // Формируем ответ как в ТЗ
+                foreach (var result in results)
+                {
+                    try
+                    {
+                        await _notificationService.NotifyFileUploadedAsync(
+                            userId.ToString(),
+                            result.OriginalFileName,
+                            result.Size,
+                            result.Id,
+                            false);
+                    }
+                    catch (Exception notifEx)
+                    {
+                        _logger.LogWarning(notifEx,
+                            "Не удалось отправить уведомление для файла {FileId}",
+                            result.Id);
+                    }
+                }
+
+
                 var response = results.Select(result => new
                 {
                     result.Id,
@@ -167,7 +273,6 @@ namespace SmartPlanner.API.Controllers
 
 
 
-        // SmartPlanner.API/Controllers/FilesController.cs (ДОБАВЬТЕ К СУЩЕСТВУЮЩИМ МЕТОДАМ)
 [HttpPost("upload/chunked/start")]
 [Authorize]
 [RequestSizeLimit(1_000_000)] // 1MB для метаданных
@@ -686,6 +791,23 @@ public async Task<IActionResult> UploadStream(
                 _logger.LogInformation("Файл {FileId} скачивается, ContentType: {ContentType}",
                     id, contentType);
 
+                if (currentUserId != Guid.Empty)
+                {
+                    try
+                    {
+                        await _notificationService.NotifyFileDownloadedAsync(
+                            currentUserId.ToString(),
+                            fileInfo.OriginalFileName,
+                            id);
+                    }
+                    catch (Exception notifEx)
+                    {
+                        _logger.LogWarning(notifEx,
+                            "Не удалось отправить уведомление о скачивании файла {FileId}",
+                            id);
+                    }
+                }
+
                 // Определяем Content-Disposition
                 var isImage = contentType.StartsWith("image/");
                 var isPdf = contentType == "application/pdf";
@@ -723,6 +845,73 @@ public async Task<IActionResult> UploadStream(
                     new { error = "Внутренняя ошибка сервера" });
             }
         }
+
+        #region Тестирование уведомлений
+
+/// <summary>
+/// Тест отправки уведомления о файле (для демонстрации SignalR)
+/// </summary>
+[HttpPost("test-notification")]
+[Authorize]
+public async Task<ActionResult> TestFileNotification([FromBody] TestNotificationRequest request)
+{
+    try
+    {
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty) return Unauthorized();
+
+        _logger.LogInformation("🧪 Тест уведомления от пользователя {UserId}", userId);
+
+        if (request.Action == "upload")
+        {
+            await _notificationService.NotifyFileUploadedAsync(
+                userId.ToString(),
+                request.FileName ?? "тестовый-файл.pdf",
+                request.FileSize ?? 1024 * 1024,
+                request.FileId ?? Guid.NewGuid(),
+                false);
+        }
+        else if (request.Action == "delete")
+        {
+            await _notificationService.NotifyFileDeletedAsync(
+                userId.ToString(),
+                request.FileName ?? "тестовый-файл.pdf",
+                request.FileId ?? Guid.NewGuid(),
+                request.Reason ?? "тестовое удаление");
+        }
+        else if (request.Action == "download")
+        {
+            await _notificationService.NotifyFileDownloadedAsync(
+                userId.ToString(),
+                request.FileName ?? "тестовый-файл.pdf",
+                request.FileId ?? Guid.NewGuid());
+        }
+
+        return Ok(new
+        {
+            success = true,
+            message = $"Тестовое уведомление отправлено (действие: {request.Action})",
+            userId = userId.ToString(),
+            timestamp = DateTime.UtcNow
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при тестировании уведомлений");
+        return StatusCode(500, new { error = ex.Message });
+    }
+}
+
+public class TestNotificationRequest
+{
+    public string Action { get; set; } = "upload"; // upload, delete, download
+    public string? FileName { get; set; }
+    public Guid? FileId { get; set; }
+    public long? FileSize { get; set; }
+    public string? Reason { get; set; }
+}
+
+#endregion
 
 /// <summary>
 /// Скачать файл
@@ -904,7 +1093,22 @@ public async Task<IActionResult> StreamFile(Guid id)
                 _logger.LogInformation("Запрос на удаление файла {FileId} пользователем {UserId}",
                     id, userId);
 
-                // Получаем информацию о владельце файла
+                FileMetadataDto fileInfo = null;
+                try
+                {
+                    fileInfo = await _fileService.GetFileMetadataAsync(id, userId);
+                }
+                catch
+                {
+                    // Игнорируем ошибки при получении метаданных
+                }
+
+                await _notificationService.NotifyFileDeletedAsync(
+                    userId.ToString(),
+                    fileInfo.FileName,
+                    id,
+                    "Удалено пользователем");
+
                 var fileOwnerId = await _fileService.GetFileOwnerAsync(id);
                 if (fileOwnerId == Guid.Empty)
                 {
@@ -922,6 +1126,25 @@ public async Task<IActionResult> StreamFile(Guid id)
                         userId, id);
                     return StatusCode(StatusCodes.Status403Forbidden,
                         new { error = "Недостаточно прав для удаления файла" });
+                }
+
+                if (fileInfo != null)
+                {
+                    try
+                    {
+                        var reason = isAdmin && !isOwner ? "удален администратором" : "";
+                        await _notificationService.NotifyFileDeletedAsync(
+                            userId.ToString(),
+                            fileInfo.OriginalFileName,
+                            id,
+                            reason);
+                    }
+                    catch (Exception notifEx)
+                    {
+                        _logger.LogWarning(notifEx,
+                            "Не удалось отправить уведомление об удалении файла {FileId}",
+                            id);
+                    }
                 }
 
                 await _fileService.DeleteFileAsync(id, userId);
@@ -1050,5 +1273,7 @@ public async Task<IActionResult> StreamFile(Guid id)
     #endregion
 
         #endregion
+
+
     }
 }

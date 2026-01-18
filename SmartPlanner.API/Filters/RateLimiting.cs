@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Caching.Memory;
 using System;
+using Microsoft.AspNetCore.Mvc;
 
 namespace SmartPlanner.API.Filters
 {
-    [AttributeUsage(AttributeTargets.Method)]
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
     public class RateLimitAttribute : ActionFilterAttribute
     {
         private readonly int _limit;
@@ -21,12 +22,17 @@ namespace SmartPlanner.API.Filters
         public override void OnActionExecuting(ActionExecutingContext context)
         {
             var cache = context.HttpContext.RequestServices.GetService<IMemoryCache>();
-            var ipAddress = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            var key = $"{_keyPrefix}:{ipAddress}";
+            // Для SignalR используем ConnectionId, для API - IP
+            var identifier = context.HttpContext.Request.Path.StartsWithSegments("/hubs")
+                ? context.HttpContext.Connection.Id
+                : context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            var key = $"{_keyPrefix}:{identifier}";
+
             if (cache == null)
             {
-                throw new InvalidOperationException("IMemoryCache is not registered in the service container");
+                throw new InvalidOperationException("IMemoryCache is not registered");
             }
 
             if (!cache.TryGetValue(key, out int requestCount))
@@ -36,14 +42,18 @@ namespace SmartPlanner.API.Filters
 
             if (requestCount >= _limit)
             {
-                context.Result = new Microsoft.AspNetCore.Mvc.ObjectResult(new
+                context.Result = new ObjectResult(new
                 {
                     StatusCode = 429,
-                    Message = $"Rate limit exceeded. Try again in {_seconds} seconds."
+                    Message = $"Rate limit exceeded. Try again in {_seconds} seconds.",
+                    RetryAfter = _seconds
                 })
                 {
                     StatusCode = 429
                 };
+
+                // Добавляем заголовок Retry-After
+                context.HttpContext.Response.Headers["Retry-After"] = _seconds.ToString();
                 return;
             }
 
