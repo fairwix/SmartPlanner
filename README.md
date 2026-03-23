@@ -5,8 +5,7 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Swagger](https://img.shields.io/badge/Swagger-3.0-85EA2D.svg)](https://swagger.io/)
 
-> **SmartPlanner** — это масштабируемая и безопасная REST API платформа для управления личными целями, челленджами и достижениями. Построена на основе принципов Clean Architecture с использованием современных практик разработки.
-
+> **SmartPlanner** — REST API для управления целями, челленджами и достижениями с поддержкой real-time уведомлений, файлов и продвинутой системы аутентификации.
 ---
 
 ## 📋 Оглавление
