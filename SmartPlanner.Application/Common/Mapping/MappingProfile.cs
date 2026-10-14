@@ -15,11 +15,12 @@ public class MappingProfile : Profile
     public MappingProfile()
     {
         CreateMap<Goal, GoalDto>()
-            .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category.ToString()))
-            .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => src.Priority.ToString()))
-            .ForMember(dest => dest.ProgressPercentage, opt => opt.MapFrom(src => src.GetProgressPercentage()))
-            .ForMember(dest => dest.IsExpired, opt => opt.MapFrom(src => src.IsExpired()))
-            .ForMember(dest => dest.IsOnTrack, opt => opt.MapFrom(src => src.IsOnTrack()));
+            .ConstructUsing(src => new GoalDto(
+                src.Id, src.CreatedAt, src.UpdatedAt, src.Title, src.Description,
+                src.Category.ToString(), src.Priority.ToString(), src.DueDate,
+                src.TargetValue, src.CurrentValue, src.GetProgressPercentage(),
+                src.IsCompleted, src.IsAiGenerated, src.RewardAmount, src.UserId,
+                src.IsExpired(), src.IsOnTrack()));
 
         CreateMap<CreateGoalDto, CreateGoalCommand>();
         CreateMap<UpdateGoalDto, UpdateGoalCommand>();
@@ -49,13 +50,22 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.BadgeImage, opt => opt.MapFrom(src => src.Achievement.BadgeImage));
 
         CreateMap<Challenge, ChallengeDto>()
-            .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.Type.ToString()))
-            .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive()))
-            .ForMember(dest => dest.GroupProgressPercentage, opt => opt.MapFrom(src => src.GetGroupProgressPercentage()));
+            .ConstructUsing(src => new ChallengeDto(
+                src.Id, src.CreatedAt, src.UpdatedAt, src.Title, src.Description,
+                src.Type.ToString(), src.StartDate, src.EndDate, src.IsGroupChallenge,
+                src.TargetValue, src.CurrentValue, src.GetGroupProgressPercentage(),
+                src.IsActive(), src.CreatedBy,
+                src.Participants.Select(participant => new ChallengeParticipantDto(
+                    participant.UserId, participant.JoinedAt, participant.JoinedAt,
+                    participant.UserId, participant.User == null ? string.Empty : participant.User.Username,
+                    participant.Status.ToString(), participant.PersonalContribution,
+                    participant.JoinedAt)).ToList()));
 
         CreateMap<ChallengeParticipant, ChallengeParticipantDto>()
-            .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.User.Username))
-            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
+            .ConstructUsing(src => new ChallengeParticipantDto(
+                src.UserId, src.JoinedAt, src.JoinedAt, src.UserId,
+                src.User == null ? string.Empty : src.User.Username, src.Status.ToString(),
+                src.PersonalContribution, src.JoinedAt));
 
         CreateMap<CreateGoalCommand, Goal>()
             .ForMember(dest => dest.Id, opt => opt.MapFrom(_ => Guid.NewGuid()))

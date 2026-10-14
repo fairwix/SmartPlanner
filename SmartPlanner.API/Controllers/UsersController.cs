@@ -63,6 +63,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
     [ProducesResponseType(typeof(UserDto), 201)]
     [ProducesResponseType(403)]
     public async Task<ActionResult<UserDto>> CreateUser([FromBody] CreateUserRequest request)

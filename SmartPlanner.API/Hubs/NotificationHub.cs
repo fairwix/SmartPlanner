@@ -282,10 +282,13 @@ private void UpdateNotificationCount(string userId)
         {
             var userId = GetUserId();
 
-            // Проверяем, что группа не запрещенная
-            if (IsRestrictedGroup(groupName))
+            var isOwnUserGroup = string.Equals(groupName, $"user_{userId}", StringComparison.Ordinal);
+            var isAdminGroup = string.Equals(groupName, "admin_notifications", StringComparison.Ordinal)
+                && Context.User?.IsInRole("Admin") == true;
+
+            if (!isOwnUserGroup && !isAdminGroup)
             {
-                throw new HubException($"Группа {groupName} недоступна для подписки");
+                throw new HubException("Недостаточно прав для подписки на эту группу");
             }
 
             // Rate limit на подписки
@@ -380,18 +383,6 @@ private void UpdateNotificationCount(string userId)
             // Здесь можно добавить логику проверки ролей из базы данных
             // Пока используем простую проверку по claims
             return Context.User?.IsInRole("Admin") == true;
-        }
-
-        private bool IsRestrictedGroup(string groupName)
-        {
-            var restrictedGroups = new[]
-            {
-                "admin_notifications",
-                "system",
-                "internal"
-            };
-
-            return restrictedGroups.Contains(groupName) || groupName.StartsWith("admin_");
         }
 
         #endregion

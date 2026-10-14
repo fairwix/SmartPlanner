@@ -22,14 +22,14 @@ namespace SmartPlanner.Application.Users.Commands;
                 .FirstOrDefaultAsync(u => u.Email == request.Email, cancellationToken);
 
             if (existingByEmail != null)
-                return MapToDto(existingByEmail);
+                throw new ArgumentException("A user with this email or username already exists");
 
             var existingByUsername = await _context.Users
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Username == request.Username, cancellationToken);
 
             if (existingByUsername != null)
-                return MapToDto(existingByUsername);
+                throw new ArgumentException("A user with this email or username already exists");
 
             var user = new User
             {

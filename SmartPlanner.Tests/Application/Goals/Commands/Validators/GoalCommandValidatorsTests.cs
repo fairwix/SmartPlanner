@@ -245,6 +245,7 @@ namespace SmartPlanner.Application.UnitTests.Goals.Commands.Validators
             // Arrange - исправлено создание UpdateGoalDto
             var command = new BulkUpdateGoalsCommand
             {
+                UserId = Guid.NewGuid(),
                 Goals = new List<BulkUpdateGoalItem>
                 {
                     new BulkUpdateGoalItem
@@ -324,6 +325,7 @@ namespace SmartPlanner.Application.UnitTests.Goals.Commands.Validators
             // Arrange - исправлено создание UpdateGoalDto
             var command = new BulkUpdateGoalsCommand
             {
+                UserId = Guid.NewGuid(),
                 Goals = new List<BulkUpdateGoalItem>
                 {
                     new BulkUpdateGoalItem
@@ -355,6 +357,7 @@ namespace SmartPlanner.Application.UnitTests.Goals.Commands.Validators
             // Arrange
             var command = new BulkUpdateGoalsCommand
             {
+                UserId = Guid.NewGuid(),
                 Goals = new List<BulkUpdateGoalItem>
                 {
                     new BulkUpdateGoalItem
@@ -379,6 +382,7 @@ namespace SmartPlanner.Application.UnitTests.Goals.Commands.Validators
             // Arrange - UpdateGoalDto может иметь null значения для частичного обновления
             var command = new BulkUpdateGoalsCommand
             {
+                UserId = Guid.NewGuid(),
                 Goals = new List<BulkUpdateGoalItem>
                 {
                     new BulkUpdateGoalItem
@@ -474,6 +478,7 @@ namespace SmartPlanner.Application.UnitTests.Goals.Commands.Validators
             // Arrange
             var command = new BulkDeleteGoalsCommand
             {
+                UserId = Guid.NewGuid(),
                 GoalIds = new List<Guid> { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() }
             };
 

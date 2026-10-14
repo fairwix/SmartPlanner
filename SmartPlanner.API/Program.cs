@@ -34,12 +34,19 @@ builder.WebHost.UseUrls("http://localhost:5047");
 builder.Services.AddSignalR();
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    var allowedOrigins = builder.Configuration
+        .GetSection("CorsSettings:AllowedOrigins")
+        .Get<string[]>() ?? Array.Empty<string>();
+    var allowCredentials = builder.Configuration.GetValue("CorsSettings:AllowCredentials", true);
+
+    options.AddPolicy("ConfiguredOrigins", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "https://localhost:3000")
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowAnyMethod();
+
+        if (allowCredentials)
+            policy.AllowCredentials();
     });
 });
 
@@ -200,26 +207,6 @@ builder.Services.AddSingleton<SignalRRateLimitFilter>();
 builder.Services.AddScoped<IAuthorizationHandler, ResourceOwnerRequirementHandler>();
 builder.Services.AddScoped<IFileService, FileService>();
 builder.Services.AddScoped<IFileNotificationService, FileNotificationService>();
-// 7. CORS
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.WithOrigins(
-                "http://localhost:3000",  // React dev server
-                "http://localhost:5173",  // Vite dev server
-                "http://localhost:4200",  // Angular dev server
-                "http://localhost:5047",  // Твой API
-                "http://localhost:5000",  // Дополнительные порты
-                "http://localhost:8080"
-            )
-            .AllowCredentials()
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .SetIsOriginAllowed(_ => true); // Разрешить все origins (для разработки)
-    });
-});
-
 // 8. MemoryCache (для RateLimit и других нужд)
 builder.Services.AddMemoryCache();
 
@@ -299,7 +286,7 @@ app.UseMiddleware<AuditLoggingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseRouting();
-app.UseCors("AllowAll");
+app.UseCors("ConfiguredOrigins");
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
@@ -324,11 +311,14 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/", () => "SmartPlanner API работает!");
 app.MapGet("/health", () => "OK");
 
-using (var scope = app.Services.CreateScope())
+if (!app.Environment.IsEnvironment("Testing"))
 {
+    using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await context.Database.MigrateAsync();
 }
 
 
 await app.RunAsync();
+
+public partial class Program { }

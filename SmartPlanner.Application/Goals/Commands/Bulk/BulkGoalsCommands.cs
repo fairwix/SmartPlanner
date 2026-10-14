@@ -13,6 +13,7 @@ namespace SmartPlanner.Application.Goals.Commands;
     public record BulkUpdateGoalsCommand : IRequest<BulkOperationResult<GoalDto>>
     {
         public List<BulkUpdateGoalItem> Goals { get; init; } = new();
+        public Guid UserId { get; init; }
     }
 
     public class BulkUpdateGoalItem
@@ -24,4 +25,5 @@ namespace SmartPlanner.Application.Goals.Commands;
     public record BulkDeleteGoalsCommand : IRequest<BulkDeleteResult>
     {
         public List<Guid> GoalIds { get; init; } = new();
+        public Guid UserId { get; init; }
     }

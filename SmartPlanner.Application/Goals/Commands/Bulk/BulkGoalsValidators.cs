@@ -34,6 +34,7 @@ namespace SmartPlanner.Application.Goals.Commands;
     {
         public BulkUpdateGoalsCommandValidator()
         {
+            RuleFor(x => x.UserId).NotEmpty();
             RuleFor(x => x.Goals)
                 .NotEmpty().WithMessage("At least one goal update is required")
                 .Must(goals => goals.Count <= 50).WithMessage("Cannot update more than 50 goals at once");
@@ -54,6 +55,7 @@ namespace SmartPlanner.Application.Goals.Commands;
     {
         public BulkDeleteGoalsCommandValidator()
         {
+            RuleFor(x => x.UserId).NotEmpty();
             RuleFor(x => x.GoalIds)
                 .NotEmpty().WithMessage("At least one goal ID is required for bulk deletion")
                 .Must(ids => ids.Count <= 100).WithMessage("Cannot delete more than 100 goals at once")

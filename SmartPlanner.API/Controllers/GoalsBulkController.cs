@@ -1,5 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 using SmartPlanner.Application.Goals.Commands;
 using SmartPlanner.Application.Goals.Dtos;
@@ -9,6 +11,7 @@ namespace SmartPlanner.API.Controllers;
 
     [ApiController]
     [Route("api/goals")]
+    [Authorize]
     public class GoalsBulkController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -25,6 +28,8 @@ namespace SmartPlanner.API.Controllers;
             [FromBody] BulkCreateGoalsCommand command,
             CancellationToken cancellationToken = default)
         {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            command = command with { UserId = userId };
             var result = await _mediator.Send(command, cancellationToken);
 
             return Ok(result);
@@ -37,6 +42,8 @@ namespace SmartPlanner.API.Controllers;
             [FromBody] BulkUpdateGoalsCommand command,
             CancellationToken cancellationToken = default)
         {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            command = command with { UserId = userId };
             var result = await _mediator.Send(command, cancellationToken);
 
             return Ok(result);
@@ -49,8 +56,17 @@ namespace SmartPlanner.API.Controllers;
             [FromBody] BulkDeleteGoalsCommand command,
             CancellationToken cancellationToken = default)
         {
+            if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+            command = command with { UserId = userId };
             var result = await _mediator.Send(command, cancellationToken);
 
             return Ok(result);
+        }
+
+        private bool TryGetCurrentUserId(out Guid userId)
+        {
+            var userIdClaim = User.FindFirst("userId")?.Value
+                ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return Guid.TryParse(userIdClaim, out userId);
         }
     }

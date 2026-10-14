@@ -25,10 +25,6 @@ namespace SmartPlanner.API.Middleware
                 return;
             }
 
-            var originalBodyStream = context.Response.Body;
-            using var responseBody = new MemoryStream();
-            context.Response.Body = responseBody;
-
             try
             {
                 await _next(context);
@@ -42,12 +38,6 @@ namespace SmartPlanner.API.Middleware
             {
                 await LogExceptionAsync(context, ex, auditService);
                 throw;
-            }
-            finally
-            {
-                responseBody.Seek(0, SeekOrigin.Begin);
-                await responseBody.CopyToAsync(originalBodyStream);
-                context.Response.Body = originalBodyStream;
             }
         }
 

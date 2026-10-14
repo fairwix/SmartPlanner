@@ -145,4 +145,138 @@ namespace SmartPlanner.Application.Goals.Commands
             return results;
         }
     }
+
+    public class BulkUpdateGoalsCommandHandler : IRequestHandler<BulkUpdateGoalsCommand, BulkOperationResult<GoalDto>>
+    {
+        private readonly IApplicationDbContext _context;
+
+        public BulkUpdateGoalsCommandHandler(IApplicationDbContext context) => _context = context;
+
+        public async Task<BulkOperationResult<GoalDto>> Handle(
+            BulkUpdateGoalsCommand request,
+            CancellationToken cancellationToken)
+        {
+            var result = new BulkOperationResult<GoalDto> { TotalCount = request.Goals.Count };
+            foreach (var item in request.Goals)
+            {
+                var goal = await _context.Goals.FirstOrDefaultAsync(
+                    g => g.Id == item.GoalId && g.UserId == request.UserId, cancellationToken);
+                if (goal == null)
+                {
+                    BulkGoalHandlerHelpers.AddFailure(result, item.GoalId, "Goal not found or not owned by current user");
+                    continue;
+                }
+
+                try
+                {
+                    var data = item.UpdateData ?? throw new ArgumentException("Update data is required");
+                    var category = goal.Category;
+                    var priority = goal.Priority;
+                    if (data.Category != null && !Enum.TryParse(data.Category, true, out category))
+                        throw new ArgumentException("Invalid category");
+                    if (data.Priority != null && !Enum.TryParse(data.Priority, true, out priority))
+                        throw new ArgumentException("Invalid priority");
+                    if (data.DueDate.HasValue && data.DueDate.Value <= DateTime.UtcNow)
+                        throw new ArgumentException("Due date must be in the future");
+                    if (data.TargetValue.HasValue &&
+                        (data.TargetValue.Value <= 0 || data.TargetValue.Value < goal.CurrentValue))
+                        throw new ArgumentException("Target value must be positive and cannot be below current progress");
+
+                    if (data.Title != null) goal.Title = data.Title;
+                    if (data.Description != null) goal.Description = data.Description;
+                    goal.Category = category;
+                    goal.Priority = priority;
+                    if (data.DueDate.HasValue) goal.DueDate = data.DueDate.Value;
+                    if (data.TargetValue.HasValue) goal.TargetValue = data.TargetValue.Value;
+                    goal.UpdatedAt = DateTime.UtcNow;
+
+                    result.Items.Add(new BulkOperationItem<GoalDto>
+                    {
+                        Data = BulkGoalHandlerHelpers.ToDto(goal), Success = true,
+                        Message = "Goal updated successfully", ItemId = goal.Id
+                    });
+                    result.SuccessfulCount++;
+                }
+                catch (ArgumentException ex)
+                {
+                    BulkGoalHandlerHelpers.AddFailure(result, item.GoalId, ex.Message);
+                }
+            }
+
+            if (result.SuccessfulCount > 0)
+                await _context.SaveChangesAsync(cancellationToken);
+            return result;
+        }
+    }
+
+    public class BulkDeleteGoalsCommandHandler : IRequestHandler<BulkDeleteGoalsCommand, BulkDeleteResult>
+    {
+        private readonly IApplicationDbContext _context;
+
+        public BulkDeleteGoalsCommandHandler(IApplicationDbContext context) => _context = context;
+
+        public async Task<BulkDeleteResult> Handle(
+            BulkDeleteGoalsCommand request,
+            CancellationToken cancellationToken)
+        {
+            var result = new BulkDeleteResult { TotalCount = request.GoalIds.Count };
+            var seen = new HashSet<Guid>();
+            foreach (var goalId in request.GoalIds)
+            {
+                if (!seen.Add(goalId))
+                {
+                    result.Items.Add(new BulkDeleteItem
+                    {
+                        Id = goalId, Success = false, Message = "Duplicate goal ID", Error = "Duplicate goal ID"
+                    });
+                    result.FailedCount++;
+                    continue;
+                }
+
+                var goal = await _context.Goals.FirstOrDefaultAsync(
+                    g => g.Id == goalId && g.UserId == request.UserId, cancellationToken);
+                if (goal == null)
+                {
+                    result.Items.Add(new BulkDeleteItem
+                    {
+                        Id = goalId, Success = false,
+                        Message = "Goal not found or not owned by current user",
+                        Error = "Goal not found or not owned by current user"
+                    });
+                    result.FailedCount++;
+                    continue;
+                }
+
+                _context.Goals.Remove(goal);
+                result.Items.Add(new BulkDeleteItem
+                {
+                    Id = goalId, Success = true, Message = "Goal deleted successfully"
+                });
+                result.SuccessfulCount++;
+            }
+
+            if (result.SuccessfulCount > 0)
+                await _context.SaveChangesAsync(cancellationToken);
+            return result;
+        }
+    }
+
+}
+
+internal static class BulkGoalHandlerHelpers
+{
+    internal static void AddFailure(BulkOperationResult<GoalDto> result, Guid goalId, string message)
+    {
+        result.Items.Add(new BulkOperationItem<GoalDto>
+        {
+            ItemId = goalId, Success = false, Message = message, Error = message
+        });
+        result.FailedCount++;
+    }
+
+    internal static GoalDto ToDto(Goal goal) => new(
+        goal.Id, goal.CreatedAt, goal.UpdatedAt, goal.Title, goal.Description,
+        goal.Category.ToString(), goal.Priority.ToString(), goal.DueDate,
+        goal.TargetValue, goal.CurrentValue, goal.GetProgressPercentage(), goal.IsCompleted,
+        goal.IsAiGenerated, goal.RewardAmount, goal.UserId, goal.IsExpired(), goal.IsOnTrack());
 }

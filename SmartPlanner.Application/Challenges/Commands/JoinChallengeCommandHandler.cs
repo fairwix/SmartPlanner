@@ -54,6 +54,7 @@ namespace SmartPlanner.Application.Challenges.Commands
             {
                 ChallengeId = request.ChallengeId,
                 UserId = request.UserId,
+                Status = ParticipantStatus.Joined,
                 JoinedAt = DateTime.UtcNow
             };
 
