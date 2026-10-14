@@ -14,6 +14,7 @@ using Microsoft.IdentityModel.Tokens;
 using SmartPlanner.Application.Auth.Dtos;
 using SmartPlanner.Application.Auth.Interfaces;
 using SmartPlanner.Application.Common.Interfaces;
+using SmartPlanner.Application.Common.Security;
 using SmartPlanner.Application.Security.Services;
 using SmartPlanner.Domain.Entities;
 
@@ -50,8 +51,7 @@ namespace SmartPlanner.Application.Auth.Services
 
             _tokenHandler = new JwtSecurityTokenHandler();
 
-            var secretKey = _configuration["JwtSettings:Secret"]
-                            ?? "dev-secret-key-123456789012345678901234567890";
+            var secretKey = JwtSecretValidator.GetRequiredSecret(_configuration);
             _signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             _signingCredentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256);
         }

@@ -523,7 +523,6 @@ public async Task UploadFileAsync_ValidFile_UploadsSuccessfully()
     "DefaultConnection": "Host=localhost;Database=smartplanner;Username=postgres;Password=***"
   },
   "JwtSettings": {
-    "Secret": "your-256-bit-secret-key-here",
     "Issuer": "SmartPlanner",
     "Audience": "SmartPlannerClients",
     "AccessTokenExpirationMinutes": 15,
@@ -556,6 +555,8 @@ public async Task UploadFileAsync_ValidFile_UploadsSuccessfully()
 
 ###  Переменные окружения
 
+JWT signing key is required and must not be committed to the repository. Configure a private random value of at least 32 bytes through a secret store or the ASP.NET Core environment variable `JwtSettings__Secret`. The API refuses to start if it is missing, too short, or set to a known repository example. Use a different randomly generated value for production and development.
+
 ```bash
 # База данных
 POSTGRES_HOST=localhost
@@ -564,10 +565,8 @@ POSTGRES_DB=smartplanner
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=***
 
-# JWT
-JWT_SECRET=your-secret-key
-JWT_ISSUER=SmartPlanner
-JWT_AUDIENCE=SmartPlannerClients
+# JWT signing key (store securely; do not commit it)
+JwtSettings__Secret=<private-random-key-at-least-32-bytes>
 
 # Email
 SMTP_HOST=smtp.gmail.com

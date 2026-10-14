@@ -7,6 +7,7 @@ using SmartPlanner.API.Filters;
 using SmartPlanner.API.Middleware;
 using SmartPlanner.Application;
 using SmartPlanner.Application.Common.Interfaces;
+using SmartPlanner.Application.Common.Security;
 using SmartPlanner.Application.Security.Services;
 using SmartPlanner.Infrastructure;
 using System.Text;
@@ -23,6 +24,9 @@ using SmartPlanner.API.Hubs;
 using SmartPlanner.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Refuse to start with a missing, short, or repository-known JWT signing key.
+var jwtSecret = JwtSecretValidator.GetRequiredSecret(builder.Configuration);
 
 // Настройки
 builder.WebHost.UseUrls("http://localhost:5047");
@@ -150,7 +154,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-        var secret = jwtSettings["Secret"] ?? "dev-secret-key-123456789012345678901234567890";
         var issuer = jwtSettings["Issuer"] ?? "smartplanner-dev";
         var audience = jwtSettings["Audience"] ?? "smartplanner-dev-clients";
 
@@ -164,7 +167,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
             ClockSkew = TimeSpan.Zero
         };
 

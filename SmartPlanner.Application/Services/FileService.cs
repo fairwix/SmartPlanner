@@ -767,7 +767,7 @@ namespace SmartPlanner.Application.Services
         }
 
         // Если нет в БД, проверяем временные файлы (совместимость со старой системой)
-        var uploadPath = Path.Combine(_tempPath, uploadId);
+        var uploadPath = GetChunkedUploadDirectoryPath(uploadId);
         if (!Directory.Exists(uploadPath))
             return null;
 
@@ -833,42 +833,19 @@ namespace SmartPlanner.Application.Services
             throw new ArgumentException("Некорректное общее количество chunks");
 
         var uploadProgress = await _context.UploadProgresses
-            .FirstOrDefaultAsync(p => p.UploadId == uploadId, cancellationToken);
+            .FirstOrDefaultAsync(p => p.UploadId == uploadId && p.UserId == userId, cancellationToken);
 
         if (uploadProgress == null)
-        {
-            // Создаем новую запись о прогрессе если ее нет
-            uploadProgress = new UploadProgress
-            {
-                Id = Guid.NewGuid(),
-                UploadId = uploadId,
-                UserId = userId,
-                FileName = fileName,
-                TotalChunks = totalChunks,
-                UploadedChunks = 1, // Этот чанк будет первым
-                IsPublic = isPublic,
-                ExpiresAt = expiresAt,
-                StartedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                Status = "uploading"
-            };
-            await _context.UploadProgresses.AddAsync(uploadProgress, cancellationToken);
-        }
-        else
-        {
-            // Проверяем права доступа
-            if (uploadProgress.UserId != userId)
-                throw new UnauthorizedAccessException("Нет прав для продолжения этой загрузки");
+            throw new FileNotFoundException("Сессия загрузки не найдена");
 
-            // Проверяем статус
-            if (uploadProgress.Status == "completed")
-                throw new InvalidOperationException("Загрузка уже завершена");
+        // Проверяем статус
+        if (uploadProgress.Status == "completed")
+            throw new InvalidOperationException("Загрузка уже завершена");
 
-            if (uploadProgress.Status == "failed")
-                throw new InvalidOperationException("Загрузка завершилась с ошибкой");
-        }
+        if (uploadProgress.Status == "failed")
+            throw new InvalidOperationException("Загрузка завершилась с ошибкой");
 
-        var uploadPath = Path.Combine(_tempPath, uploadId);
+        var uploadPath = GetChunkedUploadDirectoryPath(uploadId);
         var chunksPath = Path.Combine(uploadPath, "chunks");
         Directory.CreateDirectory(chunksPath);
 
@@ -955,7 +932,7 @@ namespace SmartPlanner.Application.Services
         try
         {
             var progress = await _context.UploadProgresses
-                .FirstOrDefaultAsync(p => p.UploadId == uploadId, cancellationToken);
+                .FirstOrDefaultAsync(p => p.UploadId == uploadId && p.UserId == userId, cancellationToken);
 
             if (progress != null)
             {
@@ -1013,7 +990,7 @@ namespace SmartPlanner.Application.Services
         uploadProgress.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync(cancellationToken);
 
-        var uploadPath = Path.Combine(_tempPath, uploadId);
+        var uploadPath = GetChunkedUploadDirectoryPath(uploadId);
         var metadataPath = Path.Combine(uploadPath, "metadata.json");
 
         if (!File.Exists(metadataPath))
@@ -1165,7 +1142,7 @@ namespace SmartPlanner.Application.Services
         try
         {
             var progress = await _context.UploadProgresses
-                .FirstOrDefaultAsync(p => p.UploadId == uploadId, cancellationToken);
+                .FirstOrDefaultAsync(p => p.UploadId == uploadId && p.UserId == userId, cancellationToken);
 
             if (progress != null)
             {
@@ -1431,6 +1408,31 @@ private void CleanupTempFiles(string uploadPath)
                 CreatedAt = file.CreatedAt,
                 UpdatedAt = file.UpdatedAt
             };
+        }
+
+        private string GetChunkedUploadDirectoryPath(string uploadId)
+        {
+            if (string.IsNullOrWhiteSpace(uploadId) ||
+                !uploadId.StartsWith("upload_", StringComparison.Ordinal) ||
+                !Guid.TryParseExact(uploadId["upload_".Length..], "N", out var parsedId) ||
+                !string.Equals(uploadId, $"upload_{parsedId:N}", StringComparison.Ordinal))
+            {
+                throw new ArgumentException("Некорректный идентификатор загрузки", nameof(uploadId));
+            }
+
+            var rootPath = Path.GetFullPath(_tempPath);
+            var uploadPath = Path.GetFullPath(Path.Combine(rootPath, uploadId));
+            var rootPrefix = Path.EndsInDirectorySeparator(rootPath)
+                ? rootPath
+                : rootPath + Path.DirectorySeparatorChar;
+            var pathComparison = OperatingSystem.IsWindows()
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
+
+            if (!uploadPath.StartsWith(rootPrefix, pathComparison))
+                throw new ArgumentException("Идентификатор загрузки указывает за пределы временной директории", nameof(uploadId));
+
+            return uploadPath;
         }
 
 
