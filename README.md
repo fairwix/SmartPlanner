@@ -1,667 +1,191 @@
-#  SmartPlanner API
+# SmartPlanner API
 
-[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4.svg)](https://dotnet.microsoft.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-4169E1.svg)](https://www.postgresql.org/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Swagger](https://img.shields.io/badge/Swagger-3.0-85EA2D.svg)](https://swagger.io/)
+REST API на ASP.NET Core для управления пользователями, целями и челленджами. В проекте также есть достижения, загрузка файлов, SignalR-уведомления и дополнительные API для продуктов, постов и сообщений.
 
-> **SmartPlanner** — REST API для управления целями, челленджами и достижениями с поддержкой real-time уведомлений, файлов и продвинутой системы аутентификации.
----
+## Стек и структура
 
-##  Оглавление
+- .NET 9, ASP.NET Core Web API
+- PostgreSQL и Entity Framework Core
+- MediatR, FluentValidation, AutoMapper
+- JWT bearer-аутентификация и SignalR
 
-- [ Особенности](#-особенности)
-- [ Архитектура](#️-архитектура)
-- [ Быстрый старт](#-быстрый-старт)
-- [ Аутентификация и авторизация](#-аутентификация-и-авторизация)
-- [ API Endpoints](#-api-endpoints)
-- [ Real-time уведомления (SignalR)](#-real-time-уведомления-signalr)
-- [ Работа с файлами](#-работа-с-файлами)
-- [ Тестирование](#-тестирование)
-- [ Конфигурация](#️-конфигурация)
-- [ Безопасность](#️-безопасность)
-- [ Мониторинг и логирование](#-мониторинг-и-логирование)
-- [ Вклад в проект](#-вклад-в-проект)
-- [ Лицензия](#-лицензия)
-
----
-
-##  Особенности
-
-###  Безопасность и аутентификация
-- **JWT Authentication** с поддержкой refresh-токенов
-- **Подтверждение email** при регистрации
-- **Восстановление пароля** через защищённые токены
-- **Блокировка пользователей** и управление сессиями
-- **Rate Limiting** для защиты от brute-force атак
-- **Аудит безопасности** — логирование всех критических событий
-
-###  Управление целями
-- Полноценный CRUD для целей с валидацией
-- Отслеживание прогресса с историей изменений
-- Категории и приоритеты целей
-- **Массовые операции** (bulk create/update/delete)
-- Автоматическое начисление наград за завершение
-
-###  Система достижений и челленджей
-- Гибкая система ачивок с условиями выполнения
-- Индивидуальные и групповые челленджи
-- Статистика участия и прогресс в реальном времени
-- Автоматическая проверка и награждение достижениями
-
-###  Продвинутая работа с файлами
-- Загрузка файлов до **2 ГБ** с поддержкой chunked upload (до 50 МБ для обычной загрузки и до 2 ГБ через chunked upload)
-- **Дедупликация** файлов по SHA256-хешу
-- Автоматическая генерация **thumbnail** для изображений
-- Удаление метаданных (EXIF) для публичных файлов
-- Оптимизация изображений с настройкой качества
-- Поддержка публичных и приватных файлов с контролем доступа
-
-###  Real-time возможности
-- **SignalR Hubs** для мгновенных уведомлений
-- Отслеживание прогресса загрузки в реальном времени
-- Уведомления о событиях системы
-- Поддержка групповой рассылки сообщений
-
-###  Дополнительные возможности
-- **CQRS паттерн** с MediatR для разделения команд и запросов
-- **FluentValidation** для декларативной валидации
-- **AutoMapper** для автоматического маппинга DTO
-- **Global Exception Handling** с форматом ProblemDetails
-- **CORS** конфигурация для кросс-доменных запросов
-- **Background Services** для очистки устаревших данных
-
----
-
-##  Архитектура
-
-Проект реализован с использованием **Clean Architecture** и следует принципам **SOLID**:
-
-```
-SmartPlanner/
-├──  API/                    # ASP.NET Core Web API entry point
-│   ├── Controllers/          # REST API контроллеры
-│   ├── Hubs/                 # SignalR hubs
-│   ├── Filters/              # Action filters (RateLimit, Exception)
-│   ├── Middleware/           # Custom middleware
-│   └── Configuration/        # DI и настройки
-│
-├──  Application/           # Бизнес-логика (Domain Layer)
-│   ├── Common/               # Общие интерфейсы, DTO, behaviors
-│   ├── Auth/                 # Аутентификация и авторизация
-│   ├── Goals/                # Логика управления целями
-│   ├── Challenges/           # Логика челленджей
-│   ├── Achievements/         # Система достижений
-│   ├── Users/                # Управление пользователями
-│   ├── Security/             # Аудит и безопасность
-│   └── Services/             # Прикладные сервисы
-│
-├──  Domain/                # Ядро домена (без зависимостей)
-│   ├── Entities/             # Доменные сущности
-│   ├── Enums/                # Перечисления
-│   └── Exceptions/           # Доменные исключения
-│
-├──  Infrastructure/        # Внешние зависимости
-│   ├── Data/                 # EF Core DbContext и миграции
-│   ├── Services/             # Реализации внешних сервисов
-│   └── AI/                   # AI-рекомендации (опционально)
-│
-└──  Tests/                 # Unit и интеграционные тесты
-    ├── Application.Tests/
-    ├── Domain.Tests/
-    └── Infrastructure.Tests/
+```text
+SmartPlanner.API/             HTTP API, контроллеры, SignalR и middleware
+SmartPlanner.Application/     команды, запросы, обработчики и DTO
+SmartPlanner.Domain/          доменные сущности и правила
+SmartPlanner.Infrastructure/  EF Core, PostgreSQL и миграции
+SmartPlanner.Tests/           модульные и интеграционные тесты
 ```
 
-###  Паттерны и практики
+## Запуск локально
 
-| Паттерн | Применение |
-|---------|-----------|
-| **CQRS** | Разделение команд (Commands) и запросов (Queries) через MediatR |
-| **Repository** | Абстракция доступа к данным через `IApplicationDbContext` |
-| **Unit of Work** | Управление транзакциями через EF Core |
-| **Factory** | Создание валидаторов и мапперов |
-| **Strategy** | Обработка разных типов достижений и челленджей |
-| **Pipeline Behavior** | Валидация, логирование, обработка ошибок в MediatR |
+Нужны .NET 9 SDK и работающий PostgreSQL. Репозиторий не содержит Docker Compose.
 
----
+1. Клонируйте репозиторий и перейдите в его каталог:
 
-##  Быстрый старт
+   ```bash
+   git clone https://github.com/fairwix/SmartPlanner.git
+   cd SmartPlanner
+   ```
 
-###  Предварительные требования
+2. Создайте базу данных `smartplanner` в PostgreSQL. Настройте строку подключения и секрет JWT через User Secrets, чтобы не хранить их в репозитории:
 
-- [.NET 9 SDK](https://dotnet.microsoft.com/download) или новее
-- [PostgreSQL 15+](https://www.postgresql.org/download/)
-- [Docker](https://www.docker.com/) (опционально, для контейнеризации)
+   ```bash
+   dotnet user-secrets set "ConnectionStrings:PostgreSQL" "Host=localhost;Port=5432;Database=smartplanner;Username=<user>;Password=<password>" --project SmartPlanner.API
+   dotnet user-secrets set "JwtSettings:Secret" "<случайный приватный ключ длиной не менее 32 байт>" --project SmartPlanner.API
+   ```
 
-###  Настройка окружения
+   Приложение завершает запуск, если `JwtSettings:Secret` отсутствует, слишком короткий или совпадает с известным примером из репозитория. Для production задайте свой случайный секрет через secret store или переменную `JwtSettings__Secret`.
 
-1. **Клонируйте репозиторий:**
+3. Запустите API:
+
+   ```bash
+   dotnet run --project SmartPlanner.API
+   ```
+
+   При запуске приложение применяет EF Core-миграции. HTTP-адрес из конфигурации — `http://localhost:5047`. В окружении `Development` Swagger UI доступен по адресу `http://localhost:5047/swagger`.
+
+В `SmartPlanner.API/appsettings.Development.json` указана локальная строка подключения с примерными реквизитами `postgres/postgres`. Переопределите её User Secrets или переменной окружения перед запуском. Для отправки email в Development включён файловый режим: письма сохраняются в каталоге `Emails`.
+
+### Создание миграции
+
+Миграции находятся в `SmartPlanner.Infrastructure/Data/Migrations`. Создать новую миграцию можно командой:
+
 ```bash
-git clone https://github.com/fairwix/SmartPlanner.git
-cd SmartPlanner
+dotnet ef migrations add <MigrationName> \
+  --project SmartPlanner.Infrastructure \
+  --startup-project SmartPlanner.API \
+  --output-dir Data/Migrations
 ```
 
-2. **Настройте секреты** локально через ASP.NET Core User Secrets или переменные окружения. Укажите `ConnectionStrings__PostgreSQL` и отдельный случайный `JwtSettings__Secret` длиной не менее 32 байт.
+## Конфигурация
 
-3. **Запустите приложение:**
-```bash
-dotnet run --project SmartPlanner.API
-```
-При запуске EF Core применит хранящиеся в репозитории миграции. Новая установка создаёт схему автоматически.
+Ключевые параметры задаются стандартной конфигурацией ASP.NET Core: `appsettings*.json`, User Secrets или переменными окружения.
 
-4. **Откройте Swagger UI:**
-```bash
-http://localhost:5047/swagger
-```
+| Параметр | Назначение |
+|---|---|
+| `ConnectionStrings:PostgreSQL` | Подключение к базе PostgreSQL |
+| `JwtSettings:Secret` | Приватный ключ подписи JWT, не менее 32 байт |
+| `JwtSettings:Issuer` | Ожидаемый issuer токена |
+| `JwtSettings:Audience` | Ожидаемая audience токена |
+| `CorsSettings:AllowedOrigins` | Список разрешённых web-origin, например `CorsSettings__AllowedOrigins__0` |
+| `CorsSettings:AllowCredentials` | Разрешать ли credentials для указанных origin |
 
-Для создания следующей миграции используйте `dotnet ef migrations add <Name> --project SmartPlanner.Infrastructure --startup-project SmartPlanner.API --output-dir Data/Migrations`.
+CORS ограничен origin из `CorsSettings:AllowedOrigins`; wildcard origin не используется. В production настройте список адресов своего frontend и отдельный JWT-секрет.
 
----
+## Аутентификация
 
-##  Аутентификация и авторизация
-
-###  Токены доступа
-
-| Токен | Время жизни | Назначение |
-|-------|------------|-----------|
-| **Access Token** | 15 минут | Доступ к защищённым эндпоинтам |
-| **Refresh Token** | 7 дней | Получение новых access-токенов |
-
-###  Авторизация в запросах
+Защищённые запросы принимают JWT в заголовке:
 
 ```http
-Authorization: Bearer <your_access_token>
+Authorization: Bearer <access-token>
 ```
 
-###  Регистрация и вход
+Основные маршруты аутентификации находятся под `/api/auth`:
 
-```http
-POST /api/auth/register
-Content-Type: application/json
+| Метод | Путь | Назначение |
+|---|---|---|
+| `POST` | `/register` | Регистрация |
+| `POST` | `/login` | Вход |
+| `POST` | `/refresh` | Обновление пары токенов |
+| `POST` | `/logout` | Выход, требует авторизации |
+| `POST` | `/revoke` | Отзыв refresh-токена, требует авторизации |
+| `POST` | `/forgot-password` | Запрос сброса пароля |
+| `POST` | `/reset-password` | Установка нового пароля |
+| `POST` | `/change-password` | Смена пароля, требует авторизации |
+| `GET` | `/confirm-email` | Подтверждение email по `userId` и `token` |
+| `GET` | `/profile` | Профиль текущего пользователя |
 
-{
-  "email": "user@example.com",
-  "username": "johndoe",
-  "password": "SecurePass123!",
-  "confirmPassword": "SecurePass123!",
-  "firstName": "John",
-  "lastName": "Doe"
-}
-```
+Регистрация доступна без входа. `POST /api/users` предназначен только для администратора; при совпадении email или username API возвращает ошибку, не выдавая профиль существующего аккаунта.
 
-```http
-POST /api/auth/login
-Content-Type: application/json
+## Основные API-маршруты
 
-{
-  "emailOrUsername": "johndoe",
-  "password": "SecurePass123!"
-}
-```
+Если не указано иное, методы ниже требуют JWT.
 
-###  Обновление токена
+### Цели — `/api/goals`
 
-```http
-POST /api/auth/refresh
-Content-Type: application/json
+| Метод | Путь | Назначение |
+|---|---|---|
+| `GET` | `/` | Цели текущего пользователя; поддерживает `page`, `pageSize`, `category`, `priority`, `completed`, `search`, `sortBy`, `sortOrder` |
+| `GET` | `/{id}` | Получение своей цели |
+| `POST` | `/` | Создание цели |
+| `PUT` | `/{id}` | Обновление своей цели |
+| `DELETE` | `/{id}` | Удаление своей цели |
+| `POST` | `/{id}/progress` | Добавление прогресса |
+| `POST` | `/bulk` | Массовое создание целей для текущего пользователя |
+| `PUT` | `/bulk` | Массовое обновление только своих целей |
+| `DELETE` | `/bulk` | Массовое удаление только своих целей |
+| `GET` | `/admin/all` | Маршрут-заглушка: сейчас возвращает пустой `200 OK` |
 
-{
-  "accessToken": "<expired_token>",
-  "refreshToken": "<refresh_token>"
-}
-```
+Для создания цели передаются `title`, `description`, `category`, `priority`, `dueDate` и `targetValue`. Владельца API определяет по JWT, а не по переданному клиентом `userId`.
 
-###  Политики авторизации
+### Челленджи — `/api/challenges`
 
-| Политика | Описание |
-|----------|---------|
-| `AdminOnly` | Доступ только для роли `Admin` |
-| `ResourceOwner` | Только владелец ресурса может редактировать |
-| `RequireEmailConfirmed` | Требуется подтверждённый email |
-| `CanManageUsers` | Управление пользователями |
+| Метод | Путь | Назначение |
+|---|---|---|
+| `GET` | `/{id}` | Получение челленджа |
+| `POST` | `/` | Создание челленджа |
+| `POST` | `/{id}/join` | Участие в челлендже |
+| `POST` | `/{id}/progress` | Добавление прогресса участника |
+| `POST` | `/{id}/leave` | Выход из челленджа |
 
----
+### Файлы — `/api/files`
 
-##  API Endpoints
+Контроллер требует авторизацию. Обычная загрузка ограничена 50 000 000 байтами, `upload-stream` — примерно 2,1 млрд байт на весь multipart-запрос; одновременная большая загрузка ограничена двумя запросами.
 
-###  Аутентификация (`/api/auth`)
+| Метод | Путь | Назначение |
+|---|---|---|
+| `POST` | `/upload` | Загрузка одного файла, до 50 МБ |
+| `POST` | `/upload-multiple` | Загрузка до 10 файлов, лимит запроса 100 МБ |
+| `POST` | `/upload-stream` | Потоковая загрузка большого файла |
+| `POST` | `/upload/chunked/start` | Создание chunked-сессии |
+| `POST` | `/upload/chunked` | Передача чанка; лимит запроса 50 МБ |
+| `GET` | `/upload/{uploadId}/progress` | Состояние chunked-загрузки текущего пользователя |
+| `GET` | `/{id}` | Скачивание файла с проверкой доступа |
+| `GET` | `/{id}/stream` | Потоковое скачивание файла с проверкой доступа |
+| `GET` | `/{id}/thumbnail` | Миниатюра изображения |
+| `GET` | `/{id}/info` | Метаданные файла |
+| `DELETE` | `/{id}` | Удаление файла владельцем или администратором |
+| `POST` | `/check-duplicate` | Проверка дубликата файла |
 
-| Метод | Эндпоинт | Описание | Доступ |
-|-------|----------|----------|--------|
-| `POST` | `/register` | Регистрация нового пользователя | Публичный |
-| `POST` | `/login` | Вход в систему | Публичный |
-| `POST` | `/logout` | Выход из системы | 🔐 Авторизованный |
-| `POST` | `/refresh` | Обновление токенов | Публичный |
-| `POST` | `/revoke` | Отзыв refresh-токена | 🔐 Авторизованный |
-| `POST` | `/forgot-password` | Запрос сброса пароля | Публичный |
-| `POST` | `/reset-password` | Установка нового пароля | Публичный |
-| `POST` | `/change-password` | Смена пароля | 🔐 Авторизованный |
-| `GET` | `/profile` | Получение профиля | 🔐 Авторизованный |
-| `GET` | `/confirm-email` | Подтверждение email | Публичный |
+Для chunked-загрузки сначала отправьте JSON с `fileName`, `fileSize`, `totalChunks` и `fileHash` на `/upload/chunked/start`. Используйте возвращённый `uploadId` для POST multipart-запросов на `/upload/chunked` с полями `chunk`, `uploadId`, `chunkIndex`, `totalChunks` и `fileName`. Не создавайте `uploadId` самостоятельно: чанки принимаются только для серверной сессии текущего пользователя.
 
-###  Цели (`/api/goals`)
+### Пользователи, достижения и аудит
 
-| Метод | Эндпоинт | Описание | Доступ |
-|-------|----------|----------|--------|
-| `GET` | `/` | Список целей с пагинацией и фильтрами | 🔐 Авторизованный |
-| `GET` | `/{id}` | Получение цели по ID | 🔐 Авторизованный |
-| `POST` | `/` | Создание новой цели | 🔐 Авторизованный |
-| `PUT` | `/{id}` | Обновление цели | 🔐 Владелец |
-| `DELETE` | `/{id}` | Удаление цели | 🔐 Владелец |
-| `POST` | `/{id}/progress` | Обновление прогресса | 🔐 Владелец |
-| `POST` | `/bulk` | Массовое создание целей | 🔐 Авторизованный |
-| `PUT` | `/bulk` | Массовое обновление целей | 🔐 Авторизованный |
-| `DELETE` | `/bulk` | Массовое удаление целей | 🔐 Авторизованный |
+- `/api/users`: получение, обновление и удаление профиля; создание пользователя и блокировка доступны администраторам согласно атрибутам авторизации контроллера.
+- `/api/achievements`: список достижений доступен публично; пользовательские достижения видны владельцу или администратору; проверка достижений требует авторизации.
+- `/api/admin/audit`: просмотр журналов аудита доступен только администраторам.
+- `/api/admin/AdminAchievements/award/{userId}/{achievementId}`: выдача достижения администратором.
 
-###  Челленджи (`/api/challenges`)
+В проекте также есть авторизованные контроллеры `/api/products`, `/api/posts` и `/api/messages` для соответствующих сущностей и вложений.
 
-| Метод | Эндпоинт | Описание | Доступ |
-|-------|----------|----------|--------|
-| `GET` | `/` | Список челленджей с фильтрами | 🔐 Авторизованный |
-| `GET` | `/{id}` | Получение челленджа | 🔐 Авторизованный |
-| `POST` | `/` | Создание челленджа | 🔐 Авторизованный |
-| `POST` | `/{id}/join` | Присоединение к челленджу | 🔐 Авторизованный |
-| `POST` | `/{id}/leave` | Выход из челленджа | 🔐 Участник |
-| `POST` | `/{id}/progress` | Обновление прогресса | 🔐 Участник |
+## SignalR
 
-###  Достижения (`/api/achievements`)
+Хабы доступны по адресам `/hubs/notifications` и `/hubs/file`. JWT передаётся клиентом SignalR стандартным способом для используемой платформы; в браузере для WebSocket/SSE обычно применяется query-параметр `access_token`.
 
-| Метод | Эндпоинт | Описание | Доступ |
-|-------|----------|----------|--------|
-| `GET` | `/` | Список всех достижений | Публичный |
-| `GET` | `/user/{userId}` | Достижения пользователя | 🔐 Владелец/Админ |
-| `POST` | `/check` | Проверка и награждение | 🔐 Авторизованный |
-
-###  Файлы (`/api/files`)
-
-| Метод | Эндпоинт | Описание | Доступ |
-|-------|----------|----------|--------|
-| `POST` | `/upload` | Загрузка файла (до 50 МБ) | 🔐 Авторизованный |
-| `POST` | `/upload-multiple` | Загрузка нескольких файлов | 🔐 Авторизованный |
-| `POST` | `/upload/chunked/start` | Начало чанковой загрузки | 🔐 Авторизованный |
-| `POST` | `/upload/chunked` | Загрузка чанка | 🔐 Авторизованный |
-| `GET` | `/upload/{id}/progress` | Прогресс загрузки | 🔐 Авторизованный |
-| `POST` | `/check-duplicate` | Проверка дубликата по хешу | 🔐 Авторизованный |
-| `GET` | `/{id}` | Скачивание файла | 🔐/🌐 В зависимости от доступа |
-| `GET` | `/{id}/stream` | Потоковое скачивание | 🔐/🌐 В зависимости от доступа |
-| `GET` | `/{id}/thumbnail` | Получение thumbnail | 🔐/🌐 В зависимости от доступа |
-| `GET` | `/{id}/info` | Метаданные файла | 🔐/🌐 В зависимости от доступа |
-| `DELETE` | `/{id}` | Удаление файла | 🔐 Владелец/Админ |
-| `GET` | `/` | Список файлов пользователя | 🔐 Авторизованный |
-
-###  Пользователи (`/api/users`)
-
-| Метод | Эндпоинт | Описание | Доступ |
-|-------|----------|----------|--------|
-| `GET` | `/{id}` | Получение профиля | 🔐 Владелец/Админ |
-| `POST` | `/` | Создание пользователя | 🔐 Админ |
-| `PUT` | `/{id}` | Обновление профиля | 🔐 Владелец |
-| `PATCH` | `/{id}/block` | Блокировка пользователя | 🔐 Админ |
-| `PATCH` | `/{id}/unblock` | Разблокировка пользователя | 🔐 Админ |
-| `DELETE` | `/{id}` | Удаление пользователя | 🔐 Админ |
-
-###  Админ-панель (`/api/admin`)
-
-| Метод | Эндпоинт | Описание | Доступ |
-|-------|----------|----------|--------|
-| `GET` | `/audit` | Логи аудита безопасности | 🔐 Админ |
-| `GET` | `/audit/user/{userId}` | Аудит конкретного пользователя | 🔐 Админ |
-| `GET` | `/audit/suspicious` | Подозрительная активность | 🔐 Админ |
-| `GET` | `/audit/summary` | Сводка по аудиту | 🔐 Админ |
-| `POST` | `/achievements/award/{userId}/{achievementId}` | Награждение достижением | 🔐 Админ |
-
----
-
-##  Real-time уведомления (SignalR)
-
-###  Подключение к хабам
+NotificationHub автоматически добавляет соединение в личную группу пользователя. Дополнительная подписка разрешена только на собственную группу `user_<id>`; группа `admin_notifications` доступна только роли `Admin`. Клиент не может подписаться на уведомления другого пользователя.
 
 ```javascript
-// NotificationHub - уведомления
-const notificationHub = new signalR.HubConnectionBuilder()
-  .withUrl("/hubs/notifications?access_token=YOUR_TOKEN")
+const connection = new signalR.HubConnectionBuilder()
+  .withUrl("https://localhost:7273/hubs/notifications", {
+    accessTokenFactory: () => accessToken
+  })
   .build();
 
-// FileHub - файловые операции
-const fileHub = new signalR.HubConnectionBuilder()
-  .withUrl("/hubs/file?access_token=YOUR_TOKEN")
-  .build();
+await connection.start();
+connection.on("ReceiveNotification", notification => console.log(notification));
 ```
 
-###  Методы хабов
+## Тесты
 
-#### NotificationHub
-
-| Метод | Параметры | Описание |
-|-------|-----------|----------|
-| `Ping()` | — | Проверка соединения |
-| `SendTestNotification()` | — | Отправка тестового уведомления |
-| `GetConnectionInfo()` | — | Информация о подключении |
-| `GetHubStats()` | — | Статистика хаба (только админ) |
-| `SubscribeToGroup(groupName)` | `string` | Подписка на группу |
-| `UnsubscribeFromGroup(groupName)` | `string` | Отписка от группы |
-
-#### FileHub
-
-| Метод | Параметры | Описание |
-|-------|-----------|----------|
-| `StartTrackingUpload()` | `uploadId, fileName, fileSize, totalChunks` | Начало отслеживания |
-| `UpdateUploadProgress()` | `uploadId, uploadedChunks, status?` | Обновление прогресса |
-| `GetUploadProgress()` | `uploadId` | Получение прогресса |
-| `NotifyFileDownload()` | `fileId, fileName` | Уведомление о скачивании |
-| `NotifyFileUploadCompleted()` | `fileId, fileName, fileSize, isDuplicate` | Завершение загрузки |
-| `SubscribeToFileEvents()` | `fileId` | Подписка на события файла |
-| `GetActiveUploads()` | — | Список активных загрузок |
-| `CancelUpload()` | `uploadId` | Отмена загрузки |
-
-###  События клиента
-
-#### INotificationClient
-```typescript
-interface INotificationClient {
-  Connected(connectionInfo: any): Promise<void>;
-  Disconnected(message: string): Promise<void>;
-  ReceiveNotification(notification: any): Promise<void>;
-  // ... другие события
-}
-```
-
-#### IFileClient
-```typescript
-interface IFileClient {
-  UploadStarted(uploadInfo: any): Promise<void>;
-  UploadProgressUpdated(progress: any): Promise<void>;
-  UploadCompleted(completion: any): Promise<void>;
-  // ... другие события
-}
-```
-
----
-
-##  Работа с файлами
-
-###  Загрузка файла (простая)
-
-```http
-POST /api/files/upload
-Content-Type: multipart/form-data
-
-file: <binary_file>
-isPublic: true
-expiresAt: 2024-12-31T23:59:59Z
-```
-
-###  Chunked Upload (для больших файлов)
-
-```http
-# 1. Начало загрузки
-POST /api/files/upload/chunked/start
-Content-Type: application/json
-
-{
-  "fileName": "large_video.mp4",
-  "fileSize": 1073741824,
-  "totalChunks": 100,
-  "fileHash": "sha256_hash_here",
-  "isPublic": false
-}
-
-# 2. Загрузка чанков (повторять для каждого)
-POST /api/files/upload/chunked
-Content-Type: multipart/form-data
-
-chunk: <binary_chunk>
-uploadId: "upload_abc123"
-chunkIndex: 0
-totalChunks: 100
-fileName: "large_video.mp4"
-
-# 3. Проверка прогресса
-GET /api/files/upload/upload_abc123/progress
-
-# 4. Завершение (автоматически после последнего чанка)
-```
-
-###  Обработка изображений
-
-При загрузке изображений автоматически:
--  Извлекаются метаданные (размеры, EXIF)
--  Удаляются приватные EXIF-данные для публичных файлов
--  Генерируются thumbnail (small: 200x200, medium: 800x600)
--  Оптимизируется качество (85% по умолчанию)
-
-###  Проверка дубликатов
-
-```http
-POST /api/files/check-duplicate
-Content-Type: application/json
-
-{
-  "fileHash": "sha256_hash",
-  "fileName": "document.pdf",
-  "fileSize": 1048576
-}
-```
-
-**Ответ при дубликате:**
-```json
-{
-  "isDuplicate": true,
-  "existingFileId": "guid_here",
-  "fileName": "existing_name.pdf",
-  "fileSize": 1048576,
-  "uploadedAt": "2024-01-01T00:00:00Z"
-}
-```
-
----
-
-##  Тестирование
-
-###  Запуск тестов
+Запуск всех unit- и integration-тестов:
 
 ```bash
-# Все тесты
-dotnet test
-
-# Только юнит-тесты
-dotnet test --filter "TestCategory=Unit"
-
-# Тесты с покрытием
-dotnet test --collect:"XPlat Code Coverage"
+dotnet test SmartPlanner.sln
 ```
 
-###  Покрытие кода
+API integration-тесты используют тестовый хост и in-memory базу данных; реальная PostgreSQL для этого набора тестов не нужна.
 
-Проект включает **85%+ покрытие** юнит-тестами для критических компонентов:
+## Лицензия
 
--  Валидаторы команд и запросов
--  Обработчики CQRS (Handlers)
--  Сервисы (FileService, EmailService, TokenService)
--  Доменные сущности и бизнес-правила
--  Авторизационные хендлеры
-
-###  Пример теста
-
-```csharp
-[Fact]
-public async Task UploadFileAsync_ValidFile_UploadsSuccessfully()
-{
-    // Arrange
-    var userId = Guid.NewGuid();
-    var mockFile = CreateMockFormFile("test.jpg", 1024, "image/jpeg");
-    
-    // Act
-    var result = await _service.UploadFileAsync(mockFile.Object, userId);
-    
-    // Assert
-    Assert.NotNull(result);
-    Assert.Equal("test.jpg", result.OriginalFileName);
-    _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
-}
-```
-
----
-
-##  Конфигурация
-
-###  appsettings.json
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=smartplanner;Username=postgres;Password=***"
-  },
-  "JwtSettings": {
-    "Issuer": "SmartPlanner",
-    "Audience": "SmartPlannerClients",
-    "AccessTokenExpirationMinutes": 15,
-    "RefreshTokenExpirationDays": 7
-  },
-  "AppSettings": {
-    "BaseUrl": "https://api.smartplanner.com",
-    "FrontendUrls": {
-      "LoginUrl": "/login",
-      "DashboardUrl": "/dashboard"
-    }
-  },
-  "EmailSettings": {
-    "SmtpServer": "smtp.gmail.com",
-    "SmtpPort": 587,
-    "SenderEmail": "noreply@smartplanner.com",
-    "SenderName": "Smart Planner",
-    "UseSsl": true,
-    "RequiresAuthentication": true,
-    "Username": "***",
-    "Password": "***"
-  },
-  "RateLimiting": {
-    "EnableRateLimiting": true,
-    "PermitLimit": 10,
-    "WindowSeconds": 60
-  }
-}
-```
-
-###  Переменные окружения
-
-JWT signing key is required and must not be committed to the repository. Configure a private random value of at least 32 bytes through a secret store or the ASP.NET Core environment variable `JwtSettings__Secret`. The API refuses to start if it is missing, too short, or set to a known repository example. Use a different randomly generated value for production and development.
-
-Commercial or production builds also need the applicable Six Labors license key in `SIXLABORS_LICENSE_KEY`; AutoMapper accepts its key through `AUTOMAPPER_LICENSE_KEY`. Keep both values in a secret store and out of source control.
-
-```bash
-# База данных
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=smartplanner
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=***
-
-# JWT signing key (store securely; do not commit it)
-JwtSettings__Secret=<private-random-key-at-least-32-bytes>
-
-# Email
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=***
-SMTP_PASS=***
-
-# Приложение
-ASPNETCORE_ENVIRONMENT=Production
-APP_BASE_URL=https://api.smartplanner.com
-```
-
----
-
-##  Безопасность
-
-###  Меры защиты
-
-| Угроза | Мера защиты |
-|--------|------------|
-| **SQL Injection** | Parameterized queries через EF Core |
-| **XSS** | Санитизация входных данных, Content Security Policy |
-| **CSRF** | JWT в Authorization header (не в cookies) |
-| **Brute Force** | Rate Limiting, блокировка после неудачных попыток |
-| **Token Theft** | Refresh token rotation, короткое время жизни access token |
-| **File Upload Attacks** | Валидация MIME-type, проверка сигнатур, ограничение размера |
-| **Data Exposure** | Контроль доступа на уровне приложения, шифрование чувствительных данных |
-
-###  Аудит безопасности
-
-Все критические события логируются в таблицу `SecurityAuditLogs`:
-
-```csharp
-public enum SecurityEventType
-{
-    Login, FailedLogin, Logout, TokenRefresh,
-    Register, EmailConfirmed, PasswordReset,
-    UserBlocked, AccessDenied, SuspiciousActivity
-    // ... и другие
-}
-```
-
-**Пример записи аудита:**
-```json
-{
-  "eventType": "FailedLogin",
-  "userId": "guid",
-  "email": "user@example.com",
-  "ipAddress": "192.168.1.1",
-  "userAgent": "Mozilla/5.0...",
-  "success": false,
-  "details": { "Reason": "Invalid password" },
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
-
----
-
-##  Мониторинг и логирование
-
-###  Структура логов
-
-```json
-{
-  "Timestamp": "2024-01-15T10:30:00Z",
-  "Level": "Information",
-  "Category": "SmartPlanner.API.Controllers.GoalsController",
-  "Message": "Goal {GoalId} created for user {UserId}",
-  "Properties": {
-    "GoalId": "guid",
-    "UserId": "guid",
-    "SourceContext": "SmartPlanner.API.Controllers.GoalsController"
-  }
-}
-```
-
-###  Health Checks
-
-```http
-GET /health
-```
-
-**Ответ:**
-```json
-{ "status": "Healthy" }
-```
-
-###  Конфигурация логирования (appsettings.json)
-
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning",
-      "SmartPlanner": "Debug"
-    },
-    "Console": {
-      "FormatterName": "simple",
-      "FormatterOptions": {
-        "TimestampFormat": "yyyy-MM-dd HH:mm:ss "
-      }
-    }
-  }
-}
-```
+См. файл [LICENSE](LICENSE).
