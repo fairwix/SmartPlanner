@@ -178,21 +178,24 @@ public class UsersController : ControllerBase
     {
         _logger.LogInformation("Admin deleting user {UserId}", id);
 
-        var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Id == id);
-
-        if (user == null)
-        {
-            _logger.LogWarning("User {UserId} not found", id);
-            return NotFound();
-        }
-
         var currentUserId = User.FindFirst("userId")?.Value;
-        if (currentUserId == id.ToString())
+        if (!Guid.TryParse(currentUserId, out var adminId))
+            return Unauthorized();
+
+        if (adminId == id)
         {
             _logger.LogWarning("Admin attempted to delete own account");
             return BadRequest("Cannot delete your own account");
         }
+
+        var deleted = await _mediator.Send(new DeleteUserCommand
+        {
+            UserId = id,
+            DeletedBy = adminId
+        });
+
+        if (!deleted)
+            return NotFound();
 
         return Ok(new { message = "User deleted successfully" });
     }
