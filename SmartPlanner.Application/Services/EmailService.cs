@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartPlanner.Application.Common.Interfaces;
 using SmartPlanner.Application.Common.Models;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 
 namespace SmartPlanner.Application.Services

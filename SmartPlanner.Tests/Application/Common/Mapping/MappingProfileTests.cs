@@ -1,6 +1,7 @@
 // SmartPlanner.Tests/Application/Common/Mapping/MappingProfileTests.cs
 using Xunit;
 using AutoMapper;
+using Microsoft.Extensions.Logging.Abstractions;
 using SmartPlanner.Application.Common.Mapping;
 using SmartPlanner.Domain.Entities;
 using SmartPlanner.Application.Goals.Dtos;
@@ -21,7 +22,7 @@ namespace SmartPlanner.Tests.Application.Common.Mapping
             var configuration = new MapperConfiguration(cfg =>
             {
                 cfg.AddProfile<MappingProfile>();
-            });
+            }, NullLoggerFactory.Instance);
 
             _mapper = configuration.CreateMapper();
         }

@@ -607,7 +607,8 @@ private async Task<string> GetOrCreateThumbnailAsync(
 
 [HttpPost("upload-stream")]
 [Authorize]
-[RequestSizeLimit(2_000_000_000)] // 2GB
+[EnableRateLimiting("LargeFileUploadConcurrency")]
+[RequestSizeLimit(2_100_000_000)] // 2GB file plus multipart overhead
 [Consumes("multipart/form-data")]
 public async Task<IActionResult> UploadStream(
     IFormFile file,

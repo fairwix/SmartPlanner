@@ -44,45 +44,24 @@ builder.Services.AddCors(options =>
 });
 
 
+const long MaxUploadRequestBytes = 2_100_000_000;
+
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
-    serverOptions.Limits.MaxRequestBodySize = 2_000_000_000;
+    serverOptions.Limits.MaxRequestBodySize = MaxUploadRequestBytes;
 });
 
 builder.Services.Configure<FormOptions>(options =>
 {
-    options.ValueLengthLimit = int.MaxValue;
-    options.MultipartBodyLengthLimit = long.MaxValue;
-    options.MultipartBoundaryLengthLimit = int.MaxValue;
-    options.MultipartHeadersCountLimit = int.MaxValue;
-    options.MultipartHeadersLengthLimit = int.MaxValue;
-});
-
-builder.Services.Configure<KestrelServerOptions>(options =>
-{
-    options.Limits.MaxRequestBodySize = long.MaxValue;
-    options.Limits.MaxRequestBufferSize = null;
-    options.Limits.MaxRequestLineSize = 16 * 1024;
-    options.Limits.MaxRequestHeaderCount = 128;
+    options.MultipartBodyLengthLimit = MaxUploadRequestBytes;
 });
 
 builder.Services.Configure<IISServerOptions>(options =>
 {
-    options.MaxRequestBodySize = long.MaxValue;
-    options.AllowSynchronousIO = true;
+    options.MaxRequestBodySize = MaxUploadRequestBytes;
 });
 
-// 1. DbContext (PostgreSQL)
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        npgsqlOptions => npgsqlOptions.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
-    ));
-
-// Регистрация IApplicationDbContext как интерфейса
-builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
-
-// 2. MediatR + FluentValidation
+// 1. MediatR + FluentValidation
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -247,6 +226,18 @@ builder.Services.AddMemoryCache();
 // 🔥 НОВОЕ: Rate Limiting для конкретных эндпоинтов
 builder.Services.AddRateLimiter(options =>
 {
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("LargeFileUploadConcurrency", _ =>
+        RateLimitPartition.GetConcurrencyLimiter(
+            partitionKey: "large-file-uploads",
+            factory: _ => new ConcurrencyLimiterOptions
+            {
+                PermitLimit = 2,
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            }));
+
     // Политика для загрузки файлов: 10 загрузок в минуту на пользователя
     options.AddPolicy("FileUploadLimit", context =>
     {
@@ -301,8 +292,6 @@ builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 
 var app = builder.Build();
 
-app.UseRateLimiter();
-
 // Middleware pipeline
 app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 app.UseMiddleware<CorsLoggingMiddleware>();
@@ -312,6 +301,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors("AllowAll");
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapHub<FileHub>("/hubs/file");
@@ -334,19 +324,10 @@ if (app.Environment.IsDevelopment())
 app.MapGet("/", () => "SmartPlanner API работает!");
 app.MapGet("/health", () => "OK");
 
-if (app.Environment.IsDevelopment())
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    try
-    {
-        await context.Database.MigrateAsync();
-        Console.WriteLine("✅ Миграции применены успешно.");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"❌ Ошибка применения миграций: {ex.Message}");
-    }
+    await context.Database.MigrateAsync();
 }
 
 

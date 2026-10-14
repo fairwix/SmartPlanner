@@ -122,19 +122,6 @@ public class AppDbContext : DbContext, IApplicationDbContext
             .OnDelete(DeleteBehavior.Cascade);
 
 
-        modelBuilder.Entity<UserRole>()
-            .HasOne(ur => ur.User)
-            .WithMany()
-            .HasForeignKey(ur => ur.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<UserRole>()
-            .HasOne(ur => ur.Role)
-            .WithMany(r => r.UserRoles)
-            .HasForeignKey(ur => ur.RoleId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-
         modelBuilder.Entity<User>()
             .HasMany(u => u.UserInterests)
             .WithOne(ui => ui.User)
@@ -192,7 +179,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasKey(ur => new { ur.UserId, ur.RoleId });
 
             entity.HasOne(ur => ur.User)
-                .WithMany()
+                .WithMany(u => u.UserRoles)
                 .HasForeignKey(ur => ur.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -223,7 +210,7 @@ public class AppDbContext : DbContext, IApplicationDbContext
             entity.HasKey(uc => uc.Id);
 
             entity.HasOne(uc => uc.User)
-                .WithMany()
+                .WithMany(u => u.UserClaims)
                 .HasForeignKey(uc => uc.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 

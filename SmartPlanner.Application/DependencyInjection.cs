@@ -25,7 +25,12 @@ public static class DependencyInjection
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
         // AutoMapper
-        services.AddAutoMapper(Assembly.GetExecutingAssembly());
+        services.AddAutoMapper(cfg =>
+        {
+            var licenseKey = Environment.GetEnvironmentVariable("AUTOMAPPER_LICENSE_KEY");
+            if (!string.IsNullOrWhiteSpace(licenseKey))
+                cfg.LicenseKey = licenseKey;
+        }, Assembly.GetExecutingAssembly());
 
         // Регистрируем сервисы безопасности
         services.AddScoped<IAuditService, AuditService>();

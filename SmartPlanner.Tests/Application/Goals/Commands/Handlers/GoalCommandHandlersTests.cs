@@ -3,6 +3,7 @@ using AutoMapper;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using SmartPlanner.Application.Common.Dtos;
 using SmartPlanner.Application.Common.Interfaces;
@@ -49,7 +50,7 @@ namespace SmartPlanner.Application.UnitTests.Goals.Commands.Handlers
                         g.IsExpired(),
                         g.IsOnTrack()
                     ));
-            });
+            }, NullLoggerFactory.Instance);
             _mapper = config.CreateMapper();
 
             _handler = new CreateGoalCommandHandler(

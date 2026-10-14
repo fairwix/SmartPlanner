@@ -141,30 +141,20 @@ git clone https://github.com/fairwix/SmartPlanner.git
 cd SmartPlanner
 ```
 
-2. **Настройте строку подключения** в `appsettings.Development.json`:
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=smartplanner;Username=postgres;Password=your_password"
-  }
-}
-```
+2. **Настройте секреты** локально через ASP.NET Core User Secrets или переменные окружения. Укажите `ConnectionStrings__PostgreSQL` и отдельный случайный `JwtSettings__Secret` длиной не менее 32 байт.
 
-3. **Примените миграции базы данных:**
-```bash
-cd SmartPlanner.API
-dotnet ef database update
-```
-
-4. **Запустите приложение:**
+3. **Запустите приложение:**
 ```bash
 dotnet run --project SmartPlanner.API
 ```
+При запуске EF Core применит хранящиеся в репозитории миграции. Новая установка создаёт схему автоматически.
 
-5. **Откройте Swagger UI:**
-```
+4. **Откройте Swagger UI:**
+```bash
 http://localhost:5047/swagger
 ```
+
+Для создания следующей миграции используйте `dotnet ef migrations add <Name> --project SmartPlanner.Infrastructure --startup-project SmartPlanner.API --output-dir Data/Migrations`.
 
 ---
 
@@ -556,6 +546,8 @@ public async Task UploadFileAsync_ValidFile_UploadsSuccessfully()
 ###  Переменные окружения
 
 JWT signing key is required and must not be committed to the repository. Configure a private random value of at least 32 bytes through a secret store or the ASP.NET Core environment variable `JwtSettings__Secret`. The API refuses to start if it is missing, too short, or set to a known repository example. Use a different randomly generated value for production and development.
+
+Commercial or production builds also need the applicable Six Labors license key in `SIXLABORS_LICENSE_KEY`; AutoMapper accepts its key through `AUTOMAPPER_LICENSE_KEY`. Keep both values in a secret store and out of source control.
 
 ```bash
 # База данных

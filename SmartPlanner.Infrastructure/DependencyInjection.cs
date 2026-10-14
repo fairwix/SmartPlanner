@@ -1,4 +1,3 @@
-using FluentMigrator.Runner;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,14 +54,6 @@ namespace SmartPlanner.Infrastructure
 
             // services.AddSingleton<IHostEnvironment>(sp =>
             //     sp.GetRequiredService<IHostEnvironment>());
-
-            // services.AddFluentMigratorCore()
-            //     .ConfigureRunner(rb => rb
-            //         .AddPostgres()
-            //         .WithGlobalConnectionString(connectionString)
-            //         .ScanIn(typeof(DependencyInjection).Assembly).For.Migrations()
-            //         .ScanIn(typeof(DependencyInjection).Assembly).For.EmbeddedResources())
-            //     .AddLogging(lb => lb.AddFluentMigratorConsole());
 
             return services;
         }

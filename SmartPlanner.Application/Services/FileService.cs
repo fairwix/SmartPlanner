@@ -15,6 +15,9 @@ namespace SmartPlanner.Application.Services
 {
     public class FileService : IFileService
     {
+        private static readonly SemaphoreSlim LargeUploadSemaphore = new(initialCount: 2, maxCount: 2);
+        private const long MaxLargeFileSize = 2_000_000_000;
+
         private readonly IApplicationDbContext _context;
         private readonly ILogger<FileService> _logger;
         private readonly IConfiguration _configuration;
@@ -183,6 +186,7 @@ namespace SmartPlanner.Application.Services
         DateTime? expiresAt = null,
         CancellationToken cancellationToken = default)
     {
+        string? stagingPath = null;
         try
         {
             _logger.LogInformation("Начало загрузки файла: {FileName} пользователем {UserId}", file.FileName, userId);
@@ -251,30 +255,38 @@ namespace SmartPlanner.Application.Services
                 MediumPath = ""
             };
 
-            await _context.FileMetadata.AddAsync(fileMetadata, cancellationToken);
-            await _context.SaveChangesAsync(cancellationToken);
-
             var fullPath = Path.Combine(_uploadsPath, relativePath);
             var directory = Path.GetDirectoryName(fullPath)!;
             Directory.CreateDirectory(directory);
+            stagingPath = Path.Combine(directory, $".uploading-{Guid.NewGuid():N}{Path.GetExtension(safeFileName)}");
 
-            // После сохранения файла добавляем:
-            if (_imageService.IsImageFile(originalFileName))
+            await using (var fileStream = new FileStream(
+                stagingPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true))
             {
-                await ProcessImageAsync(fileMetadata, fullPath);
-                await _context.SaveChangesAsync(cancellationToken); // Сохраняем обновленные метаданные
-            }
-
-            using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None))
-            {
+                memoryStream.Position = 0;
                 await memoryStream.CopyToAsync(fileStream, cancellationToken);
             }
+
+            if (_imageService.IsImageFile(originalFileName))
+            {
+                var processed = await ProcessImageAsync(fileMetadata, stagingPath);
+                if (isPublic && !processed)
+                    throw new InvalidDataException("Публичное изображение не удалось безопасно обработать");
+            }
+
+            File.Move(stagingPath, fullPath);
+            stagingPath = null;
+
+            await _context.FileMetadata.AddAsync(fileMetadata, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Файл успешно загружен: {FileId}", fileMetadata.Id);
             return MapToDto(fileMetadata);
         }
         catch (Exception ex)
         {
+            if (stagingPath != null && File.Exists(stagingPath))
+                File.Delete(stagingPath);
             _logger.LogError(ex, "Ошибка при загрузке файла: {FileName}", file.FileName);
             throw;
         }
@@ -287,6 +299,8 @@ namespace SmartPlanner.Application.Services
     DateTime? expiresAt = null,
     CancellationToken cancellationToken = default)
 {
+    string? stagingPath = null;
+    await LargeUploadSemaphore.WaitAsync(cancellationToken);
     try
     {
         _logger.LogInformation("Начало загрузки БОЛЬШОГО файла: {FileName} пользователем {UserId}",
@@ -295,23 +309,13 @@ namespace SmartPlanner.Application.Services
         if (file.Length == 0)
             throw new ArgumentException("Файл пустой");
 
-        // Увеличиваем лимит для больших файлов
-        long largeFileLimit = 2_000_000_000; // 2GB
-        if (file.Length > largeFileLimit)
-            throw new ArgumentException($"Размер файла превышает {largeFileLimit / 1024 / 1024 / 1024}GB");
+        if (file.Length > MaxLargeFileSize)
+            throw new ArgumentException($"Размер файла превышает {MaxLargeFileSize / 1024 / 1024 / 1024}GB");
 
         if (!IsValidExtension(file.FileName))
             throw new ArgumentException("Недопустимое расширение файла");
         if (!IsValidMimeType(file.ContentType))
             throw new ArgumentException("Недопустимый MIME-тип");
-
-        using var memoryStream = new MemoryStream();
-        await file.CopyToAsync(memoryStream, cancellationToken);
-        memoryStream.Position = 0;
-
-        if (!ValidateFileSignatureFromStream(memoryStream, Path.GetExtension(file.FileName)))
-            throw new ArgumentException("Сигнатура файла не соответствует расширению");
-        memoryStream.Position = 0;
 
         var originalFileName = SanitizeFileName(file.FileName);
         var safeFileName = $"{Guid.NewGuid()}{Path.GetExtension(originalFileName)}";
@@ -320,13 +324,36 @@ namespace SmartPlanner.Application.Services
         var userPath = Path.Combine("users", userId.ToString());
         var relativePath = Path.Combine(userPath, datePath, safeFileName);
 
+        var fullPath = Path.Combine(_uploadsPath, relativePath);
+        var directory = Path.GetDirectoryName(fullPath)!;
+        Directory.CreateDirectory(directory);
+        stagingPath = Path.Combine(directory, $".uploading-{Guid.NewGuid():N}{Path.GetExtension(safeFileName)}");
+
+        long actualSize;
+        await using (var inputStream = file.OpenReadStream())
+        await using (var stagingStream = new FileStream(
+            stagingPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true))
+        {
+            await inputStream.CopyToAsync(stagingStream, cancellationToken);
+            actualSize = stagingStream.Length;
+        }
+
+        if (actualSize == 0 || actualSize > MaxLargeFileSize)
+            throw new ArgumentException("Размер файла недопустим");
+
+        using (var verifyStream = new FileStream(stagingPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            if (!ValidateFileSignatureFromStream(verifyStream, Path.GetExtension(file.FileName)))
+                throw new ArgumentException("Сигнатура файла не соответствует расширению");
+        }
+
         string fileHash;
         using (var sha256 = SHA256.Create())
+        using (var stream = File.OpenRead(stagingPath))
         {
-            var hashBytes = await sha256.ComputeHashAsync(memoryStream);
+            var hashBytes = await sha256.ComputeHashAsync(stream, cancellationToken);
             fileHash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
         }
-        memoryStream.Position = 0;
 
         var existingFile = await _context.FileMetadata
             .FirstOrDefaultAsync(f => f.Hash == fileHash && f.UploadedById == userId, cancellationToken);
@@ -342,7 +369,7 @@ namespace SmartPlanner.Application.Services
             FileName = safeFileName,
             OriginalFileName = originalFileName,
             ContentType = file.ContentType,
-            Size = file.Length,
+            Size = actualSize,
             Path = relativePath,
             Hash = fileHash,
             IsPublic = isPublic,
@@ -357,23 +384,18 @@ namespace SmartPlanner.Application.Services
             MediumPath = ""
         };
 
-        await _context.FileMetadata.AddAsync(fileMetadata, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        var fullPath = Path.Combine(_uploadsPath, relativePath);
-        var directory = Path.GetDirectoryName(fullPath)!;
-        Directory.CreateDirectory(directory);
-
         if (_imageService.IsImageFile(originalFileName))
         {
-            await ProcessImageAsync(fileMetadata, fullPath);
-            await _context.SaveChangesAsync(cancellationToken);
+            var processed = await ProcessImageAsync(fileMetadata, stagingPath);
+            if (isPublic && !processed)
+                throw new InvalidDataException("Публичное изображение не удалось безопасно обработать");
         }
 
-        using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None))
-        {
-            await memoryStream.CopyToAsync(fileStream, cancellationToken);
-        }
+        File.Move(stagingPath, fullPath);
+        stagingPath = null;
+
+        await _context.FileMetadata.AddAsync(fileMetadata, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("БОЛЬШОЙ файл успешно загружен: {FileId}", fileMetadata.Id);
         return MapToDto(fileMetadata);
@@ -383,6 +405,12 @@ namespace SmartPlanner.Application.Services
         _logger.LogError(ex, "Ошибка при загрузке БОЛЬШОГО файла: {FileName}", file.FileName);
         throw;
     }
+    finally
+    {
+        if (stagingPath != null && File.Exists(stagingPath))
+            File.Delete(stagingPath);
+        LargeUploadSemaphore.Release();
+    }
 }
 
          public async Task<StreamUploadResultDto> UploadFileStreamAsync(
@@ -391,6 +419,8 @@ namespace SmartPlanner.Application.Services
     Guid userId,
     CancellationToken cancellationToken = default)
 {
+    string? tempFilePath = null;
+    string? processingPath = null;
     try
     {
         _logger.LogInformation("Начало потоковой загрузки файла: {FileName} пользователем {UserId}",
@@ -409,7 +439,7 @@ namespace SmartPlanner.Application.Services
 
         // Создаем временный файл для обработки потока
         var tempFileName = $"{Guid.NewGuid()}{fileExtension}";
-        var tempFilePath = Path.Combine(_tempPath, tempFileName);
+        tempFilePath = Path.Combine(_tempPath, tempFileName);
 
         // Создаем директорию для временных файлов если ее нет
         Directory.CreateDirectory(_tempPath);
@@ -455,6 +485,7 @@ namespace SmartPlanner.Application.Services
         {
             // Удаляем временный файл
             File.Delete(tempFilePath);
+            tempFilePath = null;
 
             _logger.LogInformation("Обнаружен дубликат файла: {FileId}", existingFile.Id);
 
@@ -485,8 +516,9 @@ namespace SmartPlanner.Application.Services
         var directory = Path.GetDirectoryName(fullPath)!;
         Directory.CreateDirectory(directory);
 
-        // 7. Перемещаем временный файл в окончательное место
-        File.Move(tempFilePath, fullPath);
+        processingPath = Path.Combine(directory, $".uploading-{Guid.NewGuid():N}{fileExtension}");
+        File.Move(tempFilePath, processingPath);
+        tempFilePath = null;
 
         // 8. Создаем запись в БД
         var fileMetadata = new FileMetadata
@@ -510,11 +542,16 @@ namespace SmartPlanner.Application.Services
             MediumPath = ""
         };
 
-        // 9. Если это изображение - обрабатываем
+        // Process before publishing the final path so public images are sanitized first.
         if (_imageService.IsImageFile(uploadDto.OriginalFileName))
         {
-            await ProcessImageAsync(fileMetadata, fullPath);
+            var processed = await ProcessImageAsync(fileMetadata, processingPath);
+            if (fileMetadata.IsPublic && !processed)
+                throw new InvalidDataException("Публичное изображение не удалось безопасно обработать");
         }
+
+        File.Move(processingPath, fullPath);
+        processingPath = null;
 
         await _context.FileMetadata.AddAsync(fileMetadata, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
@@ -536,6 +573,10 @@ namespace SmartPlanner.Application.Services
     }
     catch (Exception ex)
     {
+        if (tempFilePath != null && File.Exists(tempFilePath))
+            File.Delete(tempFilePath);
+        if (processingPath != null && File.Exists(processingPath))
+            File.Delete(processingPath);
         _logger.LogError(ex, "Ошибка при потоковой загрузке файла {FileName} пользователем {UserId}",
             uploadDto.OriginalFileName, userId);
         throw;
@@ -577,12 +618,12 @@ namespace SmartPlanner.Application.Services
         }
     }
 
-        private async Task ProcessImageAsync(FileMetadata fileMetadata, string fullPath)
+        private async Task<bool> ProcessImageAsync(FileMetadata fileMetadata, string fullPath)
     {
         try
         {
             if (!_imageService.IsImageFile(fileMetadata.OriginalFileName))
-                return;
+                    return true;
 
             _logger.LogInformation("Обработка изображения: {FileName}", fileMetadata.OriginalFileName);
 
@@ -590,9 +631,7 @@ namespace SmartPlanner.Application.Services
             fileMetadata.Width = width;
             fileMetadata.Height = height;
 
-            var exifData = await _imageService.ExtractExifDataAsync(fullPath);
-
-            if (fileMetadata.IsPublic && exifData.Any())
+            if (fileMetadata.IsPublic)
             {
                 await _imageService.RemoveExifDataAsync(fullPath);
                 _logger.LogInformation("EXIF данные удалены для публичного файла: {FileId}", fileMetadata.Id);
@@ -612,11 +651,12 @@ namespace SmartPlanner.Application.Services
             fileMetadata.MediumPath = Path.GetRelativePath(_uploadsPath, mediumThumbnailPath);
 
             _logger.LogInformation("Обработка изображения завершена: {FileId}", fileMetadata.Id);
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Ошибка при обработке изображения {FileId}", fileMetadata.Id);
-            // Не прерываем загрузку файла из-за ошибки обработки изображения
+            return false;
         }
     }
 
@@ -956,6 +996,7 @@ namespace SmartPlanner.Application.Services
     Guid userId,
     CancellationToken cancellationToken = default)
 {
+    string? stagingPath = null;
     try
     {
         _logger.LogInformation("Завершение chunked upload {UploadId}", uploadId);
@@ -1083,7 +1124,8 @@ namespace SmartPlanner.Application.Services
             var directory = Path.GetDirectoryName(fullPath)!;
             Directory.CreateDirectory(directory);
 
-            using (var fileStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
+            stagingPath = Path.Combine(directory, $".uploading-{Guid.NewGuid():N}{extension}");
+            using (var fileStream = new FileStream(stagingPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true))
             {
                 await stream.CopyToAsync(fileStream, cancellationToken);
             }
@@ -1113,9 +1155,13 @@ namespace SmartPlanner.Application.Services
             // После сохранения файла в постоянное хранилище
             if (_imageService.IsImageFile(metadata.FileName))
             {
-                await ProcessImageAsync(fileMetadata, fullPath);
-                await _context.SaveChangesAsync(cancellationToken);
+                var processed = await ProcessImageAsync(fileMetadata, stagingPath);
+                if (fileMetadata.IsPublic && !processed)
+                    throw new InvalidDataException("Публичное изображение не удалось безопасно обработать");
             }
+
+            File.Move(stagingPath, fullPath);
+            stagingPath = null;
 
             await _context.FileMetadata.AddAsync(fileMetadata, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
@@ -1136,6 +1182,8 @@ namespace SmartPlanner.Application.Services
     }
     catch (Exception ex)
     {
+        if (stagingPath != null && File.Exists(stagingPath))
+            File.Delete(stagingPath);
         _logger.LogError(ex, "Ошибка при завершении chunked upload {UploadId}", uploadId);
 
         // НОВЫЙ КОД: Обновляем статус при ошибке
