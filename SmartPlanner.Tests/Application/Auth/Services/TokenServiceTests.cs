@@ -92,7 +92,7 @@ namespace SmartPlanner.Tests.Application.Auth.Services
             var mockSet = new Mock<DbSet<T>>();
             var queryable = data.AsQueryable();
 
-            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(queryable.Provider);
+            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(queryable));
             mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
             mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
             mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(() => queryable.GetEnumerator());
@@ -618,7 +618,7 @@ namespace SmartPlanner.Tests.Application.Auth.Services
             // Assert
             Assert.NotNull(claims);
             Assert.Contains(claims, c => c.Type == "userId" && c.Value == user.Id.ToString());
-            Assert.Contains(claims, c => c.Type == ClaimTypes.Email && c.Value == user.Email);
+            Assert.Contains(claims, c => c.Type == JwtRegisteredClaimNames.Email && c.Value == user.Email);
             Assert.Contains(claims, c => c.Type == ClaimTypes.Role && c.Value == "User");
             Assert.Contains(claims, c => c.Type == "permission" && c.Value == "Goal.View");
             Assert.Contains(claims, c => c.Type == "custom:SubscriptionLevel" && c.Value == "Basic");

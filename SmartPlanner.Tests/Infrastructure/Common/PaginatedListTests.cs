@@ -30,12 +30,10 @@ namespace SmartPlanner.Tests.Infrastructure.Common
             int pageNumber = 2;
             int pageSize = 10;
 
-            var mockContext = new Mock<AppDbContext>();
             var mockSet = MockDbSetHelper.CreateMockDbSet(source);
-            mockContext.Setup(c => c.Set<TestEntity>()).Returns(mockSet.Object);
 
             // Act
-            var result = await PaginatedList<TestEntity>.CreateAsync(mockContext.Object.Set<TestEntity>(), pageNumber, pageSize);
+            var result = await PaginatedList<TestEntity>.CreateAsync(mockSet.Object, pageNumber, pageSize);
 
             // Assert
             result.Should().NotBeNull();
@@ -62,12 +60,10 @@ namespace SmartPlanner.Tests.Infrastructure.Common
             int pageNumber = 10;
             int pageSize = 10;
 
-            var mockContext = new Mock<AppDbContext>();
             var mockSet = MockDbSetHelper.CreateMockDbSet(source);
-            mockContext.Setup(c => c.Set<TestEntity>()).Returns(mockSet.Object);
 
             // Act
-            var result = await PaginatedList<TestEntity>.CreateAsync(mockContext.Object.Set<TestEntity>(), pageNumber, pageSize);
+            var result = await PaginatedList<TestEntity>.CreateAsync(mockSet.Object, pageNumber, pageSize);
 
             // Assert
             result.Should().NotBeNull();
@@ -86,12 +82,10 @@ namespace SmartPlanner.Tests.Infrastructure.Common
             int pageNumber = 1;
             int pageSize = 10;
 
-            var mockContext = new Mock<AppDbContext>();
             var mockSet = MockDbSetHelper.CreateMockDbSet(source);
-            mockContext.Setup(c => c.Set<TestEntity>()).Returns(mockSet.Object);
 
             // Act
-            var result = await PaginatedList<TestEntity>.CreateAsync(mockContext.Object.Set<TestEntity>(), pageNumber, pageSize);
+            var result = await PaginatedList<TestEntity>.CreateAsync(mockSet.Object, pageNumber, pageSize);
 
             // Assert
             result.Should().NotBeNull();
@@ -113,12 +107,10 @@ namespace SmartPlanner.Tests.Infrastructure.Common
             int pageNumber = 1;
             int pageSize = 10;
 
-            var mockContext = new Mock<AppDbContext>();
             var mockSet = MockDbSetHelper.CreateMockDbSet(source);
-            mockContext.Setup(c => c.Set<TestEntity>()).Returns(mockSet.Object);
 
             // Act
-            var result = await PaginatedList<TestEntity>.CreateAsync(mockContext.Object.Set<TestEntity>(), pageNumber, pageSize);
+            var result = await PaginatedList<TestEntity>.CreateAsync(mockSet.Object, pageNumber, pageSize);
 
             // Assert
             result.Should().NotBeNull();
@@ -129,7 +121,7 @@ namespace SmartPlanner.Tests.Infrastructure.Common
             result.HasNextPage.Should().BeFalse();
         }
 
-        private class TestEntity
+        public class TestEntity
         {
             public int Id { get; set; }
             public string Name { get; set; }

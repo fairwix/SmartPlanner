@@ -132,7 +132,7 @@ namespace SmartPlanner.Tests.Application.Authorization.Handlers
 
             var context = new AuthorizationHandlerContext(
                 new[] { new ResourceOwnerRequirement() },
-                new ClaimsPrincipal(new ClaimsIdentity(new List<Claim> { new Claim("userId", null!) })), // Null userId (если возможно)
+                new ClaimsPrincipal(new ClaimsIdentity()), // Null userId (если возможно)
                 resource
             );
 

@@ -62,11 +62,24 @@ namespace SmartPlanner.Application.Goals.Commands
 
             var goalsToAdd = new List<Goal>();
             var goalResults = new List<(GoalDto? dto, bool success, string message, string? error, Guid? id)>();
+            var duplicatedTitles = request.Goals
+                .GroupBy(g => g.Title.Trim(), StringComparer.OrdinalIgnoreCase)
+                .Where(group => group.Count() > 1)
+                .Select(group => group.Key)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             foreach (var goalDto in request.Goals)
             {
                 try
                 {
+                    if (duplicatedTitles.Contains(goalDto.Title.Trim()))
+                    {
+                        goalResults.Add((null, false,
+                            $"Goal title '{goalDto.Title}' is duplicated in this request",
+                            "Duplicate goal title", null));
+                        continue;
+                    }
+
                     var isTitleUnique = !await _context.Goals
                         .AnyAsync(g => g.UserId == request.UserId &&
                                       g.Title == goalDto.Title,

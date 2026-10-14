@@ -17,7 +17,7 @@ namespace SmartPlanner.Tests.API.Filters
 {
     public class RateLimitAttributeTests
     {
-        private readonly Mock<IMemoryCache> _mockCache;
+        private readonly MemoryCache _mockCache;
         private readonly RateLimitAttribute _attribute;
         private readonly ActionExecutingContext _context;
         private readonly Mock<HttpContext> _mockHttpContext;
@@ -26,7 +26,7 @@ namespace SmartPlanner.Tests.API.Filters
 
         public RateLimitAttributeTests()
         {
-            _mockCache = new Mock<IMemoryCache>();
+            _mockCache = new MemoryCache(new MemoryCacheOptions());
             _attribute = new RateLimitAttribute("test", limit: 5, seconds: 60);
 
             _mockHttpContext = new Mock<HttpContext>();
@@ -38,6 +38,7 @@ namespace SmartPlanner.Tests.API.Filters
             _mockHttpContext.SetupGet(c => c.Connection).Returns(new Mock<ConnectionInfo>().Object);
 
             _mockRequest.SetupGet(r => r.Headers).Returns(new HeaderDictionary());
+            _mockResponse.SetupGet(r => r.Headers).Returns(new HeaderDictionary());
             _mockRequest.SetupGet(r => r.HttpContext).Returns(_mockHttpContext.Object);
 
             var actionDescriptor = new ActionDescriptor();
@@ -65,16 +66,12 @@ namespace SmartPlanner.Tests.API.Filters
             _mockHttpContext.SetupGet(c => c.Connection.RemoteIpAddress).Returns(System.Net.IPAddress.Parse("192.168.1.1"));
             _mockHttpContext.SetupGet(c => c.RequestServices).Returns(CreateServiceProvider());
 
-            var cacheEntry = new Mock<ICacheEntry>();
-            _mockCache.Setup(c => c.CreateEntry(It.IsAny<object>())).Returns(cacheEntry.Object);
-            _mockCache.Setup(c => c.TryGetValue(It.IsAny<object>(), out It.Ref<int>.IsAny)).Returns(false);
-
             // Act
             _attribute.OnActionExecuting(_context);
 
             // Assert
             Assert.Null(_context.Result); // No result means execution continues
-            _mockCache.Verify(c => c.Set(It.IsAny<object>(), It.IsAny<int>(), It.IsAny<TimeSpan>()), Times.Once);
+            Assert.Equal(1, _mockCache.Get<int>("test:192.168.1.1"));
         }
 
         [Fact]
@@ -84,8 +81,7 @@ namespace SmartPlanner.Tests.API.Filters
             _mockHttpContext.SetupGet(c => c.Connection.RemoteIpAddress).Returns(System.Net.IPAddress.Parse("192.168.1.1"));
             _mockHttpContext.SetupGet(c => c.RequestServices).Returns(CreateServiceProvider());
 
-            int requestCount = 5;
-            _mockCache.Setup(c => c.TryGetValue(It.IsAny<object>(), out requestCount)).Returns(true);
+            _mockCache.Set("test:192.168.1.1", 5);
 
             // Act
             _attribute.OnActionExecuting(_context);
@@ -94,9 +90,9 @@ namespace SmartPlanner.Tests.API.Filters
             Assert.NotNull(_context.Result);
             var objectResult = Assert.IsType<ObjectResult>(_context.Result);
             Assert.Equal(429, objectResult.StatusCode);
-            var response = Assert.IsType<Dictionary<string, object>>(objectResult.Value);
-            Assert.Equal(429, response["StatusCode"]);
-            Assert.Contains("Rate limit exceeded", response["Message"].ToString());
+            using var response = JsonDocument.Parse(JsonSerializer.Serialize(objectResult.Value));
+            Assert.Equal(429, response.RootElement.GetProperty("StatusCode").GetInt32());
+            Assert.Contains("Rate limit exceeded", response.RootElement.GetProperty("Message").GetString());
         }
 
         [Fact]
@@ -109,14 +105,14 @@ namespace SmartPlanner.Tests.API.Filters
             // Act & Assert
             var exception = Assert.Throws<InvalidOperationException>(() =>
                 _attribute.OnActionExecuting(_context));
-            Assert.Equal("IMemoryCache is not registered in the service container", exception.Message);
+            Assert.Equal("IMemoryCache is not registered", exception.Message);
         }
 
         private IServiceProvider CreateServiceProvider()
         {
             var serviceProviderMock = new Mock<IServiceProvider>();
             serviceProviderMock.Setup(sp => sp.GetService(typeof(IMemoryCache)))
-                .Returns(_mockCache.Object);
+                .Returns(_mockCache);
             return serviceProviderMock.Object;
         }
     }

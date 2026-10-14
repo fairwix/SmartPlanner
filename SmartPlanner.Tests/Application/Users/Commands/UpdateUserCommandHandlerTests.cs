@@ -55,7 +55,7 @@ namespace SmartPlanner.Application.Tests.Users.Commands
         private void SetupMockDbSet<T>(Mock<DbSet<T>> mockSet, List<T> data) where T : class
         {
             var queryable = data.AsQueryable();
-            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(queryable.Provider);
+            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(queryable));
             mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
             mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
             mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(queryable.GetEnumerator());
@@ -66,12 +66,8 @@ namespace SmartPlanner.Application.Tests.Users.Commands
                 {
                     data.Add(entity);
 
-                    // Создаем мок EntityEntry<T>
-                    var mockEntry = new Mock<EntityEntry<T>>();
-                    var mockInternalEntry = new Mock<InternalEntityEntry>();
-
-                    // Возвращаем мок EntityEntry
-                    return mockEntry.Object;
+                    // The handler does not use the entry returned by AddAsync.
+                    return null!;
                 });
 
             mockSet.Setup(m => m.RemoveRange(It.IsAny<IEnumerable<T>>()))

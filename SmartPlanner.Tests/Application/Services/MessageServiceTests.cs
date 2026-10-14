@@ -22,8 +22,10 @@ namespace SmartPlanner.Application.Tests.Services
             _mockLogger = new Mock<ILogger<MessageService>>();
             _service = new MessageService(_mockContext.Object, _mockLogger.Object);
             _mockMessagesSet = new Mock<DbSet<Message>>();
-
+            SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.ConfigureMockDbSet(
+                _mockMessagesSet, new List<Message>().AsQueryable());
             _mockContext.Setup(c => c.Messages).Returns(_mockMessagesSet.Object);
+            _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
         }
 
         [Fact]
@@ -361,19 +363,10 @@ namespace SmartPlanner.Application.Tests.Services
             Assert.Equal(replyToMessageId, result.ReplyToMessageId);
         }
 
-        private void SetupMockDbSet<T>(Mock<DbSet<T>> mockSet, IQueryable<T> data) where T : class
+        private void SetupMockDbSet(Mock<DbSet<Message>> mockSet, IQueryable<Message> data)
         {
-            mockSet.As<IAsyncEnumerable<T>>()
-                .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
-                .Returns(new TestAsyncEnumerator<T>(data.GetEnumerator()));
-
-            mockSet.As<IQueryable<T>>()
-                .Setup(m => m.Provider)
-                .Returns(new TestAsyncQueryProvider<T>(data.Provider));
-
-            mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(data.Expression);
-            mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(data.ElementType);
-            mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(data.GetEnumerator());
+            SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.ConfigureMockDbSet(mockSet, data);
+            _mockContext.Setup(c => c.Messages).Returns(mockSet.Object);
         }
     }
 }

@@ -3,10 +3,10 @@ using System.ComponentModel.DataAnnotations;
 namespace SmartPlanner.Application.Auth.Dtos
 {
     public record RegisterDto(
-        [Required, EmailAddress, MaxLength(200)] string Email,
-        [Required, MinLength(3), MaxLength(50)] string Username,
-        [Required, MinLength(8)] string Password,
-        [Required] string ConfirmPassword,
+        [property: Required, EmailAddress, MaxLength(200)] string Email,
+        [property: Required, MinLength(3), MaxLength(50)] string Username,
+        [property: Required, MinLength(8)] string Password,
+        [property: Required, Compare("Password")] string ConfirmPassword,
         string? FirstName = null,
         string? LastName = null,
         DateTime? DateOfBirth = null,
@@ -14,8 +14,8 @@ namespace SmartPlanner.Application.Auth.Dtos
 
 
     public record LoginDto(
-        [Required] string EmailOrUsername,
-        [Required] string Password,
+        [property: Required] string EmailOrUsername,
+        [property: Required] string Password,
         string? DeviceInfo = null,
         string? IpAddress = null);
 
@@ -40,21 +40,21 @@ namespace SmartPlanner.Application.Auth.Dtos
         List<string> Permissions);
 
     public record RefreshTokenDto(
-        [Required] string AccessToken,
-        [Required] string RefreshToken);
+        [property: Required] string AccessToken,
+        [property: Required] string RefreshToken);
 
     public record ForgotPasswordDto(
-        [Required, EmailAddress] string Email);
+        [property: Required, EmailAddress] string Email);
 
     public record ResetPasswordDto(
-        [Required] string Token,
-        [Required, MinLength(8)] string NewPassword,
-        [Required] string ConfirmNewPassword);
+        [property: Required] string Token,
+        [property: Required, MinLength(8)] string NewPassword,
+        [property: Required, Compare("NewPassword")] string ConfirmNewPassword);
 
     public record ChangePasswordDto(
-        [Required] string CurrentPassword,
-        [Required, MinLength(8)] string NewPassword,
-        [Required] string ConfirmNewPassword);
+        [property: Required] string CurrentPassword,
+        [property: Required, MinLength(8)] string NewPassword,
+        [property: Required, Compare("NewPassword")] string ConfirmNewPassword);
 
     public record TokenResponseDto(
         string AccessToken,
@@ -68,14 +68,14 @@ namespace SmartPlanner.Application.Auth.Dtos
         string RefreshToken);
 
     public record RevokeTokenRequestDto(
-        [Required] string RefreshToken);
+        [property: Required] string RefreshToken);
     public record RevokeAllTokensRequestDto(
-        [Required] string Password);
+        [property: Required] string Password);
 
 
     public record ConfirmEmailDto(
-        [Required] Guid UserId,
-        [Required] string Token);
+        [property: Required] Guid UserId,
+        [property: Required] string Token);
 
     public record EmailConfirmationResponseDto(
         bool Success,

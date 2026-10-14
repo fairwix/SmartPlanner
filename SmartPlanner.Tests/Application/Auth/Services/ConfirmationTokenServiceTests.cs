@@ -10,6 +10,9 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace SmartPlanner.Tests.Application.Auth.Services
 {
@@ -41,6 +44,10 @@ namespace SmartPlanner.Tests.Application.Auth.Services
 
             var mockTokenSet = new Mock<DbSet<EmailConfirmationToken>>();
             _mockContext.Setup(c => c.EmailConfirmationTokens).Returns(mockTokenSet.Object);
+            var mockUsers = new Mock<DbSet<User>>();
+            mockUsers.Setup(set => set.FindAsync(It.IsAny<object[]>(), It.IsAny<CancellationToken>()))
+                .Returns(new ValueTask<User?>(new User { Id = userId, Email = "user@example.com" }));
+            _mockContext.Setup(c => c.Users).Returns(mockUsers.Object);
 
             _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(1);
@@ -83,7 +90,7 @@ namespace SmartPlanner.Tests.Application.Auth.Services
             // Arrange
             var userId = Guid.NewGuid();
             var token = "valid_token";
-            var tokenHash = "hashed_valid_token";
+            var tokenHash = ComputeHash(token);
 
             var confirmationToken = new EmailConfirmationToken
             {
@@ -96,19 +103,8 @@ namespace SmartPlanner.Tests.Application.Auth.Services
             var mockTokenSet = MockDbSetHelper.CreateMockDbSet(new List<EmailConfirmationToken> { confirmationToken });
             _mockContext.Setup(c => c.EmailConfirmationTokens).Returns(mockTokenSet.Object);
 
-            // Setup hash computation
-            var mockService = new Mock<ConfirmationTokenService>(
-                _mockContext.Object,
-                _mockLogger.Object,
-                _mockConfiguration.Object);
-
-            mockService.Setup(cs => cs.GetType().GetMethod("ComputeSha256Hash",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                .Invoke(cs, new object[] { token }))
-                .Returns(tokenHash);
-
             // Act
-            var isValid = await mockService.Object.ValidateEmailConfirmationTokenAsync(
+            var isValid = await _service.ValidateEmailConfirmationTokenAsync(
                 token, userId, CancellationToken.None);
 
             // Assert
@@ -121,7 +117,7 @@ namespace SmartPlanner.Tests.Application.Auth.Services
             // Arrange
             var userId = Guid.NewGuid();
             var token = "expired_token";
-            var tokenHash = "hashed_expired_token";
+            var tokenHash = ComputeHash(token);
 
             var confirmationToken = new EmailConfirmationToken
             {
@@ -134,23 +130,21 @@ namespace SmartPlanner.Tests.Application.Auth.Services
             var mockTokenSet = MockDbSetHelper.CreateMockDbSet(new List<EmailConfirmationToken> { confirmationToken });
             _mockContext.Setup(c => c.EmailConfirmationTokens).Returns(mockTokenSet.Object);
 
-            // Setup hash computation
-            var mockService = new Mock<ConfirmationTokenService>(
-                _mockContext.Object,
-                _mockLogger.Object,
-                _mockConfiguration.Object);
-
-            mockService.Setup(cs => cs.GetType().GetMethod("ComputeSha256Hash",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                .Invoke(cs, new object[] { token }))
-                .Returns(tokenHash);
-
             // Act
-            var isValid = await mockService.Object.ValidateEmailConfirmationTokenAsync(
+            var isValid = await _service.ValidateEmailConfirmationTokenAsync(
                 token, userId, CancellationToken.None);
 
             // Assert
             Assert.False(isValid);
+        }
+
+        private static string ComputeHash(string token)
+        {
+            var normalized = token.Replace('-', '+').Replace('_', '/');
+            if (normalized.Length % 4 == 2) normalized += "==";
+            else if (normalized.Length % 4 == 3) normalized += "=";
+            using var sha256 = SHA256.Create();
+            return Convert.ToBase64String(sha256.ComputeHash(Encoding.UTF8.GetBytes(normalized)));
         }
     }
 }

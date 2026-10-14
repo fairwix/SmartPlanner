@@ -265,7 +265,14 @@ namespace SmartPlanner.Application.Tests.Auth.Commands
                 command.DeviceInfo,
                 command.IpAddress,
                 It.IsAny<CancellationToken>()))
-                .Returns(() => Task.CompletedTask); // Используем лямбду
+                .ReturnsAsync(new UserSession
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = user.Id,
+                    RefreshTokenHash = "refresh-token-hash",
+                    DeviceInfo = command.DeviceInfo,
+                    IpAddress = command.IpAddress
+                });
 
             _mockAuditService.Setup(x => x.LogSecurityEventAsync(
                 SecurityEventType.Login,

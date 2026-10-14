@@ -147,8 +147,9 @@ namespace SmartPlanner.Tests.Application.Challenges.Commands
             _mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
 
             // Verify participant was added
-            var challenge = _mockContext.Object.Challenges.First();
-            challenge.Participants.Should().NotBeNull();
+            _mockContext.Verify(c => c.Challenges.AddAsync(
+                It.Is<Challenge>(challenge => challenge.Participants != null),
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         private void SetupMockContextWithUser(bool userExists)

@@ -26,7 +26,21 @@ namespace SmartPlanner.Application.Auth.Commands
         {
             _logger.LogInformation("Logging out user {UserId}", request.UserId);
 
-            await _tokenService.RevokeUserSessionsAsync(request.UserId, cancellationToken);
+            try
+            {
+                await _tokenService.RevokeUserSessionsAsync(request.UserId, cancellationToken);
+            }
+            catch
+            {
+                await _auditService.LogSecurityEventAsync(
+                    SecurityEventType.Logout,
+                    request.UserId,
+                    ipAddress: null,
+                    success: false,
+                    cancellationToken: cancellationToken);
+                throw;
+            }
+
             await _auditService.LogSecurityEventAsync(
                 SecurityEventType.Logout,
                 request.UserId,

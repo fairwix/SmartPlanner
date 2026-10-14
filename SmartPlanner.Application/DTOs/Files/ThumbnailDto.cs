@@ -13,5 +13,7 @@ namespace SmartPlanner.Application.Dtos.Files
         public int? Width { get; set; }
         public int? Height { get; set; }
         public bool Crop { get; set; } = false;
+
+        public override string ToString() => $"{Size} thumbnail {Width}x{Height}, crop={Crop}";
     }
 }

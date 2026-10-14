@@ -35,36 +35,21 @@ public async Task Handle_UsersExistAndNotFriends_ReturnsTrueAndAddsFriendship()
     var userId = Guid.NewGuid();
     var friendId = Guid.NewGuid();
 
-    var users = new List<User>
+    var mockUsersDbSet = SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(new List<User>
     {
         new User { Id = userId, Username = "user1" },
         new User { Id = friendId, Username = "user2" }
-    }.AsQueryable();
-
-    var mockUsersDbSet = new Mock<DbSet<User>>();
-    mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(users.Provider);
-    mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Expression).Returns(users.Expression);
-    mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.ElementType).Returns(users.ElementType);
-    mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.GetEnumerator()).Returns(() => users.GetEnumerator());
-
-    var emptyFriendsList = new List<UserFriend>().AsQueryable();
-    var mockUserFriendsDbSet = new Mock<DbSet<UserFriend>>();
-    mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Provider).Returns(emptyFriendsList.Provider);
-    mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Expression).Returns(emptyFriendsList.Expression);
-    mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.ElementType).Returns(emptyFriendsList.ElementType);
-    mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.GetEnumerator()).Returns(() => emptyFriendsList.GetEnumerator());
+    });
+    var mockUserFriendsDbSet = SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(new List<UserFriend>());
 
     _mockContext.Setup(c => c.Users).Returns(mockUsersDbSet.Object);
     _mockContext.Setup(c => c.UserFriends).Returns(mockUserFriendsDbSet.Object);
     _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
     UserFriend capturedFriend = null;
-    var mockEntry = new Mock<Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<UserFriend>>();
-
-    // ИСПРАВЛЕНО: используем ReturnsAsync вместо Returns
-    _mockUserFriendsSet.Setup(s => s.AddAsync(It.IsAny<UserFriend>(), It.IsAny<CancellationToken>()))
+    mockUserFriendsDbSet.Setup(s => s.AddAsync(It.IsAny<UserFriend>(), It.IsAny<CancellationToken>()))
         .Callback<UserFriend, CancellationToken>((userFriend, _) => capturedFriend = userFriend)
-        .ReturnsAsync(mockEntry.Object); // Исправлено здесь
+        .Returns((UserFriend _, CancellationToken _) => ValueTask.FromResult<Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<UserFriend>>(null!));
 
     var command = new AddFriendCommand { UserId = userId, FriendId = friendId };
 
@@ -89,7 +74,7 @@ public async Task Handle_UsersExistAndNotFriends_ReturnsTrueAndAddsFriendship()
 
         var emptyUsersList = new List<User>().AsQueryable();
         var mockUsersDbSet = new Mock<DbSet<User>>();
-        mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(emptyUsersList.Provider);
+        mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(emptyUsersList));
         mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Expression).Returns(emptyUsersList.Expression);
         mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.ElementType).Returns(emptyUsersList.ElementType);
         mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.GetEnumerator()).Returns(() => emptyUsersList.GetEnumerator());
@@ -119,7 +104,7 @@ public async Task Handle_UsersExistAndNotFriends_ReturnsTrueAndAddsFriendship()
         }.AsQueryable();
 
         var mockUsersDbSet = new Mock<DbSet<User>>();
-        mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(users.Provider);
+        mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(users));
         mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Expression).Returns(users.Expression);
         mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.ElementType).Returns(users.ElementType);
         mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.GetEnumerator()).Returns(() => users.GetEnumerator());
@@ -155,13 +140,13 @@ public async Task Handle_UsersExistAndNotFriends_ReturnsTrueAndAddsFriendship()
         }.AsQueryable();
 
         var mockUsersDbSet = new Mock<DbSet<User>>();
-        mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(users.Provider);
+        mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(users));
         mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Expression).Returns(users.Expression);
         mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.ElementType).Returns(users.ElementType);
         mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.GetEnumerator()).Returns(() => users.GetEnumerator());
 
         var mockUserFriendsDbSet = new Mock<DbSet<UserFriend>>();
-        mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Provider).Returns(userFriends.Provider);
+        mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(userFriends));
         mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Expression).Returns(userFriends.Expression);
         mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.ElementType).Returns(userFriends.ElementType);
         mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.GetEnumerator()).Returns(() => userFriends.GetEnumerator());

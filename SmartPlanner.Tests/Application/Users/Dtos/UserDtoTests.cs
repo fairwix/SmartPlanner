@@ -198,16 +198,17 @@ namespace SmartPlanner.Application.Tests.Users.Dtos
             var id = Guid.NewGuid();
             var createdAt = DateTime.UtcNow;
             var updatedAt = DateTime.UtcNow;
+            var interests = new List<string> { "Interest1" };
 
             var dto1 = new UserDto(
                 id, createdAt, updatedAt,
                 "user1", "user1@test.com",
-                new List<string> { "Interest1" }, 100, 5, null);
+                interests, 100, 5, null);
 
             var dto2 = new UserDto(
                 id, createdAt, updatedAt,
                 "user1", "user1@test.com",
-                new List<string> { "Interest1" }, 100, 5, null);
+                interests, 100, 5, null);
 
             var dto3 = new UserDto(
                 Guid.NewGuid(), createdAt, updatedAt,

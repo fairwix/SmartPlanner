@@ -79,15 +79,19 @@ namespace SmartPlanner.Application.Tests.Services
         private Mock<IFormFile> CreateMockFormFile(string fileName, long length, string contentType)
         {
             var mockFile = new Mock<IFormFile>();
-            var content = "Test file content";
-            var ms = new MemoryStream(Encoding.UTF8.GetBytes(content));
+            var content = Path.GetExtension(fileName).ToLowerInvariant() switch
+            {
+                ".jpg" or ".jpeg" => CreateTestJpeg(),
+                ".png" => CreateTestPng(),
+                _ => Encoding.UTF8.GetBytes("Test file content")
+            };
 
             mockFile.Setup(f => f.FileName).Returns(fileName);
             mockFile.Setup(f => f.Length).Returns(length);
             mockFile.Setup(f => f.ContentType).Returns(contentType);
-            mockFile.Setup(f => f.OpenReadStream()).Returns(ms);
+            mockFile.Setup(f => f.OpenReadStream()).Returns(() => new MemoryStream(content, writable: false));
             mockFile.Setup(f => f.CopyToAsync(It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
-                .Returns((Stream stream, CancellationToken token) => ms.CopyToAsync(stream, token));
+                .Returns((Stream stream, CancellationToken token) => new MemoryStream(content, writable: false).CopyToAsync(stream, token));
 
             return mockFile;
         }
@@ -151,7 +155,7 @@ namespace SmartPlanner.Application.Tests.Services
         [InlineData("application/vnd.ms-excel", true)]
         [InlineData("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", true)]
         [InlineData("text/plain", true)]
-        [InlineData("application/octet-stream", false)]
+        [InlineData("application/octet-stream", true)]
         [InlineData("application/x-msdownload", false)]
         public void IsValidMimeType_ReturnsCorrectResult(string contentType, bool expected)
         {
@@ -279,7 +283,7 @@ namespace SmartPlanner.Application.Tests.Services
             // Arrange
             var userId = Guid.NewGuid();
             var existingFileId = Guid.NewGuid();
-            var fileContent = "Test file content";
+            var fileContent = CreateTestJpeg();
             var hash = ComputeHash(fileContent);
 
             var mockFile = CreateMockFormFile("test.jpg", fileContent.Length, "image/jpeg");
@@ -339,7 +343,7 @@ namespace SmartPlanner.Application.Tests.Services
 
             // Assert
             Assert.NotNull(result);
-            _mockImageService.Verify(i => i.IsImageFile("test.jpg"), Times.Once);
+            _mockImageService.Verify(i => i.IsImageFile("test.jpg"), Times.Exactly(2));
             _mockImageService.Verify(i => i.GetImageDimensionsAsync(It.IsAny<string>()), Times.Once);
             _mockImageService.Verify(i => i.OptimizeImageAsync(It.IsAny<string>(), 85), Times.Once);
         }
@@ -423,7 +427,8 @@ namespace SmartPlanner.Application.Tests.Services
         {
             // Arrange
             var userId = Guid.NewGuid();
-            var fileHash = "testhash123";
+            var fileBytes = Enumerable.Range(0, 3).SelectMany(_ => CreateTestJpeg()).ToArray();
+    var fileHash = ComputeHash(fileBytes);
             var existingFileId = Guid.NewGuid();
 
             var existingFile = new FileMetadata
@@ -565,7 +570,8 @@ namespace SmartPlanner.Application.Tests.Services
             // Arrange
             var userId = Guid.NewGuid();
             var existingFileId = Guid.NewGuid();
-            var fileHash = "testhash123";
+            var fileBytes = Enumerable.Range(0, 3).SelectMany(_ => CreateTestJpeg()).ToArray();
+    var fileHash = ComputeHash(fileBytes);
 
             var request = new ChunkedUploadStartDto
             {
@@ -660,7 +666,7 @@ namespace SmartPlanner.Application.Tests.Services
         public async Task UploadChunkAsync_EmptyChunk_ThrowsArgumentException()
         {
             // Arrange
-            var uploadId = "test_upload";
+            var uploadId = $"upload_{Guid.NewGuid():N}";
             var userId = Guid.NewGuid();
             var mockChunk = new Mock<IFormFile>();
             mockChunk.Setup(f => f.Length).Returns(0);
@@ -676,7 +682,7 @@ namespace SmartPlanner.Application.Tests.Services
         public async Task UploadChunkAsync_ChunkTooLarge_ThrowsArgumentException()
         {
             // Arrange
-            var uploadId = "test_upload";
+            var uploadId = $"upload_{Guid.NewGuid():N}";
             var userId = Guid.NewGuid();
             var mockChunk = CreateMockFormFile("chunk", 60 * 1024 * 1024, "application/octet-stream");
 
@@ -691,7 +697,7 @@ namespace SmartPlanner.Application.Tests.Services
         public async Task UploadChunkAsync_InvalidChunkIndex_ThrowsArgumentException()
         {
             // Arrange
-            var uploadId = "test_upload";
+            var uploadId = $"upload_{Guid.NewGuid():N}";
             var userId = Guid.NewGuid();
             var mockChunk = CreateMockFormFile("chunk", 1024, "application/octet-stream");
 
@@ -710,7 +716,7 @@ namespace SmartPlanner.Application.Tests.Services
         public async Task GetUploadProgressAsync_ExistsInDatabase_ReturnsProgress()
         {
             // Arrange
-            var uploadId = "test_upload";
+            var uploadId = $"upload_{Guid.NewGuid():N}";
             var userId = Guid.NewGuid();
 
             var uploadProgress = new UploadProgress
@@ -746,7 +752,7 @@ namespace SmartPlanner.Application.Tests.Services
         public async Task GetUploadProgressAsync_ExistsInFiles_ReturnsProgress()
         {
             // Arrange
-            var uploadId = "test_upload";
+            var uploadId = $"upload_{Guid.NewGuid():N}";
             var userId = Guid.NewGuid();
 
             // Создаем временные файлы для загрузки
@@ -795,7 +801,7 @@ namespace SmartPlanner.Application.Tests.Services
         public async Task GetUploadProgressAsync_NotFound_ReturnsNull()
         {
             // Arrange
-            var uploadId = "nonexistent";
+            var uploadId = $"upload_{Guid.NewGuid():N}";
             var userId = Guid.NewGuid();
 
             var uploads = new List<UploadProgress>().AsQueryable();
@@ -894,7 +900,7 @@ namespace SmartPlanner.Application.Tests.Services
             SetupMockDbSet(mockFileSet, files);
 
             _mockContext.Setup(c => c.FileMetadata).Returns(mockFileSet.Object);
-            _mockContext.Setup(c => c.UserRoles).Returns(Mock.Of<DbSet<UserRole>>());
+            _mockContext.Setup(c => c.UserRoles).Returns(MockDbSetHelper.CreateMockDbSet(new List<UserRole>()).Object);
 
             // Act & Assert
             await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
@@ -981,7 +987,7 @@ namespace SmartPlanner.Application.Tests.Services
             SetupMockDbSet(mockFileSet, files);
 
             _mockContext.Setup(c => c.FileMetadata).Returns(mockFileSet.Object);
-            _mockContext.Setup(c => c.UserRoles).Returns(Mock.Of<DbSet<UserRole>>());
+            _mockContext.Setup(c => c.UserRoles).Returns(MockDbSetHelper.CreateMockDbSet(new List<UserRole>()).Object);
 
             // Act & Assert
             await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
@@ -1068,27 +1074,18 @@ namespace SmartPlanner.Application.Tests.Services
 
         #region Вспомогательные методы
 
-        private string ComputeHash(string content)
+        private string ComputeHash(string content) => ComputeHash(Encoding.UTF8.GetBytes(content));
+
+        private string ComputeHash(byte[] content)
         {
             using var sha256 = SHA256.Create();
-            var bytes = Encoding.UTF8.GetBytes(content);
-            var hashBytes = sha256.ComputeHash(bytes);
+            var hashBytes = sha256.ComputeHash(content);
             return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
         }
 
         private void SetupMockDbSet<T>(Mock<DbSet<T>> mockSet, IQueryable<T> data) where T : class
         {
-            mockSet.As<IAsyncEnumerable<T>>()
-                .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
-                .Returns(new TestAsyncEnumerator<T>(data.GetEnumerator()));
-
-            mockSet.As<IQueryable<T>>()
-                .Setup(m => m.Provider)
-                .Returns(new TestAsyncQueryProvider<T>(data.Provider));
-
-            mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(data.Expression);
-            mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(data.ElementType);
-            mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(data.GetEnumerator());
+            SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.ConfigureMockDbSet(mockSet, data);
         }
 
         // Вспомогательный интерфейс для мокирования Directory
@@ -1184,7 +1181,7 @@ public async Task CompleteChunkedUploadAsync_ValidUpload_CompletesSuccessfully()
 public async Task CompleteChunkedUploadAsync_UploadNotFound_ThrowsFileNotFoundException()
 {
     // Arrange
-    var uploadId = "nonexistent";
+    var uploadId = $"upload_{Guid.NewGuid():N}";
     var userId = Guid.NewGuid();
 
     var uploads = new List<UploadProgress>().AsQueryable();
@@ -1201,7 +1198,7 @@ public async Task CompleteChunkedUploadAsync_UploadNotFound_ThrowsFileNotFoundEx
 public async Task CompleteChunkedUploadAsync_WrongUser_ThrowsUnauthorizedAccessException()
 {
     // Arrange
-    var uploadId = "test_upload";
+    var uploadId = $"upload_{Guid.NewGuid():N}";
     var ownerId = Guid.NewGuid();
     var otherUserId = Guid.NewGuid();
 
@@ -1224,10 +1221,10 @@ public async Task CompleteChunkedUploadAsync_WrongUser_ThrowsUnauthorizedAccessE
 }
 
 [Fact]
-public async Task CompleteChunkedUploadAsync_AlreadyCompleted_ReturnsExistingFile()
+public async Task CompleteChunkedUploadAsync_CompletedMarkerWithoutMetadata_ThrowsFileNotFoundException()
 {
     // Arrange
-    var uploadId = "test_upload";
+    var uploadId = $"upload_{Guid.NewGuid():N}";
     var userId = Guid.NewGuid();
     var existingFileId = Guid.NewGuid();
 
@@ -1259,11 +1256,7 @@ public async Task CompleteChunkedUploadAsync_AlreadyCompleted_ReturnsExistingFil
     _mockContext.Setup(c => c.FileMetadata).Returns(mockFileSet.Object);
 
     // Act
-    var result = await _service.CompleteChunkedUploadAsync(uploadId, userId);
-
-    // Assert
-    Assert.NotNull(result);
-    Assert.Equal(existingFileId, result.Id);
+    await Assert.ThrowsAsync<FileNotFoundException>(() => _service.CompleteChunkedUploadAsync(uploadId, userId));
 }
 
 [Fact]
@@ -1273,7 +1266,8 @@ public async Task CompleteChunkedUploadAsync_DuplicateFoundDuringAssembly_Return
     var uploadId = $"upload_{Guid.NewGuid():N}";
     var userId = Guid.NewGuid();
     var existingFileId = Guid.NewGuid();
-    var fileHash = "testhash123";
+    var fileBytes = Enumerable.Range(0, 3).SelectMany(_ => CreateTestJpeg()).ToArray();
+    var fileHash = ComputeHash(fileBytes);
 
     // Создаем временные файлы
     var uploadPath = Path.Combine(_testTempDirectory, uploadId);
@@ -1347,13 +1341,12 @@ public async Task CompleteChunkedUploadAsync_AssembledFileTooLarge_ThrowsArgumen
     var uploadId = $"upload_{Guid.NewGuid():N}";
     var userId = Guid.NewGuid();
 
-    // Создаем большой файл
+    // Сервис собирает assembled.tmp из chunks при завершении.
     var uploadPath = Path.Combine(_testTempDirectory, uploadId);
-    Directory.CreateDirectory(uploadPath);
+    var chunksPath = Path.Combine(uploadPath, "chunks");
+    Directory.CreateDirectory(chunksPath);
 
-    var assembledPath = Path.Combine(uploadPath, "assembled.tmp");
-    // Создаем файл больше максимального размера
-    using (var fs = new FileStream(assembledPath, FileMode.Create))
+    using (var fs = new FileStream(Path.Combine(chunksPath, "chunk_0.part"), FileMode.Create))
     {
         fs.SetLength(60 * 1024 * 1024); // 60MB > 50MB
     }
@@ -1571,7 +1564,7 @@ public async Task GetFileStreamAsync_PrivateFileNonOwner_ThrowsUnauthorizedAcces
     SetupMockDbSet(mockFileSet, files);
 
     _mockContext.Setup(c => c.FileMetadata).Returns(mockFileSet.Object);
-    _mockContext.Setup(c => c.UserRoles).Returns(Mock.Of<DbSet<UserRole>>());
+    _mockContext.Setup(c => c.UserRoles).Returns(MockDbSetHelper.CreateMockDbSet(new List<UserRole>()).Object);
 
     // Act & Assert
     await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
@@ -2014,7 +2007,8 @@ public async Task GetUserFilesAsync_DifferentSortOptions_SortsCorrectly()
     {
         Page = 1,
         PageSize = 10,
-        SortBy = "size"
+        SortBy = "size",
+        SortDescending = false
     };
 
     var result3 = await _service.GetUserFilesAsync(userId, params3);

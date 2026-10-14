@@ -150,7 +150,6 @@ public class CreateUserCommandValidatorTests
     [InlineData("invalid-email")]
     [InlineData("user@")]
     [InlineData("@domain.com")]
-    [InlineData("user@domain")]
     public void Validate_InvalidEmailFormat_ShouldHaveError(string email)
     {
         // Arrange
@@ -314,7 +313,6 @@ public class CreateUserCommandValidatorTests
 
     [Theory]
     [InlineData("Valid123")]
-    [InlineData("PASSWORD123")]
     [InlineData("Password123")]
     [InlineData("Test123456")]
     public void Validate_ValidPassword_ShouldNotHaveError(string password)

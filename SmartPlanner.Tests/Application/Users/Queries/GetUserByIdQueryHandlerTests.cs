@@ -87,7 +87,7 @@ public class GetUserByIdQueryHandlerTests
     private Mock<DbSet<User>> CreateMockDbSet(IQueryable<User> queryable)
     {
         var mockDbSet = new Mock<DbSet<User>>();
-        mockDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(queryable.Provider);
+        mockDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(queryable));
         mockDbSet.As<IQueryable<User>>().Setup(m => m.Expression).Returns(queryable.Expression);
         mockDbSet.As<IQueryable<User>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
         mockDbSet.As<IQueryable<User>>().Setup(m => m.GetEnumerator()).Returns(() => queryable.GetEnumerator());

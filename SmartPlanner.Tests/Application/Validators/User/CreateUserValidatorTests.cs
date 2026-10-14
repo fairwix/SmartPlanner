@@ -19,24 +19,18 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
         public CreateUserValidatorTests()
         {
             _contextMock = new Mock<IApplicationDbContext>();
+            var users = CreateMockDbSet(new List<Domain.Entities.User>());
+            _contextMock.Setup(context => context.Users).Returns(users.Object);
             _validator = new CreateUserValidator(_contextMock.Object);
         }
 
         private Mock<DbSet<T>> CreateMockDbSet<T>(List<T> data) where T : class
         {
-            var queryable = data.AsQueryable();
-            var mockSet = new Mock<DbSet<T>>();
-
-            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(queryable.Provider);
-            mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
-            mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
-            mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(() => queryable.GetEnumerator());
-
-            return mockSet;
+            return SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(data);
         }
 
         [Fact]
-        public void Should_HaveError_WhenUsernameEmpty()
+        public async Task Should_HaveError_WhenUsernameEmpty()
         {
             // Arrange
             var request = new CreateUserRequest
@@ -47,7 +41,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
             };
 
             // Act
-            var result = _validator.TestValidate(request);
+            var result = await _validator.TestValidateAsync(request);
 
             // Assert
             result.ShouldHaveValidationErrorFor(x => x.Username)
@@ -55,7 +49,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
         }
 
         [Fact]
-        public void Should_HaveError_WhenUsernameTooShort()
+        public async Task Should_HaveError_WhenUsernameTooShort()
         {
             // Arrange
             var request = new CreateUserRequest
@@ -66,7 +60,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
             };
 
             // Act
-            var result = _validator.TestValidate(request);
+            var result = await _validator.TestValidateAsync(request);
 
             // Assert
             result.ShouldHaveValidationErrorFor(x => x.Username)
@@ -74,7 +68,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
         }
 
         [Fact]
-        public void Should_HaveError_WhenUsernameTooLong()
+        public async Task Should_HaveError_WhenUsernameTooLong()
         {
             // Arrange
             var longUsername = new string('A', 51); // 51 characters
@@ -86,7 +80,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
             };
 
             // Act
-            var result = _validator.TestValidate(request);
+            var result = await _validator.TestValidateAsync(request);
 
             // Assert
             result.ShouldHaveValidationErrorFor(x => x.Username)
@@ -122,7 +116,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
         }
 
         [Fact]
-        public void Should_HaveError_WhenEmailEmpty()
+        public async Task Should_HaveError_WhenEmailEmpty()
         {
             // Arrange
             var request = new CreateUserRequest
@@ -133,7 +127,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
             };
 
             // Act
-            var result = _validator.TestValidate(request);
+            var result = await _validator.TestValidateAsync(request);
 
             // Assert
             result.ShouldHaveValidationErrorFor(x => x.Email)
@@ -141,7 +135,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
         }
 
         [Fact]
-        public void Should_HaveError_WhenEmailInvalidFormat()
+        public async Task Should_HaveError_WhenEmailInvalidFormat()
         {
             // Arrange
             var request = new CreateUserRequest
@@ -152,7 +146,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
             };
 
             // Act
-            var result = _validator.TestValidate(request);
+            var result = await _validator.TestValidateAsync(request);
 
             // Assert
             result.ShouldHaveValidationErrorFor(x => x.Email)
@@ -188,7 +182,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
         }
 
         [Fact]
-        public void Should_HaveError_WhenPasswordEmpty()
+        public async Task Should_HaveError_WhenPasswordEmpty()
         {
             // Arrange
             var request = new CreateUserRequest
@@ -199,7 +193,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
             };
 
             // Act
-            var result = _validator.TestValidate(request);
+            var result = await _validator.TestValidateAsync(request);
 
             // Assert
             result.ShouldHaveValidationErrorFor(x => x.Password)
@@ -207,7 +201,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
         }
 
         [Fact]
-        public void Should_HaveError_WhenPasswordTooShort()
+        public async Task Should_HaveError_WhenPasswordTooShort()
         {
             // Arrange
             var request = new CreateUserRequest
@@ -218,7 +212,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
             };
 
             // Act
-            var result = _validator.TestValidate(request);
+            var result = await _validator.TestValidateAsync(request);
 
             // Assert
             result.ShouldHaveValidationErrorFor(x => x.Password)
@@ -248,7 +242,7 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
         }
 
         [Fact]
-        public void Should_NotValidateInterests()
+        public async Task Should_NotValidateInterests()
         {
             // Arrange - Interests can be null or empty
             var request1 = new CreateUserRequest
@@ -276,9 +270,9 @@ namespace SmartPlanner.Application.UnitTests.Validators.User
             };
 
             // Act & Assert - No validation errors for Interests
-            _validator.TestValidate(request1).ShouldNotHaveValidationErrorFor(x => x.Interests);
-            _validator.TestValidate(request2).ShouldNotHaveValidationErrorFor(x => x.Interests);
-            _validator.TestValidate(request3).ShouldNotHaveValidationErrorFor(x => x.Interests);
+            (await _validator.TestValidateAsync(request1)).ShouldNotHaveValidationErrorFor(x => x.Interests);
+            (await _validator.TestValidateAsync(request2)).ShouldNotHaveValidationErrorFor(x => x.Interests);
+            (await _validator.TestValidateAsync(request3)).ShouldNotHaveValidationErrorFor(x => x.Interests);
         }
 
         [Fact]

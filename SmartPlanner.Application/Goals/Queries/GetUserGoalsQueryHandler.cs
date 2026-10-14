@@ -67,7 +67,7 @@ namespace SmartPlanner.Application.Goals.Queries
 
             var goalDtos = _mapper.Map<List<GoalDto>>(goals);
 
-            return new PagedResult<GoalDto>(goalDtos, totalCount, request.PageNumber, request.PageSize);
+            return new PagedResult<GoalDto>(goalDtos, request.PageNumber, request.PageSize, totalCount);
         }
 
         private IQueryable<Goal> ApplySorting(IQueryable<Goal> query, string? sortBy, string? sortOrder)
@@ -102,7 +102,7 @@ namespace SmartPlanner.Application.Goals.Queries
 
             var goalDtos = _mapper.Map<List<GoalDto>>(goals);
 
-            return new PagedResult<GoalDto>(goalDtos, totalCount, request.Pagination.PageNumber, request.Pagination.PageSize);
+            return new PagedResult<GoalDto>(goalDtos, request.Pagination.PageNumber, request.Pagination.PageSize, totalCount);
         }
     }
 }

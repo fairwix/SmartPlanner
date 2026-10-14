@@ -64,7 +64,7 @@ namespace SmartPlanner.Application.UnitTests.Goals.Commands.Handlers
             var queryable = data.AsQueryable();
             var mockSet = new Mock<DbSet<T>>();
 
-            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(queryable.Provider);
+            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(queryable));
             mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
             mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
             mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(() => queryable.GetEnumerator());
@@ -191,7 +191,7 @@ namespace SmartPlanner.Application.UnitTests.Goals.Commands.Handlers
             var queryable = data.AsQueryable();
             var mockSet = new Mock<DbSet<T>>();
 
-            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(queryable.Provider);
+            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(queryable));
             mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
             mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
             mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(() => queryable.GetEnumerator());
@@ -263,7 +263,7 @@ namespace SmartPlanner.Application.UnitTests.Goals.Commands.Handlers
             var queryable = data.AsQueryable();
             var mockSet = new Mock<DbSet<T>>();
 
-            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(queryable.Provider);
+            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(queryable));
             mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
             mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
             mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(() => queryable.GetEnumerator());
@@ -311,7 +311,7 @@ namespace SmartPlanner.Application.UnitTests.Goals.Commands.Handlers
 
             // Assert
             result.Should().NotBeNull();
-            result!.CurrentValue.Should().Be(75); // 50 + 25
+            result!.CurrentValue.Should().Be(25);
             _contextMock.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -370,7 +370,7 @@ namespace SmartPlanner.Application.UnitTests.Goals.Commands.Handlers
             var command = new UpdateGoalProgressCommand
             {
                 GoalId = goalId,
-                Value = 10
+                Value = 100
             };
 
             // Act

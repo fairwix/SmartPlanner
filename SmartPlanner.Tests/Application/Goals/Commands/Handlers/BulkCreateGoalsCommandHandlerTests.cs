@@ -70,15 +70,10 @@ namespace SmartPlanner.Tests.Application.Goals.Commands
             };
 
             // Setup user exists
-            _mockContext.Setup(c => c.Users.AnyAsync(
-                It.IsAny<System.Linq.Expressions.Expression<Func<User, bool>>>(),
-                It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            _mockContext.Setup(c => c.Users).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(new List<User> { new User { Id = userId } }).Object);
+            _mockContext.Setup(c => c.Goals).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(new List<Goal>()).Object);
 
             // Setup unique titles
-            _mockContext.Setup(c => c.Goals.AnyAsync(
-                It.IsAny<System.Linq.Expressions.Expression<Func<Goal, bool>>>(),
-                It.IsAny<CancellationToken>())).ReturnsAsync(false);
-
             // Setup save changes
             _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(2); // 2 goals saved
@@ -136,9 +131,7 @@ namespace SmartPlanner.Tests.Application.Goals.Commands
             };
 
             // Setup user not exists
-            _mockContext.Setup(c => c.Users.AnyAsync(
-                It.IsAny<System.Linq.Expressions.Expression<Func<User, bool>>>(),
-                It.IsAny<CancellationToken>())).ReturnsAsync(false);
+            _mockContext.Setup(c => c.Users).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(new List<User>()).Object);
 
             // Act
             var result = await _handler.Handle(command, CancellationToken.None);
@@ -172,19 +165,8 @@ namespace SmartPlanner.Tests.Application.Goals.Commands
             };
 
             // Setup user exists
-            _mockContext.Setup(c => c.Users.AnyAsync(
-                It.IsAny<System.Linq.Expressions.Expression<Func<User, bool>>>(),
-                It.IsAny<CancellationToken>())).ReturnsAsync(true);
-
-            // Setup unique check - first goal is unique, second is duplicate
-            var callCount = 0;
-            _mockContext.Setup(c => c.Goals.AnyAsync(
-                It.IsAny<System.Linq.Expressions.Expression<Func<Goal, bool>>>(),
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => {
-                    callCount++;
-                    return callCount == 2 || callCount == 3; // Second and third are duplicates
-                });
+            _mockContext.Setup(c => c.Users).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(new List<User> { new User { Id = userId } }).Object);
+            _mockContext.Setup(c => c.Goals).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(new List<Goal>()).Object);
 
             // Setup save changes
             _mockContext.Setup(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()))

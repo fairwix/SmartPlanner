@@ -158,24 +158,16 @@ namespace SmartPlanner.Application.Tests.Auth.Commands
                     oldSession.DeviceInfo,
                     oldSession.IpAddress,
                     It.IsAny<CancellationToken>()))
-                .Returns(() => Task.CompletedTask);
+                .ReturnsAsync(new UserSession
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    RefreshTokenHash = "new-refresh-hash",
+                    DeviceInfo = oldSession.DeviceInfo,
+                    IpAddress = oldSession.IpAddress
+                });
 
-            var mockUsersDbSet = new Mock<DbSet<User>>();
-            mockUsersDbSet.As<IQueryable<User>>()
-                .Setup(x => x.Provider)
-                .Returns(new List<User> { user }.AsQueryable().Provider);
-            mockUsersDbSet.As<IQueryable<User>>()
-                .Setup(x => x.Expression)
-                .Returns(new List<User> { user }.AsQueryable().Expression);
-            mockUsersDbSet.As<IQueryable<User>>()
-                .Setup(x => x.ElementType)
-                .Returns(new List<User> { user }.AsQueryable().ElementType);
-            mockUsersDbSet.As<IQueryable<User>>()
-                .Setup(x => x.GetEnumerator())
-                .Returns(new List<User> { user }.GetEnumerator());
-
-            mockUsersDbSet.Setup(x => x.Include(It.IsAny<string>()))
-                .Returns(mockUsersDbSet.Object);
+            var mockUsersDbSet = SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(new List<User> { user });
 
             _mockContext.Setup(x => x.Users).Returns(mockUsersDbSet.Object);
 

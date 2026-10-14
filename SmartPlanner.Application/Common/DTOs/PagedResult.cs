@@ -11,7 +11,7 @@ namespace SmartPlanner.Application.Common.Dtos;
         public bool HasNextPage => PageNumber < TotalPages;
 
         public static PagedResult<T> Create(List<T> items, int totalCount, int pageNumber, int pageSize)
-            => new PagedResult<T>(items, totalCount, pageNumber, pageSize);
+            => new PagedResult<T>(items, pageNumber, pageSize, totalCount);
     }
 
     public record PaginationRequest(

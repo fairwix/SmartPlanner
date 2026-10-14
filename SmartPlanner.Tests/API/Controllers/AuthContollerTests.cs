@@ -9,6 +9,7 @@ using SmartPlanner.Application.Auth.Dtos;
 using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
 using System.Collections.Generic;
+using System.Text.Json;
 using SmartPlanner.Domain.Entities;
 using System.Threading;
 using System.Threading.Tasks;
@@ -85,7 +86,7 @@ namespace SmartPlanner.Tests.API.Controllers
             var result = await _controller.Register(registerDto, CancellationToken.None);
 
             // Assert
-            var createdAtResult = Assert.IsType<CreatedAtActionResult>(result);
+            var createdAtResult = Assert.IsAssignableFrom<CreatedAtActionResult>(result.Result);
             var response = Assert.IsType<AuthResponseDto>(createdAtResult.Value);
             Assert.Equal("access_token", response.AccessToken);
             _mockMediator.Verify(m => m.Send(It.IsAny<RegisterCommand>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -125,7 +126,7 @@ namespace SmartPlanner.Tests.API.Controllers
             var result = await _controller.Login(loginDto, CancellationToken.None);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
+            var okResult = Assert.IsAssignableFrom<OkObjectResult>(result.Result);
             var response = Assert.IsType<AuthResponseDto>(okResult.Value);
             Assert.Equal("access_token", response.AccessToken);
             _mockMediator.Verify(m => m.Send(It.IsAny<LoginCommand>(), It.IsAny<CancellationToken>()), Times.Once);
@@ -170,10 +171,9 @@ namespace SmartPlanner.Tests.API.Controllers
             var result = await _controller.ChangePassword(changePasswordDto, CancellationToken.None);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<Dictionary<string, string>>(okResult.Value);
-            Assert.Contains("message", response);
-            Assert.Equal("Password changed successfully.", response["message"]);
+            var okResult = Assert.IsAssignableFrom<OkObjectResult>(result);
+            var response = JsonSerializer.SerializeToElement(okResult.Value);
+            Assert.Equal("Password changed successfully.", response.GetProperty("message").GetString());
         }
 
         [Fact]
@@ -186,16 +186,15 @@ namespace SmartPlanner.Tests.API.Controllers
             _httpContext.Request.Headers["User-Agent"] = "TestAgent";
 
             _mockMediator.Setup(m => m.Send(It.IsAny<ForgotPasswordCommand>(), It.IsAny<CancellationToken>()))
-                .Returns((Task<bool>)Task.CompletedTask);
+                .ReturnsAsync(true);
 
             // Act
             var result = await _controller.ForgotPassword(forgotPasswordDto, CancellationToken.None);
 
             // Assert
-            var okResult = Assert.IsType<OkObjectResult>(result);
-            var response = Assert.IsType<Dictionary<string, string>>(okResult.Value);
-            Assert.Contains("message", response);
-            Assert.Equal("If your email exists in our system, you will receive a password reset link.", response["message"]);
+            var okResult = Assert.IsAssignableFrom<OkObjectResult>(result);
+            var response = JsonSerializer.SerializeToElement(okResult.Value);
+            Assert.Equal("If your email exists in our system, you will receive a password reset link.", response.GetProperty("message").GetString());
         }
     }
 }

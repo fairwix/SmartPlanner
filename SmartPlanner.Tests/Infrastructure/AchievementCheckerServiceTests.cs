@@ -81,17 +81,17 @@ namespace SmartPlanner.Tests.Infrastructure.Services
         {
             // Arrange
             var userId = Guid.NewGuid();
-            var user = new User
-            {
-                Id = userId,
-                Username = "testuser"
-            };
-
             var goals = new List<Goal>
             {
                 new Goal { Id = Guid.NewGuid(), UserId = userId, IsCompleted = true },
                 new Goal { Id = Guid.NewGuid(), UserId = userId, IsCompleted = true },
                 new Goal { Id = Guid.NewGuid(), UserId = userId, IsCompleted = false }
+            };
+            var user = new User
+            {
+                Id = userId,
+                Username = "testuser",
+                Goals = goals
             };
 
             var achievements = new List<Achievement>

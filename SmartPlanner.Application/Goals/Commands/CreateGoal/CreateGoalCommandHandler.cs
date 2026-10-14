@@ -30,11 +30,19 @@ namespace SmartPlanner.Application.Goals.Commands
         {
             _logger.LogInformation("Creating goal for user {UserId}", request.UserId);
 
+            if (request.DueDate <= DateTime.UtcNow)
+                throw new ArgumentException("Due date must be in the future", nameof(request.DueDate));
+            if (request.TargetValue <= 0)
+                throw new ArgumentException("Target value must be positive", nameof(request.TargetValue));
+
             var userExists = await _context.Users
                 .AnyAsync(u => u.Id == request.UserId, cancellationToken);
 
             if (!userExists)
                 throw new ArgumentException($"User with ID {request.UserId} not found");
+
+            if (await _context.Goals.AnyAsync(g => g.UserId == request.UserId && g.Title == request.Title, cancellationToken))
+                throw new ArgumentException($"Goal title '{request.Title}' is not unique", nameof(request.Title));
 
             var goal = new Goal
             {

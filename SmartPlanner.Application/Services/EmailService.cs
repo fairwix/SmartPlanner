@@ -9,23 +9,29 @@ using Microsoft.Extensions.Hosting;
 
 namespace SmartPlanner.Application.Services
 {
-    public class EmailService : IEmailService
+    public class EmailService : IEmailService, IDisposable
     {
         private readonly EmailSettings _emailSettings;
         private readonly ILogger<EmailService> _logger;
         private readonly IHostEnvironment _environment;
         private readonly IConfiguration _configuration;
+        private readonly ISmtpClient _smtpClient;
+        private readonly IDirectoryWrapper _directoryWrapper;
 
         public EmailService(
             IOptions<EmailSettings> emailSettings,
             ILogger<EmailService> logger,
             IHostEnvironment environment,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ISmtpClient? smtpClient = null,
+            IDirectoryWrapper? directoryWrapper = null)
         {
             _emailSettings = emailSettings.Value;
             _logger = logger;
             _environment = environment;
             _configuration = configuration;
+            _smtpClient = smtpClient ?? new SystemSmtpClient();
+            _directoryWrapper = directoryWrapper ?? new SystemDirectoryWrapper();
         }
 
         public async Task SendEmailAsync(string to, string subject, string body, bool isHtml = true)
@@ -56,12 +62,12 @@ namespace SmartPlanner.Application.Services
 
         private async Task SendEmailViaSmtpAsync(string to, string subject, string body, bool isHtml)
         {
-            using var client = new SmtpClient(_emailSettings.SmtpServer, _emailSettings.SmtpPort)
-            {
-                EnableSsl = _emailSettings.UseSsl,
-                DeliveryMethod = SmtpDeliveryMethod.Network,
-                UseDefaultCredentials = false
-            };
+            var client = _smtpClient;
+            client.Host = _emailSettings.SmtpServer;
+            client.Port = _emailSettings.SmtpPort;
+            client.EnableSsl = _emailSettings.UseSsl;
+            client.DeliveryMethod = SmtpDeliveryMethod.Network;
+            client.UseDefaultCredentials = false;
 
             if (_emailSettings.RequiresAuthentication)
             {
@@ -71,7 +77,7 @@ namespace SmartPlanner.Application.Services
                 );
             }
 
-            var mailMessage = new MailMessage
+            using var mailMessage = new MailMessage
             {
                 From = new MailAddress(_emailSettings.SenderEmail, _emailSettings.SenderName),
                 Subject = subject,
@@ -89,9 +95,11 @@ namespace SmartPlanner.Application.Services
             _logger.LogInformation("Email sent to {To} via SMTP", to);
         }
 
+        public void Dispose() => _smtpClient.Dispose();
+
         private async Task SaveEmailToFileSystemAsync(string to, string subject, string body)
         {
-            var emailPath = Path.Combine(Directory.GetCurrentDirectory(), _emailSettings.FileSystemPath);
+            var emailPath = Path.Combine(_directoryWrapper.GetCurrentDirectory(), _emailSettings.FileSystemPath);
             Directory.CreateDirectory(emailPath);
 
             var fileName = $"{DateTime.Now:yyyy-MM-dd_HH-mm-ss}_{Guid.NewGuid():N}.html";

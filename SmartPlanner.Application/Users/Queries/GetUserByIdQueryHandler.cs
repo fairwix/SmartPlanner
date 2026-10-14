@@ -31,7 +31,7 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
 
     private UserDto MapToDto(User user)
     {
-        var interests = user.UserInterests
+        var interests = (user.UserInterests ?? new List<UserInterest>())
             .Where(ui => ui.Interest != null)
             .Select(ui => ui.Interest.Name)
             .ToList();

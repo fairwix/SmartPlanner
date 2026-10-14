@@ -48,7 +48,7 @@ namespace SmartPlanner.Application.Tests.Auth.Commands
                 ConfirmNewPassword = "NewPassword123!"
             };
 
-            var mockUsersDbSet = new Mock<DbSet<User>>();
+            var mockUsersDbSet = SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(new List<User>());
             _mockContext.Setup(x => x.Users).Returns(mockUsersDbSet.Object);
 
             // Act
@@ -80,10 +80,7 @@ namespace SmartPlanner.Application.Tests.Auth.Commands
                 PasswordSalt = "salt"
             };
 
-            var mockUsersDbSet = new Mock<DbSet<User>>();
-            mockUsersDbSet.As<IQueryable<User>>()
-                .Setup(x => x.Provider)
-                .Returns(new List<User> { user }.AsQueryable().Provider);
+            var mockUsersDbSet = SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(new List<User> { user });
 
             _mockContext.Setup(x => x.Users).Returns(mockUsersDbSet.Object);
 
@@ -120,10 +117,7 @@ namespace SmartPlanner.Application.Tests.Auth.Commands
                 PasswordSalt = "salt"
             };
 
-            var mockUsersDbSet = new Mock<DbSet<User>>();
-            mockUsersDbSet.As<IQueryable<User>>()
-                .Setup(x => x.Provider)
-                .Returns(new List<User> { user }.AsQueryable().Provider);
+            var mockUsersDbSet = SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(new List<User> { user });
 
             _mockContext.Setup(x => x.Users).Returns(mockUsersDbSet.Object);
 

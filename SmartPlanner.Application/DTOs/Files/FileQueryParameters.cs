@@ -12,5 +12,8 @@ namespace SmartPlanner.Application.Dtos.Files
 
         // Опционально: можешь добавить конвертацию в PageNumber/PageSize если нужно
         public int PageNumber => Page;
+
+        public override string ToString() =>
+            $"Page={Page}, PageSize={PageSize}, Search={Search}, ContentType={ContentType}, IsPublic={IsPublic}, SortBy={SortBy}, SortDescending={SortDescending}";
     }
 }

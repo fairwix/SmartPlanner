@@ -62,13 +62,13 @@ public class GetUserFriendsQueryHandlerTests
         }.AsQueryable();
 
         var mockUserFriendsDbSet = new Mock<DbSet<UserFriend>>();
-        mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Provider).Returns(userFriends.Provider);
+        mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(userFriends));
         mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Expression).Returns(userFriends.Expression);
         mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.ElementType).Returns(userFriends.ElementType);
         mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.GetEnumerator()).Returns(() => userFriends.GetEnumerator());
 
         var mockUsersDbSet = new Mock<DbSet<User>>();
-        mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(friends.Provider);
+        mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(friends));
         mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.Expression).Returns(friends.Expression);
         mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.ElementType).Returns(friends.ElementType);
         mockUsersDbSet.As<IQueryable<User>>().Setup(m => m.GetEnumerator()).Returns(() => friends.GetEnumerator());
@@ -101,7 +101,7 @@ public class GetUserFriendsQueryHandlerTests
 
         var emptyUserFriendsList = new List<UserFriend>().AsQueryable();
         var mockUserFriendsDbSet = new Mock<DbSet<UserFriend>>();
-        mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Provider).Returns(emptyUserFriendsList.Provider);
+        mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(emptyUserFriendsList));
         mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Expression).Returns(emptyUserFriendsList.Expression);
         mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.ElementType).Returns(emptyUserFriendsList.ElementType);
         mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.GetEnumerator()).Returns(() => emptyUserFriendsList.GetEnumerator());
@@ -131,7 +131,7 @@ public class GetUserFriendsQueryHandlerTests
         }.AsQueryable();
 
         var mockUserFriendsDbSet = new Mock<DbSet<UserFriend>>();
-        mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Provider).Returns(userFriends.Provider);
+        mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(userFriends));
         mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.Expression).Returns(userFriends.Expression);
         mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.ElementType).Returns(userFriends.ElementType);
         mockUserFriendsDbSet.As<IQueryable<UserFriend>>().Setup(m => m.GetEnumerator()).Returns(() => userFriends.GetEnumerator());

@@ -24,7 +24,19 @@ public class MappingProfile : Profile
         CreateMap<CreateGoalDto, CreateGoalCommand>();
         CreateMap<UpdateGoalDto, UpdateGoalCommand>();
 
-        CreateMap<User, UserDto>();
+        CreateMap<User, UserDto>().ConstructUsing(src => new UserDto(
+            src.Id,
+            src.CreatedAt,
+            src.UpdatedAt,
+            src.Username,
+            src.Email,
+            (src.UserInterests ?? new List<UserInterest>())
+                .Where(ui => ui.Interest != null)
+                .Select(ui => ui.Interest!.Name)
+                .ToList(),
+            src.Balance,
+            src.StreakCount,
+            src.LastLoginAt));
         CreateMap<CreateUserDto, CreateUserCommand>();
         CreateMap<UpdateUserDto, UpdateUserCommand>();
 

@@ -17,14 +17,14 @@ namespace SmartPlanner.Application.Achievements.Queries
 
         public async Task<List<AchievementDto>> Handle(GetAchievementsQuery request, CancellationToken cancellationToken)
         {
-            var query = _context.Achievements.AsQueryable();
+            IQueryable<Achievement> query = _context.Achievements;
 
             if (!string.IsNullOrEmpty(request.AchievementType))
             {
-                if (Enum.TryParse<AchievementType>(request.AchievementType, true, out var type))
-                {
-                    query = query.Where(a => a.Type == type);
-                }
+                if (!Enum.TryParse<AchievementType>(request.AchievementType, true, out var type))
+                    return new List<AchievementDto>();
+
+                query = query.Where(a => a.Type == type);
             }
 
             var achievements = await query.ToListAsync(cancellationToken);

@@ -164,7 +164,7 @@ namespace SmartPlanner.Application.Services
 
         private string SanitizeFileName(string fileName)
         {
-            var invalidChars = Path.GetInvalidFileNameChars();
+            var invalidChars = Path.GetInvalidFileNameChars().Concat("<>:\"|?*".ToCharArray()).ToHashSet();
             var sanitized = new string(fileName
                 .Where(ch => !invalidChars.Contains(ch))
                 .ToArray());
@@ -1321,7 +1321,6 @@ private void CleanupTempFiles(string uploadPath)
             {
                 // Проверка на админа
                 var isAdmin = await _context.UserRoles
-                    .Include(ur => ur.Role)
                     .AnyAsync(ur => ur.UserId == userId && ur.Role.Name == "Admin",
                         cancellationToken);
 
@@ -1347,7 +1346,6 @@ private void CleanupTempFiles(string uploadPath)
             if (file.UploadedById != userId)
             {
                 var isAdmin = await _context.UserRoles
-                    .Include(ur => ur.Role)
                     .AnyAsync(ur => ur.UserId == userId && ur.Role.Name == "Admin",
                         cancellationToken);
 

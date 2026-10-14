@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Moq;
 using SmartPlanner.Application.Auth.Interfaces;
 using SmartPlanner.Application.Auth.Services;
 using SmartPlanner.Application.Common.Interfaces;
@@ -41,6 +42,7 @@ namespace SmartPlanner.Infrastructure.Tests
         public void AddInfrastructure_RegistersDbContext()
         {
             // Act
+            _services.AddLogging();
             _services.AddInfrastructure(_configuration);
 
             // Assert
@@ -58,6 +60,9 @@ namespace SmartPlanner.Infrastructure.Tests
         public void AddInfrastructure_RegistersScopedServices()
         {
             // Act
+            _services.AddLogging();
+            _services.AddSingleton<IConfiguration>(_configuration);
+            _services.AddSingleton<IHostEnvironment>(new Mock<IHostEnvironment>().Object);
             _services.AddInfrastructure(_configuration);
 
             // Assert

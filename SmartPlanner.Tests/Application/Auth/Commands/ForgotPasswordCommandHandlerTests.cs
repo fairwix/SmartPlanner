@@ -7,6 +7,7 @@ using SmartPlanner.Application.Auth.Interfaces;
 using SmartPlanner.Application.Auth.Services;
 using SmartPlanner.Application.Common.Interfaces;
 using SmartPlanner.Domain.Entities;
+using SmartPlanner.Tests.TestHelpers;
 using Xunit;
 
 namespace SmartPlanner.Application.Tests.Auth.Commands
@@ -45,9 +46,7 @@ namespace SmartPlanner.Application.Tests.Auth.Commands
                 UserAgent = "Test Browser"
             };
 
-            var mockUsersDbSet = new Mock<DbSet<User>>();
-            mockUsersDbSet.Setup(x => x.AsNoTracking()).Returns(mockUsersDbSet.Object);
-
+            var mockUsersDbSet = AsyncQueryableExtensions.CreateMockDbSet(new List<User>());
             _mockContext.Setup(x => x.Users).Returns(mockUsersDbSet.Object);
 
             // Act
@@ -76,21 +75,9 @@ namespace SmartPlanner.Application.Tests.Auth.Commands
                 IsDeleted = false
             };
 
-            var mockUsersDbSet = new Mock<DbSet<User>>();
-            var mockPasswordResetTokensDbSet = new Mock<DbSet<PasswordResetToken>>();
-
-            mockUsersDbSet.As<IQueryable<User>>()
-                .Setup(x => x.Provider)
-                .Returns(new List<User> { user }.AsQueryable().Provider);
-            mockUsersDbSet.As<IQueryable<User>>()
-                .Setup(x => x.Expression)
-                .Returns(new List<User> { user }.AsQueryable().Expression);
-            mockUsersDbSet.Setup(x => x.AsNoTracking()).Returns(mockUsersDbSet.Object);
-
-            mockPasswordResetTokensDbSet.Setup(x => x.CountAsync(
-                It.IsAny<System.Linq.Expressions.Expression<Func<PasswordResetToken, bool>>>(),
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(5); // More than 3 requests
+            var mockUsersDbSet = AsyncQueryableExtensions.CreateMockDbSet(new List<User> { user });
+            var mockPasswordResetTokensDbSet = AsyncQueryableExtensions.CreateMockDbSet(
+                Enumerable.Range(0, 5).Select(_ => new PasswordResetToken { UserId = user.Id }).ToList());
 
             _mockContext.Setup(x => x.Users).Returns(mockUsersDbSet.Object);
             _mockContext.Setup(x => x.PasswordResetTokens).Returns(mockPasswordResetTokensDbSet.Object);
@@ -124,21 +111,8 @@ namespace SmartPlanner.Application.Tests.Auth.Commands
                 IsDeleted = false
             };
 
-            var mockUsersDbSet = new Mock<DbSet<User>>();
-            var mockPasswordResetTokensDbSet = new Mock<DbSet<PasswordResetToken>>();
-
-            mockUsersDbSet.As<IQueryable<User>>()
-                .Setup(x => x.Provider)
-                .Returns(new List<User> { user }.AsQueryable().Provider);
-            mockUsersDbSet.As<IQueryable<User>>()
-                .Setup(x => x.Expression)
-                .Returns(new List<User> { user }.AsQueryable().Expression);
-            mockUsersDbSet.Setup(x => x.AsNoTracking()).Returns(mockUsersDbSet.Object);
-
-            mockPasswordResetTokensDbSet.Setup(x => x.CountAsync(
-                It.IsAny<System.Linq.Expressions.Expression<Func<PasswordResetToken, bool>>>(),
-                It.IsAny<CancellationToken>()))
-                .ReturnsAsync(0);
+            var mockUsersDbSet = AsyncQueryableExtensions.CreateMockDbSet(new List<User> { user });
+            var mockPasswordResetTokensDbSet = AsyncQueryableExtensions.CreateMockDbSet(new List<PasswordResetToken>());
 
             _mockContext.Setup(x => x.Users).Returns(mockUsersDbSet.Object);
             _mockContext.Setup(x => x.PasswordResetTokens).Returns(mockPasswordResetTokensDbSet.Object);

@@ -61,7 +61,7 @@ namespace SmartPlanner.Application.UnitTests.Security.Queries
 
             // Настройка мока DbSet
             var data = _auditLogs.AsQueryable();
-            _mockDbSet.As<IQueryable<SecurityAuditLog>>().Setup(m => m.Provider).Returns(data.Provider);
+            _mockDbSet.As<IQueryable<SecurityAuditLog>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(data));
             _mockDbSet.As<IQueryable<SecurityAuditLog>>().Setup(m => m.ElementType).Returns(data.ElementType);
             _mockDbSet.As<IQueryable<SecurityAuditLog>>().Setup(m => m.Expression).Returns(data.Expression);
             _mockDbSet.As<IQueryable<SecurityAuditLog>>().Setup(m => m.GetEnumerator()).Returns(data.GetEnumerator());
@@ -80,9 +80,6 @@ namespace SmartPlanner.Application.UnitTests.Security.Queries
             };
 
             // Настройка мока для CountAsync
-            _mockDbSet.Setup(m => m.CountAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(_auditLogs.Count);
-
             // Мокаем обработчик через IMediator
             var expectedDtos = _auditLogs.Select(log => new SecurityAuditLogDto(
                 log.Id,
@@ -97,7 +94,7 @@ namespace SmartPlanner.Application.UnitTests.Security.Queries
                 log.CreatedAt
             )).ToList();
 
-            var expectedResult = new PagedResult<SecurityAuditLogDto>(expectedDtos, 2, 1, 10);
+            var expectedResult = PagedResult<SecurityAuditLogDto>.Create(expectedDtos, 2, 1, 10);
 
             _mockMediator.Setup(m => m.Send(It.IsAny<GetAuditLogsQuery>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResult);
@@ -136,7 +133,7 @@ namespace SmartPlanner.Application.UnitTests.Security.Queries
                 log.CreatedAt
             )).ToList();
 
-            var expectedResult = new PagedResult<SecurityAuditLogDto>(expectedDtos, 2, 1, 10);
+            var expectedResult = PagedResult<SecurityAuditLogDto>.Create(expectedDtos, 2, 1, 10);
 
             _mockMediator.Setup(m => m.Send(It.IsAny<GetAuditLogsQuery>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResult);
@@ -174,7 +171,7 @@ namespace SmartPlanner.Application.UnitTests.Security.Queries
                 log.CreatedAt
             )).ToList();
 
-            var expectedResult = new PagedResult<SecurityAuditLogDto>(expectedDtos, 2, 1, 10);
+            var expectedResult = PagedResult<SecurityAuditLogDto>.Create(expectedDtos, 2, 1, 10);
 
             _mockMediator.Setup(m => m.Send(It.IsAny<GetAuditLogsQuery>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResult);
@@ -211,7 +208,7 @@ namespace SmartPlanner.Application.UnitTests.Security.Queries
                 log.CreatedAt
             )).ToList();
 
-            var expectedResult = new PagedResult<SecurityAuditLogDto>(expectedDtos, 2, 1, 1);
+            var expectedResult = PagedResult<SecurityAuditLogDto>.Create(expectedDtos, 2, 1, 1);
 
             _mockMediator.Setup(m => m.Send(It.IsAny<GetAuditLogsQuery>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(expectedResult);

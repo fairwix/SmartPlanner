@@ -55,7 +55,7 @@
 //
 //         var users = new List<User> { user }.AsQueryable();
 //         var mockDbSet = new Mock<DbSet<User>>();
-//         mockDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(users.Provider);
+//         mockDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(users));
 //         mockDbSet.As<IQueryable<User>>().Setup(m => m.Expression).Returns(users.Expression);
 //         mockDbSet.As<IQueryable<User>>().Setup(m => m.ElementType).Returns(users.ElementType);
 //         mockDbSet.As<IQueryable<User>>().Setup(m => m.GetEnumerator()).Returns(() => users.GetEnumerator());
@@ -116,7 +116,7 @@
 //
 //         var users = new List<User> { user }.AsQueryable();
 //         var mockDbSet = new Mock<DbSet<User>>();
-//         mockDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(users.Provider);
+//         mockDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(users));
 //         mockDbSet.As<IQueryable<User>>().Setup(m => m.Expression).Returns(users.Expression);
 //         mockDbSet.As<IQueryable<User>>().Setup(m => m.ElementType).Returns(users.ElementType);
 //         mockDbSet.As<IQueryable<User>>().Setup(m => m.GetEnumerator()).Returns(() => users.GetEnumerator());
@@ -144,7 +144,7 @@
 //
 //         var emptyUsersList = new List<User>().AsQueryable();
 //         var mockDbSet = new Mock<DbSet<User>>();
-//         mockDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(emptyUsersList.Provider);
+//         mockDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(emptyUsersList));
 //         mockDbSet.As<IQueryable<User>>().Setup(m => m.Expression).Returns(emptyUsersList.Expression);
 //         mockDbSet.As<IQueryable<User>>().Setup(m => m.ElementType).Returns(emptyUsersList.ElementType);
 //         mockDbSet.As<IQueryable<User>>().Setup(m => m.GetEnumerator()).Returns(() => emptyUsersList.GetEnumerator());
@@ -176,7 +176,7 @@
 //
 //         var users = new List<User> { user }.AsQueryable();
 //         var mockDbSet = new Mock<DbSet<User>>();
-//         mockDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(users.Provider);
+//         mockDbSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(users));
 //         mockDbSet.As<IQueryable<User>>().Setup(m => m.Expression).Returns(users.Expression);
 //         mockDbSet.As<IQueryable<User>>().Setup(m => m.ElementType).Returns(users.ElementType);
 //         mockDbSet.As<IQueryable<User>>().Setup(m => m.GetEnumerator()).Returns(() => users.GetEnumerator());

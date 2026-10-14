@@ -28,8 +28,6 @@ namespace SmartPlanner.Application.Services
             {
                 try
                 {
-                    await Task.Delay(_cleanupInterval, stoppingToken);
-
                     using var scope = _serviceProvider.CreateScope();
                     var context = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
 
@@ -61,7 +59,10 @@ namespace SmartPlanner.Application.Services
                 {
                     _logger.LogError(ex, "Error cleaning up email tokens");
                     await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+                    continue;
                 }
+
+                await Task.Delay(_cleanupInterval, stoppingToken);
             }
 
             _logger.LogInformation("Email Token Cleanup Service stopped");

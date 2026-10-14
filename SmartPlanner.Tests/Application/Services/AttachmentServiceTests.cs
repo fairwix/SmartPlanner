@@ -59,7 +59,7 @@ namespace SmartPlanner.Application.Tests.Services
             var queryable = sourceList.AsQueryable();
             var mockSet = new Mock<DbSet<T>>();
 
-            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(queryable.Provider);
+            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(queryable));
             mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
             mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
             mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(() => queryable.GetEnumerator());
@@ -73,7 +73,7 @@ namespace SmartPlanner.Application.Tests.Services
             mockSet.Setup(m => m.Remove(It.IsAny<T>())).Callback<T>(entity => sourceList.Remove(entity));
 
             // Setup for Include extension
-            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(queryable.Provider);
+            mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(queryable));
             mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
 
             return mockSet;
@@ -334,7 +334,7 @@ namespace SmartPlanner.Application.Tests.Services
             await _attachmentService.RemoveAttachmentAsync(file1.Id, _testUserId);
 
             // Assert
-            Assert.False(attachment1.IsCover); // attachment1 should be removed
+            _mockContext.Verify(c => c.PostAttachments.Remove(attachment1), Times.Once);
             Assert.True(attachment2.IsCover); // attachment2 should become new cover
         }
     }

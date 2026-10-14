@@ -189,7 +189,7 @@ namespace SmartPlanner.Tests.Application.Achievements.Commands
 
             // Assert
             Assert.True(result);
-            _mockContext.Verify(c => c.Users, Times.Once);
+            _mockContext.Verify(c => c.Users, Times.AtLeastOnce);
 
             // Verify user was updated
             var userEntry = _mockContext.Object.Users.First();
@@ -233,11 +233,7 @@ namespace SmartPlanner.Tests.Application.Achievements.Commands
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
-            var result = await _handler.Handle(command, CancellationToken.None);
-
-            // Assert
-            Assert.False(result);
-            _mockLogger.Verify(l => l.LogError(It.IsAny<Exception>(), It.IsAny<string>()));
+            await Assert.ThrowsAsync<Exception>(() => _handler.Handle(command, CancellationToken.None));
         }
     }
 }

@@ -26,13 +26,7 @@ public class AchievementCheckerServiceTests
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var mockUsersSet = new Mock<DbSet<User>>();
-        var users = new List<User>().AsQueryable();
-
-        mockUsersSet.As<IQueryable<User>>().Setup(m => m.Provider).Returns(users.Provider);
-        mockUsersSet.As<IQueryable<User>>().Setup(m => m.Expression).Returns(users.Expression);
-        mockUsersSet.As<IQueryable<User>>().Setup(m => m.ElementType).Returns(users.ElementType);
-        mockUsersSet.As<IQueryable<User>>().Setup(m => m.GetEnumerator()).Returns(() => users.GetEnumerator());
+        var mockUsersSet = SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(new List<User>());
 
         _mockContext.Setup(c => c.Users).Returns(mockUsersSet.Object);
 
@@ -95,7 +89,7 @@ public class AchievementCheckerServiceTests
         }.AsQueryable();
 
         var mockQueryableSet = new Mock<DbSet<object>>();
-        mockQueryableSet.As<IQueryable<object>>().Setup(m => m.Provider).Returns(queryable.Provider);
+        mockQueryableSet.As<IQueryable<object>>().Setup(m => m.Provider).Returns(SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateAsyncQueryProvider(queryable));
         mockQueryableSet.As<IQueryable<object>>().Setup(m => m.Expression).Returns(queryable.Expression);
         mockQueryableSet.As<IQueryable<object>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
         mockQueryableSet.As<IQueryable<object>>().Setup(m => m.GetEnumerator()).Returns(() => queryable.GetEnumerator());
@@ -119,7 +113,8 @@ public class AchievementCheckerServiceTests
         var user = new User
         {
             Id = userId,
-            StreakCount = 10
+            StreakCount = 10,
+            Achievements = new List<UserAchievement> { new UserAchievement { AchievementId = achievementId } }
         };
 
         var achievements = new List<Achievement>
@@ -268,14 +263,6 @@ public class AchievementCheckerServiceTests
 
     private Mock<DbSet<T>> CreateMockDbSet<T>(List<T> data) where T : class
     {
-        var queryable = data.AsQueryable();
-        var mockSet = new Mock<DbSet<T>>();
-
-        mockSet.As<IQueryable<T>>().Setup(m => m.Provider).Returns(queryable.Provider);
-        mockSet.As<IQueryable<T>>().Setup(m => m.Expression).Returns(queryable.Expression);
-        mockSet.As<IQueryable<T>>().Setup(m => m.ElementType).Returns(queryable.ElementType);
-        mockSet.As<IQueryable<T>>().Setup(m => m.GetEnumerator()).Returns(() => queryable.GetEnumerator());
-
-        return mockSet;
+        return SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions.CreateMockDbSet(data);
     }
 }

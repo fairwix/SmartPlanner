@@ -18,6 +18,7 @@ namespace SmartPlanner.Application.Tests.Services
         private readonly Mock<ILogger<EmailService>> _mockLogger;
         private readonly Mock<IHostEnvironment> _mockEnvironment;
         private readonly Mock<IConfiguration> _mockConfiguration;
+        private readonly Mock<IDirectoryWrapper> _mockDirectoryWrapper;
         private readonly EmailService _service;
         private readonly string _testEmailsDirectory;
 
@@ -27,6 +28,7 @@ namespace SmartPlanner.Application.Tests.Services
             _mockLogger = new Mock<ILogger<EmailService>>();
             _mockEnvironment = new Mock<IHostEnvironment>();
             _mockConfiguration = new Mock<IConfiguration>();
+            _mockDirectoryWrapper = new Mock<IDirectoryWrapper>();
 
             var emailSettings = new EmailSettings
             {
@@ -44,23 +46,22 @@ namespace SmartPlanner.Application.Tests.Services
 
             // Создаем временную директорию для тестов
             _testEmailsDirectory = Path.Combine(Path.GetTempPath(), $"TestEmails_{Guid.NewGuid()}");
-            _mockEnvironment.Setup(x => x.IsDevelopment()).Returns(false);
-            _mockEnvironment.Setup(x => x.IsProduction()).Returns(true);
+            _mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Production);
 
             // Mock для Directory.GetCurrentDirectory()
-            var mockDirectory = new Mock<IDirectoryWrapper>();
-            mockDirectory.Setup(d => d.GetCurrentDirectory()).Returns(_testEmailsDirectory);
+            _mockDirectoryWrapper.Setup(d => d.GetCurrentDirectory()).Returns(_testEmailsDirectory);
 
             _service = new EmailService(
                 _mockEmailSettings.Object,
                 _mockLogger.Object,
                 _mockEnvironment.Object,
-                _mockConfiguration.Object);
+                _mockConfiguration.Object,
+                directoryWrapper: _mockDirectoryWrapper.Object);
 
             // Используем рефлексию для подмены путей
             var field = typeof(EmailService).GetField("_directoryWrapper",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            field?.SetValue(_service, mockDirectory.Object);
+            field?.SetValue(_service, _mockDirectoryWrapper.Object);
 
             Directory.CreateDirectory(_testEmailsDirectory);
         }
@@ -78,8 +79,7 @@ namespace SmartPlanner.Application.Tests.Services
         public async Task SendEmailAsync_DevelopmentEnvironment_LogsEmailInfo()
         {
             // Arrange
-            _mockEnvironment.Setup(x => x.IsDevelopment()).Returns(true);
-            _mockEnvironment.Setup(x => x.IsProduction()).Returns(false);
+            _mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
 
             var emailSettings = new EmailSettings
             {
@@ -113,8 +113,7 @@ namespace SmartPlanner.Application.Tests.Services
         public async Task SendEmailAsync_DevelopmentWithFileSystem_SavesEmailToFile()
         {
             // Arrange
-            _mockEnvironment.Setup(x => x.IsDevelopment()).Returns(true);
-            _mockEnvironment.Setup(x => x.IsProduction()).Returns(false);
+            _mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
 
             var emailSettings = new EmailSettings
             {
@@ -158,8 +157,7 @@ namespace SmartPlanner.Application.Tests.Services
         public async Task SendEmailAsync_ProductionEnvironment_SendsViaSmtp()
         {
             // Arrange
-            _mockEnvironment.Setup(x => x.IsDevelopment()).Returns(false);
-            _mockEnvironment.Setup(x => x.IsProduction()).Returns(true);
+            _mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Production);
 
             var emailSettings = new EmailSettings
             {
@@ -203,6 +201,8 @@ namespace SmartPlanner.Application.Tests.Services
             // Arrange
             var emailSettings = new EmailSettings
             {
+                SenderEmail = "sender@test.com",
+                SenderName = "Test Sender",
                 RequiresAuthentication = true,
                 Username = null, // Будет брать из конфигурации
                 Password = null
@@ -280,8 +280,7 @@ namespace SmartPlanner.Application.Tests.Services
         public async Task SendEmailAsync_NonProductionWithoutAuthentication_LogsInfo()
         {
             // Arrange
-            _mockEnvironment.Setup(x => x.IsDevelopment()).Returns(true);
-            _mockEnvironment.Setup(x => x.IsProduction()).Returns(false);
+            _mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
 
             var emailSettings = new EmailSettings
             {
@@ -463,6 +462,8 @@ namespace SmartPlanner.Application.Tests.Services
                 SmtpServer = "smtp.test.com",
                 SmtpPort = 465,
                 UseSsl = false,
+                SenderEmail = "sender@test.com",
+                SenderName = "Test Sender",
                 RequiresAuthentication = true,
                 Username = "testuser",
                 Password = "testpass"
@@ -489,6 +490,8 @@ namespace SmartPlanner.Application.Tests.Services
             // Arrange
             var emailSettings = new EmailSettings
             {
+                SenderEmail = "sender@test.com",
+                SenderName = "Test Sender",
                 RequiresAuthentication = false
             };
             _mockEmailSettings.Setup(x => x.Value).Returns(emailSettings);
@@ -507,8 +510,7 @@ namespace SmartPlanner.Application.Tests.Services
         public async Task SendEmailAsync_DevelopmentEnvironmentFileSystem_CreatesDirectory()
         {
             // Arrange
-            _mockEnvironment.Setup(x => x.IsDevelopment()).Returns(true);
-            _mockEnvironment.Setup(x => x.IsProduction()).Returns(false);
+            _mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
 
             var emailSettings = new EmailSettings
             {
@@ -532,8 +534,7 @@ namespace SmartPlanner.Application.Tests.Services
         public async Task SendEmailAsync_FileSystemEmail_CreatesHtmlFile()
         {
             // Arrange
-            _mockEnvironment.Setup(x => x.IsDevelopment()).Returns(true);
-            _mockEnvironment.Setup(x => x.IsProduction()).Returns(false);
+            _mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Development);
 
             var emailSettings = new EmailSettings
             {
@@ -711,43 +712,19 @@ namespace SmartPlanner.Application.Tests.Services
 
         private EmailService CreateService(Mock<ISmtpClient> mockSmtpClient = null)
         {
-            var service = new EmailService(
+            return new EmailService(
                 _mockEmailSettings.Object,
                 _mockLogger.Object,
                 _mockEnvironment.Object,
-                _mockConfiguration.Object);
-
-            // Используем рефлексию для инъекции моков
-            if (mockSmtpClient != null)
-            {
-                var smtpClientField = typeof(EmailService).GetField("_smtpClient",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                smtpClientField?.SetValue(service, mockSmtpClient.Object);
-            }
-
-            return service;
+                _mockConfiguration.Object,
+                mockSmtpClient?.Object,
+                _mockDirectoryWrapper.Object);
         }
 
         #endregion
     }
 
     #region Вспомогательные интерфейсы и классы
-
-    public interface ISmtpClient : IDisposable
-    {
-        string Host { get; set; }
-        int Port { get; set; }
-        bool EnableSsl { get; set; }
-        SmtpDeliveryMethod DeliveryMethod { get; set; }
-        bool UseDefaultCredentials { get; set; }
-        ICredentialsByHost Credentials { get; set; }
-        Task SendMailAsync(MailMessage message);
-    }
-
-    public interface IDirectoryWrapper
-    {
-        string GetCurrentDirectory();
-    }
 
     #endregion
 }

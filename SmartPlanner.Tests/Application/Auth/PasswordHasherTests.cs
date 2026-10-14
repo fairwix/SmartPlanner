@@ -208,22 +208,9 @@ namespace SmartPlanner.Application.Tests.Auth
         public RegisterDtoValidatorTests()
         {
             _mockContext = new Mock<IApplicationDbContext>();
-            _mockUsersDbSet = new Mock<DbSet<Domain.Entities.User>>();
             _users = new List<Domain.Entities.User>();
-
-            // Настройка моков для DbSet
-            _mockUsersDbSet.As<IQueryable<Domain.Entities.User>>()
-                .Setup(m => m.Provider)
-                .Returns(_users.AsQueryable().Provider);
-            _mockUsersDbSet.As<IQueryable<Domain.Entities.User>>()
-                .Setup(m => m.Expression)
-                .Returns(_users.AsQueryable().Expression);
-            _mockUsersDbSet.As<IQueryable<Domain.Entities.User>>()
-                .Setup(m => m.ElementType)
-                .Returns(_users.AsQueryable().ElementType);
-            _mockUsersDbSet.As<IQueryable<Domain.Entities.User>>()
-                .Setup(m => m.GetEnumerator())
-                .Returns(_users.AsQueryable().GetEnumerator());
+            _mockUsersDbSet = SmartPlanner.Tests.TestHelpers.AsyncQueryableExtensions
+                .CreateMockDbSet(_users);
 
             _mockContext.Setup(c => c.Users).Returns(_mockUsersDbSet.Object);
 
@@ -355,33 +342,36 @@ namespace SmartPlanner.Application.Tests.Auth
                 .WithErrorMessage("Passwords do not match");
         }
 
-        [Theory]
-        [InlineData("2008-01-01", false)] // Меньше 18 лет
-        [InlineData("1990-01-01", true)] // Больше 18 лет
-        public async Task Validate_DateOfBirth_ShouldCheckAge(string dateString, bool expectedIsValid)
+        [Fact]
+        public async Task Validate_DateOfBirth_ShouldRejectUnderageUser()
         {
             // Arrange
-            var dateOfBirth = DateTime.Parse(dateString);
-            var dto = new RegisterDto("test@example.com", "testuser", "Password123!", "Password123!");
+            var dateOfBirth = DateTime.UtcNow.Date.AddYears(-17);
+            var dto = new RegisterDto("test@example.com", "testuser", "Password123!", "Password123!",
+                DateOfBirth: dateOfBirth);
 
             // Act
             var result = await _validator.TestValidateAsync(dto);
 
             // Assert
-            if (expectedIsValid)
-            {
-                result.ShouldNotHaveValidationErrorFor(x => x.DateOfBirth);
-            }
-            else
-            {
-                result.ShouldHaveValidationErrorFor(x => x.DateOfBirth)
-                    .WithErrorMessage("You must be at least 18 years old");
-            }
+            result.ShouldHaveValidationErrorFor(x => x.DateOfBirth)
+                .WithErrorMessage("You must be at least 18 years old");
+        }
+
+        [Fact]
+        public async Task Validate_DateOfBirth_ShouldAcceptAdultUser()
+        {
+            var dto = new RegisterDto("test@example.com", "testuser", "Password123!", "Password123!",
+                DateOfBirth: DateTime.UtcNow.Date.AddYears(-18));
+
+            var result = await _validator.TestValidateAsync(dto);
+
+            result.ShouldNotHaveValidationErrorFor(x => x.DateOfBirth);
         }
 
         [Theory]
         [InlineData("invalid-phone", false)]
-        [InlineData("123456", false)]
+        [InlineData("012345", false)]
         [InlineData("+1234567890", true)]
         [InlineData("1234567890", true)]
         [InlineData(null, true)] // null разрешён
@@ -389,7 +379,8 @@ namespace SmartPlanner.Application.Tests.Auth
         public async Task Validate_PhoneNumber_ShouldCheckFormat(string phoneNumber, bool expectedIsValid)
         {
             // Arrange
-            var dto = new RegisterDto("test@example.com", "testuser", "Password123!", "Password123!");
+            var dto = new RegisterDto("test@example.com", "testuser", "Password123!", "Password123!",
+                PhoneNumber: phoneNumber);
 
             // Act
             var result = await _validator.TestValidateAsync(dto);
@@ -411,7 +402,8 @@ namespace SmartPlanner.Application.Tests.Auth
         {
             // Arrange
             var longName = new string('a', 101); // 101 символов
-            var dto = new RegisterDto("test@example.com", "testuser", "Password123!", "Password123!");
+            var dto = new RegisterDto("test@example.com", "testuser", "Password123!", "Password123!",
+                FirstName: longName, LastName: longName);
 
             // Act
             var result = await _validator.TestValidateAsync(dto);

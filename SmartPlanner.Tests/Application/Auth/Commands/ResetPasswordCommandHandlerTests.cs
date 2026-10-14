@@ -36,6 +36,7 @@ public class ResetPasswordCommandHandlerTests : AuthCommandTestBase
     public async Task Handle_InvalidToken_ReturnsFalse()
     {
         // Arrange
+        MockContext.Setup(c => c.PasswordResetTokens).Returns(CreateMockDbSet(new List<PasswordResetToken>()).Object);
         _mockConfirmationTokenService.Setup(t => t.ValidatePasswordResetTokenAsync(
             It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
@@ -61,7 +62,13 @@ public class ResetPasswordCommandHandlerTests : AuthCommandTestBase
         var userId = Guid.NewGuid();
         var users = new List<User>();
         var mockSet = CreateMockDbSet(users);
-
+        var token = "valid_token";
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var tokenHash = Convert.ToBase64String(sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(token)));
+        MockContext.Setup(c => c.PasswordResetTokens).Returns(CreateMockDbSet(new List<PasswordResetToken>
+        {
+            new PasswordResetToken { UserId = userId, TokenHash = tokenHash }
+        }).Object);
         MockContext.Setup(c => c.Users).Returns(mockSet.Object);
 
         _mockConfirmationTokenService.Setup(t => t.ValidatePasswordResetTokenAsync(

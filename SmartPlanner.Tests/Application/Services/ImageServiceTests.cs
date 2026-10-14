@@ -7,7 +7,7 @@ using Xunit;
 
 namespace SmartPlanner.Application.Tests.Services
 {
-    public class ImageServiceTests
+    public class ImageServiceTests : IDisposable
     {
         private readonly Mock<ILogger<ImageService>> _mockLogger;
         private readonly ImageService _imageService;
@@ -19,7 +19,7 @@ namespace SmartPlanner.Application.Tests.Services
             _imageService = new ImageService(_mockLogger.Object);
 
             // Создаем временную директорию для тестов
-            _testDataPath = Path.Combine(Path.GetTempPath(), "ImageServiceTests");
+            _testDataPath = Path.Combine(Path.GetTempPath(), $"ImageServiceTests_{Guid.NewGuid():N}");
             Directory.CreateDirectory(_testDataPath);
         }
 
@@ -152,7 +152,10 @@ namespace SmartPlanner.Application.Tests.Services
         public async Task OptimizeImageAsync_ReducesFileSize()
         {
             // Arrange
-            var originalImagePath = CreateTestImage(800, 600);
+            var originalImagePath = Path.Combine(_testDataPath, "test_800x600.jpg");
+            using (var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(800, 600))
+            using (var output = File.Create(originalImagePath))
+                image.Save(output, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 100 });
             var originalSize = new FileInfo(originalImagePath).Length;
 
             // Act
@@ -224,6 +227,7 @@ namespace SmartPlanner.Application.Tests.Services
         private string CreateTestImage(int width = 100, int height = 100)
         {
             var imagePath = Path.Combine(_testDataPath, $"test_{width}x{height}.png");
+            var random = new Random(width * 397 + height);
 
             using (var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(width, height))
             {
@@ -233,13 +237,14 @@ namespace SmartPlanner.Application.Tests.Services
                     for (int x = 0; x < width; x++)
                     {
                         image[x, y] = new SixLabors.ImageSharp.PixelFormats.Rgba32(
-                            (byte)(x % 255),
-                            (byte)(y % 255),
-                            (byte)((x + y) % 255));
+                            (byte)random.Next(256),
+                            (byte)random.Next(256),
+                            (byte)random.Next(256));
                     }
                 }
 
-                //image.Save(imagePath);
+                using var output = File.Create(imagePath);
+                image.Save(output, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
             }
 
             return imagePath;

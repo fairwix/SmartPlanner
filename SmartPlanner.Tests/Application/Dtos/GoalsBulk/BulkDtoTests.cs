@@ -128,7 +128,7 @@ namespace SmartPlanner.Application.UnitTests.DTOs.GoalsBulk
             item.Description.Should().BeNull();
             item.Category.Should().BeNull();
             item.Status.Should().BeNull();
-            item.Tags.Should().BeNull();
+            item.Tags.Should().BeEmpty();
             item.EstimatedDuration.Should().BeNull();
             item.ParentGoalId.Should().BeNull();
             item.RecurrencePattern.Should().BeNull();

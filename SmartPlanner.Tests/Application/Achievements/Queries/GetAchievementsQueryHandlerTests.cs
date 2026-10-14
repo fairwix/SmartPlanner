@@ -35,8 +35,8 @@ namespace SmartPlanner.Tests.Application.Achievements.Queries
             var achievements = new List<Achievement>
             {
                 new Achievement { Id = Guid.NewGuid(), Name = "Achievement 1", Type = AchievementType.Streak },
-                new Achievement { Id = Guid.NewGuid(), Name = "Goals Achievement", Type = (AchievementType)Enum.Parse(typeof(AchievementType), "CompletedGoals") }, // Если AchievementType существует, но не виден
-                new Achievement { Id = Guid.NewGuid(), Name = "Achievement 3", Type = (AchievementType)Enum.Parse(typeof(AchievementType), "FriendsCount") }
+                new Achievement { Id = Guid.NewGuid(), Name = "Goals Achievement", Type = AchievementType.GoalsCompleted }, // Если AchievementType существует, но не виден
+                new Achievement { Id = Guid.NewGuid(), Name = "Achievement 3", Type = AchievementType.Friends }
             }.AsQueryable();
 
             var mockAchievements = MockDbSetHelper.CreateMockDbSet(achievements.ToList());
@@ -49,7 +49,7 @@ namespace SmartPlanner.Tests.Application.Achievements.Queries
             Assert.NotNull(result);
             Assert.Equal(3, result.Count);
             Assert.Contains(result, a => a.Name == "Achievement 1");
-            Assert.Contains(result, a => a.Name == "Achievement 2");
+            Assert.Contains(result, a => a.Name == "Goals Achievement");
             Assert.Contains(result, a => a.Name == "Achievement 3");
         }
 
@@ -61,8 +61,8 @@ namespace SmartPlanner.Tests.Application.Achievements.Queries
             var achievements = new List<Achievement>
             {
                 new Achievement { Id = Guid.NewGuid(), Name = "Streak Achievement", Type = AchievementType.Streak },
-                new Achievement { Id = Guid.NewGuid(), Name = "Goals Achievement", Type = (AchievementType)Enum.Parse(typeof(AchievementType), "CompletedGoals") }, // Если AchievementType существует, но не виден
-                new Achievement { Id = Guid.NewGuid(), Name = "Friends Achievement", Type = (AchievementType)Enum.Parse(typeof(AchievementType), "FriendsCount") }  // Не подходит
+                new Achievement { Id = Guid.NewGuid(), Name = "Goals Achievement", Type = AchievementType.GoalsCompleted }, // Если AchievementType существует, но не виден
+                new Achievement { Id = Guid.NewGuid(), Name = "Friends Achievement", Type = AchievementType.Friends }  // Не подходит
             }.AsQueryable();
 
             var mockAchievements = MockDbSetHelper.CreateMockDbSet(achievements.ToList());
@@ -107,7 +107,7 @@ namespace SmartPlanner.Tests.Application.Achievements.Queries
             var achievements = new List<Achievement>
             {
                 new Achievement { Id = Guid.NewGuid(), Name = "Achievement 1", Type = AchievementType.Streak },
-                new Achievement { Id = Guid.NewGuid(), Name = "Achievement 2", Type = (AchievementType)Enum.Parse(typeof(AchievementType), "CompletedGoals") }, // Если AchievementType существует, но не виден
+                new Achievement { Id = Guid.NewGuid(), Name = "Achievement 2", Type = AchievementType.GoalsCompleted }, // Если AchievementType существует, но не виден
             }.AsQueryable();
 
             var mockAchievements = MockDbSetHelper.CreateMockDbSet(achievements.ToList());
